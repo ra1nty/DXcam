@@ -1,5 +1,7 @@
 # DXcam
-A Python high-performance screenshot library for Windows using Desktop Duplication API
+A Python high-performance screenshot library for Windows using Desktop Duplication API. Originally built as a part of deep learning pipeline for FPS games. Capable of 240Hz desktop capturing.
+
+This library borrows the ctypes header directly from the no-longer maintained **[D3DShot](https://github.com/SerpentAI/D3DShot/)**.
 
 ### **In construction: Everything here is messy and experimental. Features are still imcomplete.**
 
