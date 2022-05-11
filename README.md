@@ -4,7 +4,7 @@ DXcam is a Python high-performance screenshot library for Windows using Desktop 
 
 This library borrows the ctypes header directly from the no-longer maintained **[D3DShot](https://github.com/SerpentAI/D3DShot/)**.
 
-## **In construction: Everything here is messy and experimental. Features are still imcomplete.**
+## **In construction: Everything here is messy and experimental. Features are still incomplete.**
 
 
 
@@ -24,14 +24,14 @@ The returned ```frame``` will be a ```numpy.ndarray``` in the shape of ```(Heigh
 To view the captured screenshot:
 ```python
 from PIL import Image
-Image.fromarray(img1).show()
+Image.fromarray(frame).show()
 ```
-To screenshot a specific region:
+To screenshot a specific region, use the ```region``` parameter: it takes ```tuple[int, int, int, int]``` as the left, top, right, bottom coordinates of the bounding box. Similar to [PIL.ImageGrab.grab](https://pillow.readthedocs.io/en/stable/reference/ImageGrab.html).
 ```python
 left, top = (1920 - 640) // 2, (1080 - 640) // 2
 right, bottom = left + 640, top + 640
 region = (left, top, right, bottom)
-img1 = cam1.grab(region)
+frame = camera.grab(region=region)
 ```
 The above code will take a screenshot of the center ```640x640``` portion of a ```1920x1080``` monitor.
 ### Screen Capture
