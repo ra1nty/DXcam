@@ -1,6 +1,12 @@
-from .libs.d3d11 import *
-from .libs.dxgi import *
-from .libs.user32 import *
+import ctypes
+import comtypes
+from dxcam._libs.dxgi import (
+    IDXGIFactory1,
+    IDXGIAdapter1,
+    IDXGIOutput1,
+    DXGI_ERROR_NOT_FOUND,
+)
+from dxcam._libs.user32 import DISPLAY_DEVICE
 
 
 def enum_dxgi_adapters() -> list[ctypes.POINTER(IDXGIAdapter1)]:
