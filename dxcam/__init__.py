@@ -1,4 +1,4 @@
-from dxcam.dxcam import DxOutputDuplicator, Output, Device
+from dxcam.dxcam import DXCamera, Output, Device
 from dxcam.util.io import enum_dxgi_adapters, get_output_metadata_mapping
 
 
@@ -14,7 +14,7 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-class DXCam(metaclass=Singleton):
+class DXFactory(metaclass=Singleton):
     def __init__(self) -> None:
         p_adapters = enum_dxgi_adapters()
         self.devices, self.outputs = [], []
@@ -39,10 +39,10 @@ class DXCam(metaclass=Singleton):
             ][0]
         output = self.outputs[device_idx][output_idx]
         output.update_desc()
-        return DxOutputDuplicator(device, output, region)
+        return DXCamera(output=output, device=device, region=region)
 
 
-factory = DXCam()
+factory = DXFactory()
 
 
 def create(device_idx=0, output_idx=None, region=None):

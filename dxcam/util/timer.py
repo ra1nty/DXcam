@@ -1,5 +1,6 @@
 import ctypes
-import ctypes.wintypes as wintypes
+from ctypes.wintypes import LARGE_INTEGER
+
 
 INFINITE = 0xFFFFFFFF
 WAIT_FAILED = 0xFFFFFFFF
@@ -13,7 +14,7 @@ __kernel32 = ctypes.windll.kernel32
 
 def create_high_resolution_timer():
     handle = __kernel32.CreateWaitableTimerExW(
-        None, None, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_MODIFY_STATE
+        None, None, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS
     )
     if handle == 0:
         raise ctypes.WinError()
@@ -23,7 +24,7 @@ def create_high_resolution_timer():
 def set_periodic_timer(handle, period: int):
     res = __kernel32.SetWaitableTimer(
         handle,
-        0,
+        ctypes.byref(LARGE_INTEGER(0)),
         period,
         None,
         None,
@@ -35,3 +36,4 @@ def set_periodic_timer(handle, period: int):
 
 
 wait_for_timer = __kernel32.WaitForSingleObject
+cancel_timer = __kernel32.CancelWaitableTimer

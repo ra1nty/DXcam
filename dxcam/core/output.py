@@ -7,7 +7,7 @@ from dxcam._libs.dxgi import *
 @dataclass
 class Output:
     output: ctypes.POINTER(IDXGIOutput1)
-    rotation_mapping: tuple = (0, 90, 180, 270)
+    rotation_mapping: tuple = (0, 0, 90, 180, 270)
     desc: DXGI_OUTPUT_DESC = None
 
     def __post_init__(self):
