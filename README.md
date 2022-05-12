@@ -139,7 +139,6 @@ del cam
 [OBS Studio](https://github.com/obsproject/obs-studio) : Learned a lot from it.
 
 
-## Links
 [^1]: <https://en.wikipedia.org/wiki/Preemption_(computing)> Preemption (computing)
 
 [^2]: <https://github.com/python/cpython/issues/65501> bpo-21302: time.sleep() uses waitable timer on Windows
