@@ -11,7 +11,7 @@ Compared to these existed solutions, DXcam provides:
 - Accurate FPS targeting when in capturing mode, makes it suitable for Video output. 
 - Seamless integration with NumPy, OpenCV, PyTorch, etc.
 
-## **In construction: Everything here is messy and experimental. Features are still incomplete. Use with caution.**
+## ***In construction: Everything here is messy and experimental. Features are still incomplete. Use with caution.***
 
 ## Installation
 Only from source available before pre-release. In root directory:
@@ -110,9 +110,6 @@ for i in range(600):
 camera.stop()
 writer.release()
 ```
-
-### 
-
 ## Benchmarks
 ### For Max FPS Capability:
 ```python
@@ -130,8 +127,32 @@ while fps < 1000:
 end_time = time.perf_counter() - start_time
 
 print(f"{title}: {fps/end_time}")
-del cam
 ```
+When using a similar logistic (only captured new frame counts), ```DXCam, python-mss, D3DShot``` benchmarked as follow:
+
+|             | DXcam  | python-mss | D3DShot |
+|-------------|--------|------------|---------|
+| Average FPS | 238.79 :checkered_flag: | 75.87      | 118.36  |
+| Std Dev     | 1.25   | 0.5447     | 0.3224   |
+
+The benchmark is across 5 runs, with a light-moderate usage on my PC (5900X + 3090; Chrome ~30tabs, VS Code opened, etc.), I used the [Blur Buster UFO test](https://www.testufo.com/framerates#count=5&background=stars&pps=960) to constantly render 240 fps on my monitor (Zowie 2546K). DXcam captured almost every frame rendered.
+
+### For Targeting FPS:
+```python
+import dxcam
+
+title = "[DXcam] Capture benchmark"
+
+camera = dxcam.create(output_idx=0)
+camera.start(target_fps=60)
+for i in range(1000):
+    image = camera.get_latest_frame()
+camera.stop()
+```
+|   (Target)\\(mean,std)          | DXcam  | python-mss | D3DShot |
+|-------------  |--------                 |------------|---------|
+| 60fps         | 61.71, 0.26 :checkered_flag: | N/A     | 47.11, 1.33  |
+| 30fps         | 30.08, 0.02 :checkered_flag:  | N/A     | 21.24, 0.17  |
 
 ## Work Referenced:
 [D3DShot](https://github.com/SerpentAI/D3DShot/) : DXcam borrows the ctypes header directly from the no-longer maintained D3DShot.
