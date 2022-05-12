@@ -21,6 +21,7 @@ class DXCamera:
         output: Output,
         device: Device,
         region: tuple[int, int, int, int],
+        output_color: str = "RGB",
         max_buffer_len=64,
     ) -> None:
 
@@ -32,9 +33,10 @@ class DXCamera:
         self._duplicator: Duplicator = Duplicator(
             output=self._output, device=self._device
         )
-        self._processor: Processor = Processor()
+        self._processor: Processor = Processor(output_color=output_color)
 
         self.width, self.height = self._output.resolution
+        self.channel_size = len(output_color)
         self.rotation_angle: int = self._output.rotation_angle
 
         self._region_set_by_user = region is not None
@@ -105,7 +107,7 @@ class DXCamera:
             region = self.region
         self._validate_region(region)
         self.is_capturing = True
-        frame_shape = (region[3] - region[1], region[2] - region[0], 3)
+        frame_shape = (region[3] - region[1], region[2] - region[0], self.channel_size)
         self.__frame_buffer = np.ndarray(
             (self.max_buffer_len, *frame_shape), dtype=np.uint8
         )

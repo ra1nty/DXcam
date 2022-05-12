@@ -7,7 +7,8 @@ class ProcessorBackends(enum.Enum):
 
 
 class Processor:
-    def __init__(self, backend=ProcessorBackends.NUMPY):
+    def __init__(self, backend=ProcessorBackends.NUMPY, output_color: str = "RGB"):
+        self.color_mode = output_color
         self.backend = self._initialize_backend(backend)
 
     def process(self, rect, width, height, region, rotation_angle):
@@ -17,4 +18,4 @@ class Processor:
         if backend == ProcessorBackends.NUMPY:
             from dxcam.processor.numpy_processor import NumpyProcessor
 
-            return NumpyProcessor()
+            return NumpyProcessor(self.color_mode)

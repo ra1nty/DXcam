@@ -5,8 +5,20 @@ from .base import Processor
 
 
 class NumpyProcessor(Processor):
-    def __init__(self):
-        pass
+
+    color_mapping = {
+        "RGB": cv2.COLOR_BGRA2RGB,
+        "RGBA": cv2.COLOR_BGRA2RGBA,
+        "BGR": cv2.COLOR_BGRA2BGR,
+        "GRAY": cv2.COLOR_BGRA2GRAY,
+        "BGRA": None,
+    }
+
+    def __init__(self, color_mode):
+        cv2_code = self.color_mapping[color_mode]
+        self.cvtcolor = None
+        if cv2_code is not None:
+            self.cvtcolor = lambda image: cv2.cvtColor(image, cv2_code)
 
     def process(self, rect, width, height, region, rotation_angle):
         pitch = int(rect.Pitch)
@@ -22,7 +34,9 @@ class NumpyProcessor(Processor):
             image = np.ndarray((height, pitch, 4), dtype=np.uint8, buffer=buffer)
         elif rotation_angle in (90, 270):
             image = np.ndarray((width, pitch, 4), dtype=np.uint8, buffer=buffer)
-        image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGB)
+
+        if self.cvtcolor is not None:
+            image = self.cvtcolor(image)
 
         if rotation_angle == 90:
             image = np.rot90(image, axes=(1, 0))

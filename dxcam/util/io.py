@@ -1,3 +1,4 @@
+from collections import defaultdict, namedtuple
 import ctypes
 import comtypes
 from dxcam._libs.dxgi import (
@@ -6,7 +7,13 @@ from dxcam._libs.dxgi import (
     IDXGIOutput1,
     DXGI_ERROR_NOT_FOUND,
 )
-from dxcam._libs.user32 import DISPLAY_DEVICE
+from dxcam._libs.user32 import (
+    DISPLAY_DEVICE,
+    MONITORINFOEXW,
+    MONITORINFOF_PRIMARY,
+    DISPLAY_DEVICE_ACTIVE,
+    DISPLAY_DEVICE_PRIMARY_DEVICE,
+)
 
 
 def enum_dxgi_adapters() -> list[ctypes.POINTER(IDXGIAdapter1)]:
@@ -51,29 +58,37 @@ def enum_dxgi_outputs(
     return p_outputs
 
 
-def get_output_metadata_mapping():
-    DISPLAY_DEVICE_ACTIVE = 1
-    DISPLAY_DEVICE_PRIMARY_DEVICE = 4
-    mapping = dict()
-
-    display_device = DISPLAY_DEVICE()
-    display_device.cb = ctypes.sizeof(display_device)
+def get_output_metadata():
+    mapping_adapter = defaultdict(list)
+    adapter = DISPLAY_DEVICE()
+    adapter.cb = ctypes.sizeof(adapter)
     i = 0
-    while ctypes.windll.user32.EnumDisplayDevicesW(
-        0, i, ctypes.byref(display_device), 0
-    ):
-        device_name: str = display_device.DeviceName
-        if display_device.StateFlags & DISPLAY_DEVICE_ACTIVE != 0:
+    # Enumerate all adapters
+    while ctypes.windll.user32.EnumDisplayDevicesW(0, i, ctypes.byref(adapter), 1):
+        if adapter.StateFlags & DISPLAY_DEVICE_ACTIVE != 0:
+            is_primary = bool(adapter.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE)
+            mapping_adapter[adapter.DeviceName] = [adapter.DeviceString, is_primary, []]
+            display = DISPLAY_DEVICE()
+            display.cb = ctypes.sizeof(adapter)
             j = 0
-            is_primary = bool(display_device.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE)
+            # Enumerate Monitors
             while ctypes.windll.user32.EnumDisplayDevicesW(
-                device_name, j, ctypes.byref(display_device), 0
+                adapter.DeviceName, j, ctypes.byref(display), 0
             ):
-                mapping[device_name] = (
-                    display_device.DeviceString,
-                    is_primary,
+                mapping_adapter[adapter.DeviceName][2].append(
+                    (
+                        display.DeviceName,
+                        display.DeviceString,
+                    )
                 )
                 j += 1
         i += 1
+    return mapping_adapter
 
-    return mapping
+
+def get_monitor_name_by_handle(hmonitor):
+    info = MONITORINFOEXW()
+    info.cbSize = ctypes.sizeof(MONITORINFOEXW)
+    if ctypes.windll.user32.GetMonitorInfoW(hmonitor, ctypes.byref(info)):
+        return info
+    return None
