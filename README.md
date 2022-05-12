@@ -1,4 +1,4 @@
-# **DXcam**: Fastest Python Screenshot Library for Windows
+# **DXcam**: Fastest Python Screenshot for Windows
 DXcam is a Python high-performance screenshot library for Windows using Desktop Duplication API. Capable of 240Hz desktop capturing, makes it suitable for FPS game capturing (CS:GO, Valorant, etc.). 
 
 ## Introduction
@@ -113,10 +113,6 @@ writer.release()
 ## Benchmarks
 ### For Max FPS Capability:
 ```python
-import time
-import dxcam
-
-title = "[DXcam] FPS benchmark"
 start_time, fps = time.perf_counter(), 0
 cam = dxcam.create()
 start = time.perf_counter()
@@ -125,7 +121,6 @@ while fps < 1000:
     if frame is not None:  # New frame
         fps += 1
 end_time = time.perf_counter() - start_time
-
 print(f"{title}: {fps/end_time}")
 ```
 When using a similar logistic (only captured new frame counts), ```DXCam, python-mss, D3DShot``` benchmarked as follow:
@@ -139,10 +134,6 @@ The benchmark is across 5 runs, with a light-moderate usage on my PC (5900X + 30
 
 ### For Targeting FPS:
 ```python
-import dxcam
-
-title = "[DXcam] Capture benchmark"
-
 camera = dxcam.create(output_idx=0)
 camera.start(target_fps=60)
 for i in range(1000):
@@ -154,7 +145,7 @@ camera.stop()
 | 60fps         | 61.71, 0.26 :checkered_flag: | N/A     | 47.11, 1.33  |
 | 30fps         | 30.08, 0.02 :checkered_flag:  | N/A     | 21.24, 0.17  |
 
-## Work Referenced:
+## Work Referenced
 [D3DShot](https://github.com/SerpentAI/D3DShot/) : DXcam borrows the ctypes header directly from the no-longer maintained D3DShot.
 
 [OBS Studio](https://github.com/obsproject/obs-studio) : Learned a lot from it.
