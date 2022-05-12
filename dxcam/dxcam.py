@@ -48,8 +48,9 @@ class DXCamera:
         self.is_capturing = False
         self.__thread = None
         self.__lock = Lock()
-        self.__stop_capture_event = Event()
-        self.__frame_available = Semaphore(value=0)
+        self.__stop_capture = Event()
+        # self.__frame_available = Semaphore(value=0)
+        self.__frame_available = Event()
         self.__frame_buffer: np.ndarray = None
         self.__head = 0
         self.__tail = 0
@@ -115,9 +116,17 @@ class DXCamera:
 
     def stop(self):
         if self.is_capturing:
-            self.__stop_capture_event.set()
+            self.__frame_available.set()
+            self.__stop_capture.set()
             if self.__thread is not None:
                 self.__thread.join(timeout=10)
+
+    def get_latest_frame(self):
+        # self.__frame_available.acquire()
+        self.__frame_available.wait()
+        ret = self.__frame_buffer[(self.__head - 1) % self.max_buffer_len]
+        self.__frame_available.clear()
+        return ret
 
     def __capture(self, region: tuple[int, int, int, int], target_fps: int = 60):
         if target_fps != 0:
@@ -129,24 +138,25 @@ class DXCamera:
 
         capture_error = None
 
-        while not self.__stop_capture_event.is_set():
+        while not self.__stop_capture.is_set():
             if self.__timer_handle:
                 res = wait_for_timer(self.__timer_handle, INFINITE)
                 if res == WAIT_FAILED:
-                    self.__stop_capture_event.set()
+                    self.__stop_capture.set()
                     capture_error = ctypes.WinError()
                     continue
             try:
                 frame = self._grab(region)
             except Exception as e:
-                self.__stop_capture_event.set()
+                self.__stop_capture.set()
                 capture_error = e
                 continue
             if frame is not None:
                 with self.__lock:
                     self.__frame_buffer[self.__head] = frame
                     self.__head = (self.__head + 1) % self.max_buffer_len
-                    self.__frame_available.release()
+                    # self.__frame_available.release()
+                    self.__frame_available.set()
                     self.__frame_count += 1
         if self.__timer_handle:
             cancel_timer(self.__timer_handle)

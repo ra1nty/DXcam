@@ -10,8 +10,9 @@ region = (LEFT, TOP, RIGHT, BOTTOM)
 title = "[DXcam] Capture benchmark"
 
 fps = 0
-camera = dxcam.create()
+camera = dxcam.create(output_idx=0)
 camera.start(target_fps=60)
-time.sleep(10)
+for i in range(1000):
+    image = camera.get_latest_frame()
 camera.stop()
 del camera
