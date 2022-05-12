@@ -1,3 +1,4 @@
+from ctypes import wintypes
 import time
 import ctypes
 from threading import Thread, Event, Lock, Semaphore
@@ -37,6 +38,7 @@ class DXCamera:
         self.width, self.height = self._output.resolution
         self.rotation_angle: int = self._output.rotation_angle
 
+        self._region_set_by_user = region is not None
         self.region: tuple[int, int, int, int] = region
         if self.region is None:
             self.region = (0, 0, self.width, self.height)
@@ -86,9 +88,11 @@ class DXCamera:
             self._stagesuf.release()
             self._output.update_desc()
             self.width, self.height = self._output.resolution
-            if self.region is None:
+            if self.region is None or not self._region_set_by_user:
                 self.region = (0, 0, self.width, self.height)
             self._validate_region(self.region)
+            if self.is_capturing:
+                self._rebuild_frame_buffer(self.region)
             self.rotation_angle = self._output.rotation_angle
             self._stagesuf.rebuild(output=self._output, device=self._device)
             self._duplicator = Duplicator(output=self._output, device=self._device)
@@ -123,16 +127,20 @@ class DXCamera:
 
         self.__capture_start_time = time.perf_counter()
 
+        capture_error = None
+
         while not self.__stop_capture_event.is_set():
             if self.__timer_handle:
                 res = wait_for_timer(self.__timer_handle, INFINITE)
                 if res == WAIT_FAILED:
                     self.__stop_capture_event.set()
+                    capture_error = ctypes.WinError()
                     continue
             try:
                 frame = self._grab(region)
             except Exception as e:
                 self.__stop_capture_event.set()
+                capture_error = e
                 continue
             if frame is not None:
                 with self.__lock:
@@ -143,9 +151,21 @@ class DXCamera:
         if self.__timer_handle:
             cancel_timer(self.__timer_handle)
             self.__timer_handle = None
+        if capture_error is not None:
+            raise capture_error
         print(
             f"Screen Capture FPS: {int(self.__frame_count/(time.perf_counter() - self.__capture_start_time))}"
         )
+
+    def _rebuild_frame_buffer(self, region):
+        if region is None:
+            region = self.region
+        frame_shape = (region[3] - region[1], region[2] - region[0], 3)
+        self.__frame_buffer = np.ndarray(
+            (self.max_buffer_len, *frame_shape), dtype=np.uint8
+        )
+        self.__head = 0
+        self.__tail = 0
 
     def _validate_region(self, region: tuple[int, int, int, int]):
         l, t, r, b = region
