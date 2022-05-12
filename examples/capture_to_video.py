@@ -10,9 +10,9 @@ title = "[DXcam] Capture benchmark"
 
 target_fps = 120
 camera = dxcam.create(output_idx=0)
-camera.start(target_fps=target_fps, video_mode=True)
+camera.start(target_fps=target_fps, video_mode=False)
 writer = cv2.VideoWriter(
-    "video.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 120, (1920, 1080)
+    "video.mp4", cv2.VideoWriter_fourcc(*"mp4v"), target_fps, (1920, 1080)
 )
 for i in range(600):
     writer.write(cv2.cvtColor(camera.get_latest_frame(), cv2.COLOR_RGB2BGR))
