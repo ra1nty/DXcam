@@ -6,14 +6,17 @@ It was originally built as a part of deep learning pipeline for FPS games to per
 
 Compared to these existed solutions, DXcam provides:
 - Way faster screen capturing speed (> 240Hz)
-- Capture Direct3D exclusive full-screen application without interrupting, even when alt+tab.
-- Automatically handle scaled / stretched resolution.
+- Capturing of Direct3D exclusive full-screen application without interrupting, even when alt+tab.
+- Automatic handling of scaled / stretched resolution.
 - Accurate FPS targeting when in capturing mode. 
 - Seamless integration with NumPy, OpenCV, PyTorch, etc.
 
 ## **In construction: Everything here is messy and experimental. Features are still incomplete. Use with caution.**
 
+## Installation
+Only from source available before pre-release.
 
+```pip install```
 
 ## Usage
 In DXCam, each output (monitor) is asscociated to a ```DXCamera``` instance.
