@@ -14,9 +14,11 @@ Compared to these existed solutions, DXcam provides:
 ## **In construction: Everything here is messy and experimental. Features are still incomplete. Use with caution.**
 
 ## Installation
-Only from source available before pre-release.
-
-```pip install```
+Only from source available before pre-release. In root directory:
+```bash
+pip install --editable .
+```
+Will install an editable copy, which allows you to modify your source code and does not copy any files to your interpreter directory.
 
 ## Usage
 In DXCam, each output (monitor) is asscociated to a ```DXCamera``` instance.
