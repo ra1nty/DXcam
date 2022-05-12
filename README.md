@@ -8,7 +8,7 @@ Compared to these existed solutions, DXcam provides:
 - Way faster screen capturing speed (> 240Hz)
 - Capturing of Direct3D exclusive full-screen application without interrupting, even when alt+tab.
 - Automatic handling of scaled / stretched resolution.
-- Accurate FPS targeting when in capturing mode. 
+- Accurate FPS targeting when in capturing mode, makes it suitable for Video output. 
 - Seamless integration with NumPy, OpenCV, PyTorch, etc.
 
 ## **In construction: Everything here is messy and experimental. Features are still incomplete. Use with caution.**
@@ -67,7 +67,7 @@ camera.stop()
 Notice that ```.get_latest_frame``` will block until there is a new frame available since the last call to ```.get_latest_frame```.
 
 ## Advanced Usage and Remarks
-### For multiple monitors:
+### Multiple monitors / GPUs:
 ```python
 cam1 = dxcam.create(device_idx=0, output_idx=0)
 cam2 = dxcam.create(device_idx=0, output_idx=1)
@@ -76,10 +76,22 @@ img1 = cam1.grab()
 img2 = cam2.grab()
 img2 = cam3.grab()
 ```
-The above code creates three ```DXCamera``` instances for:
-- monitor 0 on device (GPU) 0, monitor 1 on device (GPU) 0, monitor 1 on device (GPU) 1
+The above code creates three ```DXCamera``` instances for: ```[monitor0, GPU0], [monitor1, GPU0], [monitor1, GPU1]```, and subsequently takes three full-screen screenshots. (cross GPU untested, but I hope it works.)
 
-and subsequently takes three full-screen screenshots. (cross GPU untested, but I hope it works.)
+### Video Mode:
+The default behavior of ```.get_latest_frame``` only put newly rendered frame in the buffer, which suits the usage scenario of a object detection/machine learning pipeline. However, when recording a video that is not ideal since we aim to get the frames at a constant framerate: When the ```video_mode=True``` is specified when calling ```.start``` method of a ```DXCamera``` instance, the frame buffer will be feeded at the target fps, using the last frame if there is no new frame available. For example, the following code output a 5-second, 120Hz screen capture:
+```python
+target_fps = 120
+writer = cv2.VideoWriter(
+    "demo.mp4", cv2.VideoWriter_fourcc(*"mp4v"), target_fps, (1920, 1080)
+)
+camera = dxcam.create(output_idx=0)
+camera.start(target_fps=120, video_mode=True)
+for i in range(600):
+    writer.write(cv2.cvtColor(camera.get_latest_frame(), cv2.COLOR_RGB2BGR))
+camera.stop()
+writer.release()
+```
 
 ## Benchmark
 ### For Max FPS Capability:

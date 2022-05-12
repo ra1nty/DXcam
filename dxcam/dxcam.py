@@ -99,7 +99,12 @@ class DXCamera:
             self._duplicator = Duplicator(output=self._output, device=self._device)
             return None
 
-    def start(self, region: tuple[int, int, int, int] = None, target_fps: int = 60):
+    def start(
+        self,
+        region: tuple[int, int, int, int] = None,
+        target_fps: int = 60,
+        video_mode=False,
+    ):
         if region is None:
             region = self.region
         self._validate_region(region)
@@ -109,7 +114,9 @@ class DXCamera:
             (self.max_buffer_len, *frame_shape), dtype=np.uint8
         )
         self.__thread = Thread(
-            target=self.__capture, name="DXCamera", args=(region, target_fps)
+            target=self.__capture,
+            name="DXCamera",
+            args=(region, target_fps, video_mode),
         )
         self.__thread.daemon = True
         self.__thread.start()
@@ -128,7 +135,9 @@ class DXCamera:
         self.__frame_available.clear()
         return ret
 
-    def __capture(self, region: tuple[int, int, int, int], target_fps: int = 60):
+    def __capture(
+        self, region: tuple[int, int, int, int], target_fps: int = 60, video_mode=False
+    ):
         if target_fps != 0:
             period_ms = 1000 // target_fps  # millisenonds for periodic timer
             self.__timer_handle = create_high_resolution_timer()
@@ -154,6 +163,15 @@ class DXCamera:
             if frame is not None:
                 with self.__lock:
                     self.__frame_buffer[self.__head] = frame
+                    self.__head = (self.__head + 1) % self.max_buffer_len
+                    # self.__frame_available.release()
+                    self.__frame_available.set()
+                    self.__frame_count += 1
+            elif video_mode:
+                with self.__lock:
+                    self.__frame_buffer[self.__head] = np.copy(
+                        self.__frame_buffer[(self.__head - 1) % self.max_buffer_len]
+                    )
                     self.__head = (self.__head + 1) % self.max_buffer_len
                     # self.__frame_available.release()
                     self.__frame_available.set()
