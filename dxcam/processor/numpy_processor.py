@@ -9,7 +9,6 @@ class NumpyProcessor(Processor):
         pass
 
     def process(self, rect, width, height, region, rotation_angle):
-        pointer = rect.pBits
         pitch = int(rect.Pitch)
 
         if rotation_angle in (0, 180):
@@ -17,21 +16,19 @@ class NumpyProcessor(Processor):
         else:
             size = pitch * width
 
-        image = np.empty((size,), dtype=np.uint8)
-        ctypes.memmove(image.ctypes.data, pointer, size)
-
+        buffer = ctypes.string_at(rect.pBits, size)
         pitch = pitch // 4
+        if rotation_angle in (0, 180):
+            image = np.ndarray((height, pitch, 4), dtype=np.uint8, buffer=buffer)
+        elif rotation_angle in (90, 270):
+            image = np.ndarray((width, pitch, 4), dtype=np.uint8, buffer=buffer)
+        image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGB)
 
-        if rotation_angle == 0:
-            image = cv2.cvtColor(image.reshape(height, pitch, 4), cv2.COLOR_BGRA2RGB)
-        elif rotation_angle == 90:
-            image = cv2.cvtColor(image.reshape(width, pitch, 4), cv2.COLOR_BGRA2RGB)
+        if rotation_angle == 90:
             image = np.rot90(image, axes=(1, 0))
         elif rotation_angle == 180:
-            image = cv2.cvtColor(image.reshape(height, pitch, 4), cv2.COLOR_BGRA2RGB)
             image = np.rot90(image, k=2, axes=(0, 1))
         elif rotation_angle == 270:
-            image = cv2.cvtColor(image.reshape(height, pitch, 4), cv2.COLOR_BGRA2RGB)
             image = np.rot90(image, axes=(0, 1))
 
         if rotation_angle in (0, 180) and pitch != width:

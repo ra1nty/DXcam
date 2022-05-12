@@ -3,7 +3,6 @@ import time
 import ctypes
 from threading import Thread, Event, Lock, Semaphore
 import numpy as np
-from dxcam._libs.dxgi import IDXGISurface, DXGI_MAPPED_RECT
 from dxcam.util.timer import (
     WAIT_FAILED,
     create_high_resolution_timer,
@@ -27,7 +26,7 @@ class DXCamera:
 
         self._device: Device = device
         self._output: Output = output
-        self._stagesuf: StageSurface = StageSurface(
+        self._stagesurf: StageSurface = StageSurface(
             output=self._output, device=self._device
         )
         self._duplicator: Duplicator = Duplicator(
@@ -70,23 +69,20 @@ class DXCamera:
             if not self._duplicator.updated:
                 return None
             self._device.im_context.CopyResource(
-                self._stagesuf.texture, self._duplicator.texture
+                self._stagesurf.texture, self._duplicator.texture
             )
             self._duplicator.release_frame()
-            surf = self._stagesuf.texture.QueryInterface(IDXGISurface)
-            rect = DXGI_MAPPED_RECT()
-            surf.Map(ctypes.byref(rect), 1)
-
+            rect = self._stagesurf.map()
             frame = self._processor.process(
                 rect, self.width, self.height, region, self.rotation_angle
             )
-            surf.Unmap()
+            self._stagesurf.unmap()
             self.latest_frame = frame
             return frame
         else:
             time.sleep(0.5)  # Wait for Display mode change (Access Lost)
             self._duplicator.release()
-            self._stagesuf.release()
+            self._stagesurf.release()
             self._output.update_desc()
             self.width, self.height = self._output.resolution
             if self.region is None or not self._region_set_by_user:
@@ -95,7 +91,7 @@ class DXCamera:
             if self.is_capturing:
                 self._rebuild_frame_buffer(self.region)
             self.rotation_angle = self._output.rotation_angle
-            self._stagesuf.rebuild(output=self._output, device=self._device)
+            self._stagesurf.rebuild(output=self._output, device=self._device)
             self._duplicator = Duplicator(output=self._output, device=self._device)
             return None
 
@@ -206,7 +202,7 @@ class DXCamera:
         if self.is_capturing:
             self.stop()
         self._duplicator.release()
-        self._stagesuf.release()
+        self._stagesurf.release()
 
     def __repr__(self) -> str:
         ret = f"DxOutputDuplicator:\n"
