@@ -89,11 +89,11 @@ camera = dxcam.create(max_buffer_len=512)
 ***Note:  Right now to consume frames during capturing there is only `get_latest_frame` available which assume the user to process frames in a LIFO pattern. This is a read-only action and won't pop the processed frame from the buffer. we will make changes to support various of consuming pattern soon.***
 
 ### Target FPS
-To make ```DXCamera``` capture close to the user specified ```target_fps```, we used the undocumented ```CREATE_WAITABLE_TIMER_HIGH_RESOLUTION ``` flag to create a Windows [Waitable Timer Object](https://docs.microsoft.com/en-us/windows/win32/sync/waitable-timer-objects). This is far more accurate (+/- 1ms) than Python (<3.11) ```time.sleep``` (min resolution 16ms). The implementation is done through ```ctypes``` creating a perodic timer. Python 3.11 used a [similar but better approach] [2]. 
+To make ```DXCamera``` capture close to the user specified ```target_fps```, we used the undocumented ```CREATE_WAITABLE_TIMER_HIGH_RESOLUTION ``` flag to create a Windows [Waitable Timer Object](https://docs.microsoft.com/en-us/windows/win32/sync/waitable-timer-objects). This is far more accurate (+/- 1ms) than Python (<3.11) ```time.sleep``` (min resolution 16ms). The implementation is done through ```ctypes``` creating a perodic timer. Python 3.11 used a similar approach[^2]. 
 ```python
 camera.start(target_fps=120)  # Should not be made greater than 160.
 ```
-However, due to Windows itself is a [preemptive OS] [1] and the overhead of Python calls, the target FPS can not be guarenteed accurate when greater than 160. (See Benchmarks)
+However, due to Windows itself is a preemptive OS[^1] and the overhead of Python calls, the target FPS can not be guarenteed accurate when greater than 160. (See Benchmarks)
 
 
 ### Video Mode:
@@ -140,6 +140,6 @@ del cam
 
 
 ## Links
-[1]: <https://en.wikipedia.org/wiki/Preemption_(computing)> Preemption (computing)
+[^1]: <https://en.wikipedia.org/wiki/Preemption_(computing)> Preemption (computing)
 
-[2]: <https://github.com/python/cpython/issues/65501> bpo-21302: time.sleep() uses waitable timer on Windows
+[^2]: <https://github.com/python/cpython/issues/65501> bpo-21302: time.sleep() uses waitable timer on Windows
