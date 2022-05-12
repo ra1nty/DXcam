@@ -30,7 +30,14 @@ class DXFactory(metaclass=Singleton):
                 self.outputs.append([Output(p_output) for p_output in p_outputs])
         self.output_metadata = get_output_metadata()
 
-    def create(self, device_idx=0, output_idx=None, region=None):
+    def create(
+        self,
+        device_idx: int = 0,
+        output_idx: int = None,
+        region: tuple = None,
+        output_color: str = "RGB",
+        max_buffer_len: int = 64,
+    ):
         device = self.devices[device_idx]
         if output_idx is None:
             # Select Primary Output
@@ -44,7 +51,13 @@ class DXFactory(metaclass=Singleton):
             ][0]
         output = self.outputs[device_idx][output_idx]
         output.update_desc()
-        return DXCamera(output=output, device=device, region=region)
+        return DXCamera(
+            output=output,
+            device=device,
+            region=region,
+            output_color=output_color,
+            max_buffer_len=max_buffer_len,
+        )
 
     def device_info(self) -> str:
         ret = "Device Info:\n"
@@ -56,8 +69,20 @@ class DXFactory(metaclass=Singleton):
 __factory = DXFactory()
 
 
-def create(device_idx=0, output_idx=None, region=None):
-    return __factory.create(device_idx, output_idx, region)
+def create(
+    device_idx: int = 0,
+    output_idx: int = None,
+    region: tuple = None,
+    output_color: str = "RGB",
+    max_buffer_len: int = 64,
+):
+    return __factory.create(
+        device_idx=device_idx,
+        output_idx=output_idx,
+        region=region,
+        output_color=output_color,
+        max_buffer_len=max_buffer_len,
+    )
 
 
 def device_info():
