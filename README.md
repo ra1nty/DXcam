@@ -44,27 +44,27 @@ To screenshot a specific region, use the ```region``` parameter: it takes ```tup
 left, top = (1920 - 640) // 2, (1080 - 640) // 2
 right, bottom = left + 640, top + 640
 region = (left, top, right, bottom)
-frame = camera.grab(region=region)
+frame = camera.grab(region=region)  # numpy.ndarray of size (640x640x3) -> (HXWXC)
 ```
 The above code will take a screenshot of the center ```640x640``` portion of a ```1920x1080``` monitor.
 ### Screen Capture
 To start a screen capture, simply use ```.start```: the capture will be started in a separated thread, default at 60Hz. Use ```.stop``` to stop the capture.
 ```python
-camera.start()
+camera.start(region=(left, top, right, bottom))  # Optional argument to capture a region
 camera.is_capturing  # True
 # ... Do Something
 camera.stop()
 camera.is_capturing  # False
 ```
-
-While the ```DXCamera``` instance is in capture mode, you can use ```.get_latest_frame``` to get the latest (LIFO) frame in the frame buffer:
+### Consume the Screen Capture Data:
+While the ```DXCamera``` instance is in capture mode, you can use ```.get_latest_frame``` to get the latest frame in the frame buffer:
 ```python
-camera.start(target_fps=60)
+camera.start()
 for i in range(1000):
     image = camera.get_latest_frame()  # Will block until new frame available
 camera.stop()
 ```
-Notice that ```.get_latest_frame``` will block until there is a new frame available since the last call to ```.get_latest_frame```.
+Notice that ```.get_latest_frame``` by default will block until there is a new frame available since the last call to ```.get_latest_frame```. To change this behavior, use ```video_mode=True```.
 
 ## Advanced Usage and Remarks
 ### Multiple monitors / GPUs:
@@ -77,6 +77,24 @@ img2 = cam2.grab()
 img2 = cam3.grab()
 ```
 The above code creates three ```DXCamera``` instances for: ```[monitor0, GPU0], [monitor1, GPU0], [monitor1, GPU1]```, and subsequently takes three full-screen screenshots. (cross GPU untested, but I hope it works.)
+
+### Output:
+Right now ```DXCamera``` only supports ```numpy.ndarray``` ouput, with the output frame being RGB format in shape of ```(Height, Width, 3)```. ***We will soon add support for other output formats.***
+
+### Video Buffer:
+The captured frames will be insert into a fixed-size ring buffer, and when the buffer is full the newest frame will replace the oldest frame. You can specify the max buffer length (defualt to 64) using the argument ```max_buffer_len``` upon creation of the ```DXCamera``` instance. 
+```python
+camera = dxcam.create(max_buffer_len=512)
+```
+***Note:  Right now to consume frames during capturing there is only `get_latest_frame` available which assume the user to process frames in a LIFO pattern. This is a read-only action and won't pop the processed frame from the buffer. we will make changes to support various of consuming pattern soon.***
+
+### Target FPS
+To make ```DXCamera``` capture close to the user specified ```target_fps```, we used the undocumented ```CREATE_WAITABLE_TIMER_HIGH_RESOLUTION ``` flag to create a Windows [Waitable Timer Object](https://docs.microsoft.com/en-us/windows/win32/sync/waitable-timer-objects). This is far more accurate (+/- 1ms) than Python (<3.11) ```time.sleep``` (min resolution 16ms). The implementation is done through ```ctypes``` creating a perodic timer. Python 3.11 used a [similar but better approach] [2]. 
+```python
+camera.start(target_fps=120)  # Should not be made greater than 160.
+```
+However, due to Windows itself is a [preemptive OS] [1] and the overhead of Python calls, the target FPS can not be guarenteed accurate when greater than 160. (See Benchmarks)
+
 
 ### Video Mode:
 The default behavior of ```.get_latest_frame``` only put newly rendered frame in the buffer, which suits the usage scenario of a object detection/machine learning pipeline. However, when recording a video that is not ideal since we aim to get the frames at a constant framerate: When the ```video_mode=True``` is specified when calling ```.start``` method of a ```DXCamera``` instance, the frame buffer will be feeded at the target fps, using the last frame if there is no new frame available. For example, the following code output a 5-second, 120Hz screen capture:
@@ -93,7 +111,9 @@ camera.stop()
 writer.release()
 ```
 
-## Benchmark
+### 
+
+## Benchmarks
 ### For Max FPS Capability:
 ```python
 import time
@@ -117,3 +137,9 @@ del cam
 [D3DShot](https://github.com/SerpentAI/D3DShot/) : DXcam borrows the ctypes header directly from the no-longer maintained D3DShot.
 
 [OBS Studio](https://github.com/obsproject/obs-studio) : Learned a lot from it.
+
+
+## Links
+[1]: <https://en.wikipedia.org/wiki/Preemption_(computing)> Preemption (computing)
+
+[2]: <https://github.com/python/cpython/issues/65501> bpo-21302: time.sleep() uses waitable timer on Windows
