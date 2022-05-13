@@ -1,3 +1,6 @@
+import signal
+import weakref
+from collections import defaultdict
 from dxcam.dxcam import DXCamera, Output, Device
 from dxcam.util.io import (
     enum_dxgi_adapters,
@@ -19,6 +22,9 @@ class Singleton(type):
 
 
 class DXFactory(metaclass=Singleton):
+
+    _camera_instances = weakref.WeakValueDictionary()
+
     def __init__(self) -> None:
         p_adapters = enum_dxgi_adapters()
         self.devices, self.outputs = [], []
@@ -49,21 +55,40 @@ class DXFactory(metaclass=Singleton):
                 )
                 if metadata[1]
             ][0]
+        instance_key = (device_idx, output_idx)
+        if instance_key in self._camera_instances:
+            print(
+                "".join(
+                    (
+                        f"You already created a DXCamera Instance for Device {device_idx}--Output {output_idx}!\n",
+                        "Returning the existed instance...\n",
+                        "To change capture parameters you can manually delete the old object using `del obj`.",
+                    )
+                )
+            )
+            return self._camera_instances[instance_key]
+
         output = self.outputs[device_idx][output_idx]
         output.update_desc()
-        return DXCamera(
+        camera = DXCamera(
             output=output,
             device=device,
             region=region,
             output_color=output_color,
             max_buffer_len=max_buffer_len,
         )
+        self._camera_instances[instance_key] = camera
+        return camera
 
     def device_info(self) -> str:
         ret = "Device Info:\n"
         for idx, device in enumerate(self.devices):
             ret += f"[{idx}]:{device}"
         return ret
+
+    def clean_up(self):
+        for _, camera in self._camera_instances.items():
+            camera.release()
 
 
 __factory = DXFactory()
@@ -91,3 +116,9 @@ def device_info():
 
 def metadata():
     return __factory.output_metadata
+
+
+def signal_handler(sig, frame):
+    __factory.clean_up()
+
+signal.signal(signal.SIGINT, signal_handler)

@@ -1,6 +1,7 @@
-from ctypes import wintypes
+import sys
 import time
 import ctypes
+from ctypes import wintypes
 from threading import Thread, Event, Lock, Semaphore
 import numpy as np
 from dxcam.util.timer import (
@@ -36,7 +37,7 @@ class DXCamera:
         self._processor: Processor = Processor(output_color=output_color)
 
         self.width, self.height = self._output.resolution
-        self.channel_size = len(output_color)
+        self.channel_size = len(output_color) if output_color != "GRAY" else 1
         self.rotation_angle: int = self._output.rotation_angle
 
         self._region_set_by_user = region is not None
@@ -47,17 +48,21 @@ class DXCamera:
 
         self.max_buffer_len = max_buffer_len
         self.is_capturing = False
+
         self.__thread = None
         self.__lock = Lock()
         self.__stop_capture = Event()
-        # self.__frame_available = Semaphore(value=0)
+
         self.__frame_available = Event()
         self.__frame_buffer: np.ndarray = None
         self.__head = 0
         self.__tail = 0
+        self.__full = False
+
+        self.__timer_handle = None
+
         self.__frame_count = 0
         self.__capture_start_time = 0
-        self.__timer_handle = None
 
     def grab(self, region: tuple[int, int, int, int] = None):
         if region is None:
@@ -125,9 +130,10 @@ class DXCamera:
             self.__stop_capture.set()
             if self.__thread is not None:
                 self.__thread.join(timeout=10)
+        self.is_capturing = False
+        self.__frame_buffer = None
 
     def get_latest_frame(self):
-        # self.__frame_available.acquire()
         self.__frame_available.wait()
         ret = self.__frame_buffer[(self.__head - 1) % self.max_buffer_len]
         self.__frame_available.clear()
@@ -154,30 +160,35 @@ class DXCamera:
                     continue
             try:
                 frame = self._grab(region)
+                if frame is not None:
+                    with self.__lock:
+                        self.__frame_buffer[self.__head] = frame
+                        if self.__full:
+                            self.__tail = (self.__tail + 1) % self.max_buffer_len
+                        self.__head = (self.__head + 1) % self.max_buffer_len
+                        self.__frame_available.set()
+                        self.__frame_count += 1
+                        self.__full = self.__head == self.__tail
+                elif video_mode:
+                    with self.__lock:
+                        self.__frame_buffer[self.__head] = np.array(
+                            self.__frame_buffer[(self.__head - 1) % self.max_buffer_len]
+                        )
+                        if self.__full:
+                            self.__tail = (self.__tail + 1) % self.max_buffer_len
+                        self.__head = (self.__head + 1) % self.max_buffer_len
+                        self.__frame_available.set()
+                        self.__frame_count += 1
+                        self.__full = self.__head == self.__tail
             except Exception as e:
                 self.__stop_capture.set()
                 capture_error = e
                 continue
-            if frame is not None:
-                with self.__lock:
-                    self.__frame_buffer[self.__head] = frame
-                    self.__head = (self.__head + 1) % self.max_buffer_len
-                    # self.__frame_available.release()
-                    self.__frame_available.set()
-                    self.__frame_count += 1
-            elif video_mode:
-                with self.__lock:
-                    self.__frame_buffer[self.__head] = np.copy(
-                        self.__frame_buffer[(self.__head - 1) % self.max_buffer_len]
-                    )
-                    self.__head = (self.__head + 1) % self.max_buffer_len
-                    # self.__frame_available.release()
-                    self.__frame_available.set()
-                    self.__frame_count += 1
         if self.__timer_handle:
             cancel_timer(self.__timer_handle)
             self.__timer_handle = None
         if capture_error is not None:
+            self.stop()
             raise capture_error
         print(
             f"Screen Capture FPS: {int(self.__frame_count/(time.perf_counter() - self.__capture_start_time))}"
@@ -186,12 +197,18 @@ class DXCamera:
     def _rebuild_frame_buffer(self, region):
         if region is None:
             region = self.region
-        frame_shape = (region[3] - region[1], region[2] - region[0], 3)
-        self.__frame_buffer = np.ndarray(
-            (self.max_buffer_len, *frame_shape), dtype=np.uint8
+        frame_shape = (
+            region[3] - region[1],
+            region[2] - region[0],
+            self.channel_size,
         )
-        self.__head = 0
-        self.__tail = 0
+        with self.__lock:
+            self.__frame_buffer = np.ndarray(
+                (self.max_buffer_len, *frame_shape), dtype=np.uint8
+            )
+            self.__head = 0
+            self.__tail = 0
+            self.__full = False
 
     def _validate_region(self, region: tuple[int, int, int, int]):
         l, t, r, b = region
@@ -200,11 +217,13 @@ class DXCamera:
                 f"Invalid Region: Region should be in {self.width}x{self.height}"
             )
 
-    def __del__(self):
-        if self.is_capturing:
-            self.stop()
+    def release(self):
+        self.stop()
         self._duplicator.release()
         self._stagesurf.release()
+
+    def __del__(self):
+        self.release()
 
     def __repr__(self) -> str:
         ret = f"DxOutputDuplicator:\n"

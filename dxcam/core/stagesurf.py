@@ -20,10 +20,11 @@ class StageSurface:
         self.rebuild(output, device)
 
     def release(self):
-        self.width = 0
-        self.height = 0
-        self.texture.Release()
-        self.texture = None
+        if self.texture is not None:
+            self.width = 0
+            self.height = 0
+            self.texture.Release()
+            self.texture = None
 
     def rebuild(self, output: Output, device: Device):
         self.width, self.height = output.resolution
