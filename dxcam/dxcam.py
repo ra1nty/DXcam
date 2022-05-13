@@ -87,27 +87,34 @@ class DXCamera:
             self.latest_frame = frame
             return frame
         else:
-            time.sleep(0.5)  # Wait for Display mode change (Access Lost)
-            self._duplicator.release()
-            self._stagesurf.release()
-            self._output.update_desc()
-            self.width, self.height = self._output.resolution
-            if self.region is None or not self._region_set_by_user:
-                self.region = (0, 0, self.width, self.height)
-            self._validate_region(self.region)
-            if self.is_capturing:
-                self._rebuild_frame_buffer(self.region)
-            self.rotation_angle = self._output.rotation_angle
-            self._stagesurf.rebuild(output=self._output, device=self._device)
-            self._duplicator = Duplicator(output=self._output, device=self._device)
+            self._on_output_change(self)
             return None
+
+    def _on_output_change(self):
+        time.sleep(0.5)  # Wait for Display mode change (Access Lost)
+        self._duplicator.release()
+        self._stagesurf.release()
+        self._output.update_desc()
+        self.width, self.height = self._output.resolution
+        if self.region is None or not self._region_set_by_user:
+            self.region = (0, 0, self.width, self.height)
+        self._validate_region(self.region)
+        if self.is_capturing:
+            self._rebuild_frame_buffer(self.region)
+        self.rotation_angle = self._output.rotation_angle
+        self._stagesurf.rebuild(output=self._output, device=self._device)
+        self._duplicator = Duplicator(output=self._output, device=self._device)
 
     def start(
         self,
         region: tuple[int, int, int, int] = None,
         target_fps: int = 60,
         video_mode=False,
+        delay: int = 0,
     ):
+        if delay != 0:
+            time.sleep(delay)
+            self._on_output_change()
         if region is None:
             region = self.region
         self._validate_region(region)
@@ -135,9 +142,10 @@ class DXCamera:
 
     def get_latest_frame(self):
         self.__frame_available.wait()
-        ret = self.__frame_buffer[(self.__head - 1) % self.max_buffer_len]
-        self.__frame_available.clear()
-        return ret
+        with self.__lock:
+            ret = self.__frame_buffer[(self.__head - 1) % self.max_buffer_len]
+            self.__frame_available.clear()
+        return np.array(ret)
 
     def __capture(
         self, region: tuple[int, int, int, int], target_fps: int = 60, video_mode=False
