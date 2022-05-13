@@ -16,7 +16,7 @@ Compared to these existed solutions, DXcam provides:
 - Accurate FPS targeting when in capturing mode, makes it suitable for Video output. 
 - Seamless integration with NumPy, OpenCV, PyTorch, etc.
 
-## ***In construction: Everything here is messy and experimental. Features are still incomplete. Use with caution.***
+> ***In construction: Everything here is messy and experimental. Features are still incomplete. Use with caution.***
 
 ## Installation
 Only from source available before pre-release. In root directory:
@@ -61,7 +61,7 @@ camera.is_capturing  # True
 camera.stop()
 camera.is_capturing  # False
 ```
-### Consume the Screen Capture Data:
+### Consume the Screen Capture Data
 While the ```DXCamera``` instance is in capture mode, you can use ```.get_latest_frame``` to get the latest frame in the frame buffer:
 ```python
 camera.start()
@@ -72,7 +72,7 @@ camera.stop()
 Notice that ```.get_latest_frame``` by default will block until there is a new frame available since the last call to ```.get_latest_frame```. To change this behavior, use ```video_mode=True```.
 
 ## Advanced Usage and Remarks
-### Multiple monitors / GPUs:
+### Multiple monitors / GPUs
 ```python
 cam1 = dxcam.create(device_idx=0, output_idx=0)
 cam2 = dxcam.create(device_idx=0, output_idx=1)
@@ -83,10 +83,14 @@ img2 = cam3.grab()
 ```
 The above code creates three ```DXCamera``` instances for: ```[monitor0, GPU0], [monitor1, GPU0], [monitor1, GPU1]```, and subsequently takes three full-screen screenshots. (cross GPU untested, but I hope it works.)
 
-### Output:
-Right now ```DXCamera``` only supports ```numpy.ndarray``` ouput, with the output frame being RGB format in shape of ```(Height, Width, 3)```. ***We will soon add support for other output formats.***
+### Output Format
+You can specify the output color mode upon creation of the DXCamera instance:
+```python
+dxcam.create(output_idx=0, output_color="BGRA")
+```
+We currently support "RGB", "RGBA", "BGR", "BGRA", "GRAY", with "GRAY being the gray scale. As for the data format, ```DXCamera``` only supports ```numpy.ndarray```  in shape of ```(Height, Width, Channels)``` right now. ***We will soon add support for other output formats.***
 
-### Video Buffer:
+### Video Buffer
 The captured frames will be insert into a fixed-size ring buffer, and when the buffer is full the newest frame will replace the oldest frame. You can specify the max buffer length (defualt to 64) using the argument ```max_buffer_len``` upon creation of the ```DXCamera``` instance. 
 ```python
 camera = dxcam.create(max_buffer_len=512)
@@ -101,20 +105,32 @@ camera.start(target_fps=120)  # Should not be made greater than 160.
 However, due to Windows itself is a preemptive OS[^1] and the overhead of Python calls, the target FPS can not be guarenteed accurate when greater than 160. (See Benchmarks)
 
 
-### Video Mode:
+### Video Mode
 The default behavior of ```.get_latest_frame``` only put newly rendered frame in the buffer, which suits the usage scenario of a object detection/machine learning pipeline. However, when recording a video that is not ideal since we aim to get the frames at a constant framerate: When the ```video_mode=True``` is specified when calling ```.start``` method of a ```DXCamera``` instance, the frame buffer will be feeded at the target fps, using the last frame if there is no new frame available. For example, the following code output a 5-second, 120Hz screen capture:
 ```python
 target_fps = 120
+camera = dxcam.create(output_idx=0, output_color="BGR")
+camera.start(target_fps=target_fps, video_mode=True)
 writer = cv2.VideoWriter(
-    "demo.mp4", cv2.VideoWriter_fourcc(*"mp4v"), target_fps, (1920, 1080)
+    "video.mp4", cv2.VideoWriter_fourcc(*"mp4v"), target_fps, (1920, 1080)
 )
-camera = dxcam.create(output_idx=0)
-camera.start(target_fps=120, video_mode=True)
 for i in range(600):
-    writer.write(cv2.cvtColor(camera.get_latest_frame(), cv2.COLOR_RGB2BGR))
+    writer.write(camera.get_latest_frame())
 camera.stop()
 writer.release()
 ```
+
+### Safely Releasing of Resource
+Upon calling ```.release``` on a DXCamera instance, it will stop any active capturing, free the buffer and release the duplicator and staging resource. Upon calling ```.stop()```, DXCamera will stop the active capture and free the frame buffer. If you want to manually recreate a ```DXCamera``` instance on the same output with different parameters, you can also manully delete it:
+```python
+camera1 = dxcam.create(output_idx=0, output_color="BGR")
+camera2 = dxcam.create(output_idx=0)  # Not allowed, camera1 will be returned
+camera1 is camera2  # True
+del camera1
+del camera2
+camera2 = dxcam.create(output_idx=0)  # Allowed
+```
+
 ## Benchmarks
 ### For Max FPS Capability:
 ```python

@@ -46,5 +46,6 @@ class Duplicator:
         self.duplicator.ReleaseFrame()
 
     def release(self):
-        self.duplicator.Release()
-        self.duplicator = None
+        if self.duplicator is not None:
+            self.duplicator.Release()
+            self.duplicator = None

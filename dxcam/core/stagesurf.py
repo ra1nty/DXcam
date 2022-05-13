@@ -20,10 +20,11 @@ class StageSurface:
         self.rebuild(output, device)
 
     def release(self):
-        self.width = 0
-        self.height = 0
-        self.texture.Release()
-        self.texture = None
+        if self.texture is not None:
+            self.width = 0
+            self.height = 0
+            self.texture.Release()
+            self.texture = None
 
     def rebuild(self, output: Output, device: Device):
         self.width, self.height = output.resolution
@@ -45,6 +46,14 @@ class StageSurface:
                 None,
                 ctypes.byref(self.texture),
             )
+
+    def map(self):
+        rect: DXGI_MAPPED_RECT = DXGI_MAPPED_RECT()
+        self.texture.QueryInterface(IDXGISurface).Map(ctypes.byref(rect), 1)
+        return rect
+
+    def unmap(self):
+        self.texture.QueryInterface(IDXGISurface).Unmap()
 
     def __repr__(self) -> str:
         repr = f"{self.width}, {self.height}, {self.dxgi_format}"

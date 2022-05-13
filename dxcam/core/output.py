@@ -43,5 +43,5 @@ class Output:
         return self.rotation_mapping[self.desc.Rotation]
 
     def __repr__(self) -> str:
-        repr = f"{self.devicename}, {self.resolution}, {self.attached_to_desktop}, {self.rotation_angle}"
+        repr = f"(\n\tName: {self.devicename}\n\tResolution: {self.resolution}\n\tRotation: {self.rotation_angle}\n)"
         return repr

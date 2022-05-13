@@ -62,3 +62,15 @@ class Device:
     @property
     def description(self) -> str:
         return self.desc.Description
+
+    @property
+    def vram_size(self) -> int:
+        return self.desc.DedicatedVideoMemory
+
+    @property
+    def vendor_id(self) -> int:
+        return self.desc.VendorId
+
+    def __repr__(self) -> str:
+        repr = f"(\n\tName: {self.desc.Description}\n\tDedicated VRAM: {self.desc.DedicatedVideoMemory//1048576} Mb\n\tVendorId: {self.desc.VendorId}\n)"
+        return repr
