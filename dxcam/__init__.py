@@ -116,9 +116,3 @@ def device_info():
 
 def metadata():
     return __factory.output_metadata
-
-
-def signal_handler(sig, frame):
-    __factory.clean_up()
-
-signal.signal(signal.SIGINT, signal_handler)
