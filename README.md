@@ -18,6 +18,8 @@ Compared to these existed solutions, DXcam provides:
 
 > ***In construction: Everything here is messy and experimental. Features are still incomplete. Use with caution.***
 
+> ***Contributions are welcome!***
+
 ## Installation
 ### From test.pypi:
 ```bash
