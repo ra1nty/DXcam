@@ -1,7 +1,7 @@
 import time
 import ctypes
-from ctypes import wintypes
-from threading import Thread, Event, Lock, Semaphore
+from typing import Tuple
+from threading import Thread, Event, Lock
 import comtypes
 import numpy as np
 from dxcam.core import Device, Output, StageSurface, Duplicator
@@ -21,13 +21,12 @@ class DXCamera:
         self,
         output: Output,
         device: Device,
-        region: tuple[int, int, int, int],
+        region: Tuple[int, int, int, int],
         output_color: str = "RGB",
         max_buffer_len=64,
     ) -> None:
-
-        self._device: Device = device
         self._output: Output = output
+        self._device: Device = device
         self._stagesurf: StageSurface = StageSurface(
             output=self._output, device=self._device
         )
@@ -41,7 +40,7 @@ class DXCamera:
         self.rotation_angle: int = self._output.rotation_angle
 
         self._region_set_by_user = region is not None
-        self.region: tuple[int, int, int, int] = region
+        self.region: Tuple[int, int, int, int] = region
         if self.region is None:
             self.region = (0, 0, self.width, self.height)
         self._validate_region(self.region)
@@ -64,14 +63,14 @@ class DXCamera:
         self.__frame_count = 0
         self.__capture_start_time = 0
 
-    def grab(self, region: tuple[int, int, int, int] = None):
+    def grab(self, region: Tuple[int, int, int, int] = None):
         if region is None:
             region = self.region
         self._validate_region(region)
         frame = self._grab(region)
         return frame
 
-    def _grab(self, region: tuple[int, int, int, int]):
+    def _grab(self, region: Tuple[int, int, int, int]):
         if self._duplicator.update_frame():
             if not self._duplicator.updated:
                 return None
@@ -84,7 +83,6 @@ class DXCamera:
                 rect, self.width, self.height, region, self.rotation_angle
             )
             self._stagesurf.unmap()
-            self.latest_frame = frame
             return frame
         else:
             self._on_output_change()
@@ -112,7 +110,7 @@ class DXCamera:
 
     def start(
         self,
-        region: tuple[int, int, int, int] = None,
+        region: Tuple[int, int, int, int] = None,
         target_fps: int = 60,
         video_mode=False,
         delay: int = 0,
@@ -144,6 +142,7 @@ class DXCamera:
                 self.__thread.join(timeout=10)
         self.is_capturing = False
         self.__frame_buffer = None
+        self.__frame_count = 0
         self.__frame_available.clear()
         self.__stop_capture.clear()
 
@@ -155,7 +154,7 @@ class DXCamera:
         return np.array(ret)
 
     def __capture(
-        self, region: tuple[int, int, int, int], target_fps: int = 60, video_mode=False
+        self, region: Tuple[int, int, int, int], target_fps: int = 60, video_mode=False
     ):
         if target_fps != 0:
             period_ms = 1000 // target_fps  # millisenonds for periodic timer
@@ -212,7 +211,7 @@ class DXCamera:
             f"Screen Capture FPS: {int(self.__frame_count/(time.perf_counter() - self.__capture_start_time))}"
         )
 
-    def _rebuild_frame_buffer(self, region):
+    def _rebuild_frame_buffer(self, region: Tuple[int, int, int, int]):
         if region is None:
             region = self.region
         frame_shape = (
@@ -228,7 +227,7 @@ class DXCamera:
             self.__tail = 0
             self.__full = False
 
-    def _validate_region(self, region: tuple[int, int, int, int]):
+    def _validate_region(self, region: Tuple[int, int, int, int]):
         l, t, r, b = region
         if not (self.width >= r > l >= 0 and self.height >= b > t >= 0):
             raise ValueError(

@@ -36,7 +36,7 @@ def save_replay():
     container.close()
     replay_count += 1
     container = av.open(f"replay{replay_count}.mp4", mode="w")
-    stream = container.add_stream("mpeg4", rate=120)
+    stream = container.add_stream("mpeg4", rate=target_fps)
     stream.pix_fmt, stream.height, stream.width = "yuv420p", 1080, 1920
     stream.bit_rate = 8_000_000
 

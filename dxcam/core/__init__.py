@@ -1,9 +1,4 @@
-__all__ = [
-    "Device",
-    "Output",
-    "StageSurface",
-    "Duplicator",
-]
+__all__ = ["Device", "Output", "StageSurface", "Duplicator"]
 
 
 from dxcam.core.device import Device

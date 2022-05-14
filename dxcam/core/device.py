@@ -1,5 +1,6 @@
 import ctypes
 from dataclasses import dataclass
+from typing import List
 import comtypes
 from dxcam._libs.d3d11 import *
 from dxcam._libs.dxgi import *
@@ -43,9 +44,9 @@ class Device:
         )
         self.device.GetImmediateContext(ctypes.byref(self.im_context))
 
-    def enum_outputs(self) -> list[ctypes.POINTER(IDXGIOutput1)]:
+    def enum_outputs(self) -> List[ctypes.POINTER(IDXGIOutput1)]:
         i = 0
-        p_outputs = list()
+        p_outputs = []
         while True:
             try:
                 p_output = ctypes.POINTER(IDXGIOutput1)()

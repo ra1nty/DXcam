@@ -1,11 +1,8 @@
-import signal
 import weakref
-from collections import defaultdict
 from dxcam.dxcam import DXCamera, Output, Device
 from dxcam.util.io import (
     enum_dxgi_adapters,
     get_output_metadata,
-    get_monitor_name_by_handle,
 )
 
 
@@ -81,9 +78,18 @@ class DXFactory(metaclass=Singleton):
         return camera
 
     def device_info(self) -> str:
-        ret = "Device Info:\n"
+        ret = ""
         for idx, device in enumerate(self.devices):
-            ret += f"[{idx}]:{device}"
+            ret += f"Device[{idx}]:{device}\n"
+        return ret
+
+    def output_info(self) -> str:
+        ret = ""
+        for didx, outputs in enumerate(self.outputs):
+            for idx, output in enumerate(outputs):
+                ret += f"Device[{didx}] Output[{idx}]: "
+                ret += f"Res:{output.resolution} Rot:{output.rotation_angle}"
+                ret += f" Primary:{self.output_metadata.get(output.devicename)[1]}\n"
         return ret
 
     def clean_up(self):
@@ -114,5 +120,5 @@ def device_info():
     return __factory.device_info()
 
 
-def metadata():
-    return __factory.output_metadata
+def output_info():
+    return __factory.output_info()
