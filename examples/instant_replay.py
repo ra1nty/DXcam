@@ -1,3 +1,7 @@
+"""A Minimal example of creating a ghetto instant replay with hotkeys.
+Took less than 5 minutes to write using pyav + dxcam + pynput.
+The code is shit but you got the idea.
+"""
 from collections import deque
 from threading import Event, Lock
 import dxcam
@@ -12,7 +16,7 @@ target_fps = 120
 buffer = deque(maxlen=target_fps * 10)
 
 container = av.open(f"replay{replay_count}.mp4", mode="w")
-stream = container.add_stream("mpeg4", rate=120)
+stream = container.add_stream("mpeg4", rate=target_fps)
 stream.pix_fmt, stream.height, stream.width = "yuv420p", 1080, 1920
 stream.bit_rate = 8_000_000
 
