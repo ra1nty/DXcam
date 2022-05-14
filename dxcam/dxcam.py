@@ -1,19 +1,19 @@
-import sys
 import time
 import ctypes
 from ctypes import wintypes
 from threading import Thread, Event, Lock, Semaphore
+import comtypes
 import numpy as np
+from dxcam.core import Device, Output, StageSurface, Duplicator
+from dxcam.processor import Processor
 from dxcam.util.timer import (
-    WAIT_FAILED,
     create_high_resolution_timer,
     set_periodic_timer,
     wait_for_timer,
     cancel_timer,
     INFINITE,
+    WAIT_FAILED,
 )
-from dxcam.core import Device, Output, StageSurface, Duplicator
-from dxcam.processor import Processor
 
 
 class DXCamera:
@@ -87,11 +87,11 @@ class DXCamera:
             self.latest_frame = frame
             return frame
         else:
-            self._on_output_change(self)
+            self._on_output_change()
             return None
 
     def _on_output_change(self):
-        time.sleep(0.5)  # Wait for Display mode change (Access Lost)
+        time.sleep(0.1)  # Wait for Display mode change (Access Lost)
         self._duplicator.release()
         self._stagesurf.release()
         self._output.update_desc()
@@ -102,8 +102,13 @@ class DXCamera:
         if self.is_capturing:
             self._rebuild_frame_buffer(self.region)
         self.rotation_angle = self._output.rotation_angle
-        self._stagesurf.rebuild(output=self._output, device=self._device)
-        self._duplicator = Duplicator(output=self._output, device=self._device)
+        while True:
+            try:
+                self._stagesurf.rebuild(output=self._output, device=self._device)
+                self._duplicator = Duplicator(output=self._output, device=self._device)
+            except comtypes.COMError as ce:
+                continue
+            break
 
     def start(
         self,
@@ -139,6 +144,8 @@ class DXCamera:
                 self.__thread.join(timeout=10)
         self.is_capturing = False
         self.__frame_buffer = None
+        self.__frame_available.clear()
+        self.__stop_capture.clear()
 
     def get_latest_frame(self):
         self.__frame_available.wait()
@@ -189,6 +196,9 @@ class DXCamera:
                         self.__frame_count += 1
                         self.__full = self.__head == self.__tail
             except Exception as e:
+                import traceback
+
+                print(traceback.format_exc())
                 self.__stop_capture.set()
                 capture_error = e
                 continue
@@ -234,8 +244,10 @@ class DXCamera:
         self.release()
 
     def __repr__(self) -> str:
-        ret = f"DxOutputDuplicator:\n"
-        ret += f"\tDevice:\t {self._device}"
-        ret += f"\tOutput:\t {self._output}"
-        ret += f"\tProcessor:\t {self._processor}"
-        return ret
+        return "<{}:\n\t{},\n\t{},\n\t{},\n\t{}\n>".format(
+            self.__class__.__name__,
+            self._device,
+            self._output,
+            self._stagesurf,
+            self._duplicator,
+        )
