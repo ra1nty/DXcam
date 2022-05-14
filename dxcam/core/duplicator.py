@@ -49,3 +49,9 @@ class Duplicator:
         if self.duplicator is not None:
             self.duplicator.Release()
             self.duplicator = None
+
+    def __repr__(self) -> str:
+        return "<{} Initalized:{}>".format(
+            self.__class__.__name__,
+            self.duplicator is not None,
+        )

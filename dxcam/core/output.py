@@ -1,4 +1,5 @@
 import ctypes
+from typing import Tuple
 from dataclasses import dataclass
 from dxcam._libs.d3d11 import *
 from dxcam._libs.dxgi import *
@@ -28,7 +29,7 @@ class Output:
         return self.desc.DeviceName
 
     @property
-    def resolution(self) -> tuple[int, int]:
+    def resolution(self) -> Tuple[int, int]:
         return (
             (self.desc.DesktopCoordinates.right - self.desc.DesktopCoordinates.left),
             (self.desc.DesktopCoordinates.bottom - self.desc.DesktopCoordinates.top),
@@ -43,5 +44,9 @@ class Output:
         return self.rotation_mapping[self.desc.Rotation]
 
     def __repr__(self) -> str:
-        repr = f"(\n\tName: {self.devicename}\n\tResolution: {self.resolution}\n\tRotation: {self.rotation_angle}\n)"
-        return repr
+        return "<{} Name:{} Resolution:{} Rotation:{}>".format(
+            self.__class__.__name__,
+            self.devicename,
+            self.resolution,
+            self.rotation_angle,
+        )

@@ -1,5 +1,6 @@
-from collections import defaultdict, namedtuple
 import ctypes
+from typing import List
+from collections import defaultdict
 import comtypes
 from dxcam._libs.dxgi import (
     IDXGIFactory1,
@@ -10,13 +11,12 @@ from dxcam._libs.dxgi import (
 from dxcam._libs.user32 import (
     DISPLAY_DEVICE,
     MONITORINFOEXW,
-    MONITORINFOF_PRIMARY,
     DISPLAY_DEVICE_ACTIVE,
     DISPLAY_DEVICE_PRIMARY_DEVICE,
 )
 
 
-def enum_dxgi_adapters() -> list[ctypes.POINTER(IDXGIAdapter1)]:
+def enum_dxgi_adapters() -> List[ctypes.POINTER(IDXGIAdapter1)]:
     create_dxgi_factory = ctypes.windll.dxgi.CreateDXGIFactory1
     create_dxgi_factory.argtypes = (comtypes.GUID, ctypes.POINTER(ctypes.c_void_p))
     create_dxgi_factory.restype = ctypes.c_int32
@@ -41,7 +41,7 @@ def enum_dxgi_adapters() -> list[ctypes.POINTER(IDXGIAdapter1)]:
 
 def enum_dxgi_outputs(
     dxgi_adapter: ctypes.POINTER(IDXGIAdapter1),
-) -> list[ctypes.POINTER(IDXGIOutput1)]:
+) -> List[ctypes.POINTER(IDXGIOutput1)]:
     i = 0
     p_outputs = list()
     while True:

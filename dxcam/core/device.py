@@ -1,5 +1,6 @@
 import ctypes
 from dataclasses import dataclass
+from typing import List
 import comtypes
 from dxcam._libs.d3d11 import *
 from dxcam._libs.dxgi import *
@@ -43,9 +44,9 @@ class Device:
         )
         self.device.GetImmediateContext(ctypes.byref(self.im_context))
 
-    def enum_outputs(self) -> list[ctypes.POINTER(IDXGIOutput1)]:
+    def enum_outputs(self) -> List[ctypes.POINTER(IDXGIOutput1)]:
         i = 0
-        p_outputs = list()
+        p_outputs = []
         while True:
             try:
                 p_output = ctypes.POINTER(IDXGIOutput1)()
@@ -72,5 +73,9 @@ class Device:
         return self.desc.VendorId
 
     def __repr__(self) -> str:
-        repr = f"(\n\tName: {self.desc.Description}\n\tDedicated VRAM: {self.desc.DedicatedVideoMemory//1048576} Mb\n\tVendorId: {self.desc.VendorId}\n)"
-        return repr
+        return "<{} Name:{} Dedicated VRAM:{}Mb VendorId:{}>".format(
+            self.__class__.__name__,
+            self.desc.Description,
+            self.desc.DedicatedVideoMemory // 1048576,
+            self.desc.VendorId,
+        )

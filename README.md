@@ -21,15 +21,10 @@ Compared to these existed solutions, DXcam provides:
 > ***Contributions are welcome!***
 
 ## Installation
-### From test.pypi:
+### From TestPyPI:
 ```bash
-pip install -i https://test.pypi.org/simple/ dxcam==0.0.2
+pip install -i https://test.pypi.org/simple/ dxcam
 ```
-### From source (Recommend for now):
-```bash
-pip install --editable .
-```
-Will install an editable copy, which allows you to modify your source code and does not copy any files to your interpreter directory. 
 
 ## Usage
 In DXCam, each output (monitor) is asscociated to a ```DXCamera``` instance.
@@ -87,7 +82,14 @@ img1 = cam1.grab()
 img2 = cam2.grab()
 img2 = cam3.grab()
 ```
-The above code creates three ```DXCamera``` instances for: ```[monitor0, GPU0], [monitor1, GPU0], [monitor1, GPU1]```, and subsequently takes three full-screen screenshots. (cross GPU untested, but I hope it works.)
+The above code creates three ```DXCamera``` instances for: ```[monitor0, GPU0], [monitor1, GPU0], [monitor1, GPU1]```, and subsequently takes three full-screen screenshots. (cross GPU untested, but I hope it works.) To get a complete list of devices and outputs:
+```pycon
+>>> import dxcam
+>>> dxcam.device_info()
+'Device[0]:<Device Name:NVIDIA GeForce RTX 3090 Dedicated VRAM:24348Mb VendorId:4318>\n'
+>>> dxcam.output_info()
+'Device[0] Output[0]: Res:(1920, 1080) Rot:0 Primary:True\nDevice[0] Output[1]: Res:(1920, 1080) Rot:0 Primary:False\n'
+```
 
 ### Output Format
 You can specify the output color mode upon creation of the DXCamera instance:
