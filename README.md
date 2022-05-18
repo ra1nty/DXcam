@@ -23,7 +23,7 @@ Compared to these existed solutions, DXcam provides:
 ## Installation
 ### From TestPyPI:
 ```bash
-pip install -i https://test.pypi.org/simple/ dxcam
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple dxcam
 ```
 
 ## Usage
