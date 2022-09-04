@@ -16,8 +16,6 @@ Compared to these existed solutions, DXcam provides:
 - Accurate FPS targeting when in capturing mode, makes it suitable for Video output. 
 - Seamless integration with NumPy, OpenCV, PyTorch, etc.
 
-> ***In construction: Everything here is messy and experimental. Features are still incomplete. Use with caution.***
-
 > ***Contributions are welcome!***
 
 ## Installation
@@ -127,6 +125,8 @@ for i in range(600):
 camera.stop()
 writer.release()
 ```
+> You can do interesting stuff with libraries like ```pyav``` and ```pynput```: see examples/instant_replay.py for a ghetto implementation of instant replay using hot-keys
+
 
 ### Safely Releasing of Resource
 Upon calling ```.release``` on a DXCamera instance, it will stop any active capturing, free the buffer and release the duplicator and staging resource. Upon calling ```.stop()```, DXCamera will stop the active capture and free the frame buffer. If you want to manually recreate a ```DXCamera``` instance on the same output with different parameters, you can also manully delete it:
