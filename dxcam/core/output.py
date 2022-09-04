@@ -36,6 +36,13 @@ class Output:
         )
 
     @property
+    def surface_size(self) -> Tuple[int, int]:
+        if self.rotation_angle in (90, 270):
+            return self.resolution[1], self.resolution[0]
+        else:
+            return self.resolution
+
+    @property
     def attached_to_desktop(self) -> bool:
         return bool(self.desc.AttachedToDesktop)
 
