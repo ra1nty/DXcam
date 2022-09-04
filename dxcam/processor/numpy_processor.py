@@ -18,7 +18,12 @@ class NumpyProcessor(Processor):
         cv2_code = self.color_mapping[color_mode]
         self.cvtcolor = None
         if cv2_code is not None:
-            self.cvtcolor = lambda image: cv2.cvtColor(image, cv2_code)
+            if cv2_code != cv2.COLOR_BGRA2GRAY:
+                self.cvtcolor = lambda image: cv2.cvtColor(image, cv2_code)
+            else:
+                self.cvtcolor = lambda image: cv2.cvtColor(image, cv2_code)[
+                    ..., np.newaxis
+                ]
 
     def process(self, rect, width, height, region, rotation_angle):
         pitch = int(rect.Pitch)

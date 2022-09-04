@@ -1,4 +1,5 @@
 import weakref
+import time
 from dxcam.dxcam import DXCamera, Output, Device
 from dxcam.util.io import (
     enum_dxgi_adapters,
@@ -75,6 +76,7 @@ class DXFactory(metaclass=Singleton):
             max_buffer_len=max_buffer_len,
         )
         self._camera_instances[instance_key] = camera
+        time.sleep(0.1)  # Fix for https://github.com/ra1nty/DXcam/issues/31
         return camera
 
     def device_info(self) -> str:
