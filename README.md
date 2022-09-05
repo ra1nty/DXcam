@@ -19,7 +19,7 @@ Compared to these existed solutions, DXcam provides:
 > ***Contributions are welcome!***
 
 ## Installation
-### From TestPyPI:
+### From PyPI:
 ```bash
 pip install dxcam
 ```
