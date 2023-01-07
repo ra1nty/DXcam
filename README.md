@@ -23,9 +23,15 @@ Compared to these existed solutions, DXcam provides:
 ```bash
 pip install dxcam
 ```
+
+**Note:** OpenCV is required by DXcam for colorspace conversion. If you don't already have OpenCV, install it easily with command `pip install dxcam[cv2]`.
+
 ### From source:
 ```bash
 pip install --editable .
+
+# for installing OpenCV also
+pip install --editable .[cv2]
 ```
 
 ## Usage

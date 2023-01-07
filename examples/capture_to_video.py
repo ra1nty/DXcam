@@ -1,4 +1,6 @@
 import dxcam
+
+# install OpenCV using `pip install dxcam[cv2]` command.
 import cv2
 
 TOP = 0
