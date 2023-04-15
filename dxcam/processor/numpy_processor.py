@@ -30,13 +30,21 @@ class NumpyProcessor(Processor):
 
     def process(self, rect, width, height, region, rotation_angle):
         pitch = int(rect.Pitch)
+        ptr = rect.pBits
+
+        if region[3] - region[1] != height:
+            if rotation_angle in (0, 180):
+                height = region[3] - region[1]
+            else:
+                width = region[3] - region[1]
+            ptr = ctypes.c_void_p(ctypes.addressof(ptr.contents)+region[1]*pitch)#Pointer arithmetic
 
         if rotation_angle in (0, 180):
             size = pitch * height
         else:
             size = pitch * width
 
-        buffer = ctypes.string_at(rect.pBits, size)
+        buffer = ctypes.string_at(ptr, size)
         pitch = pitch // 4
         if rotation_angle in (0, 180):
             image = np.ndarray((height, pitch, 4), dtype=np.uint8, buffer=buffer)
@@ -58,7 +66,7 @@ class NumpyProcessor(Processor):
         elif rotation_angle in (90, 270) and pitch != height:
             image = image[:height, :, :]
 
-        if region[2] - region[0] != width or region[3] - region[1] != height:
-            image = image[region[1] : region[3], region[0] : region[2], :]
+        if region[2] - region[0] != image.shape[1]:
+            image = image[:, region[0] : region[2], :]
 
         return image
