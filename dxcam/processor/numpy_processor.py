@@ -34,10 +34,12 @@ class NumpyProcessor(Processor):
 
         if region[3] - region[1] != height:
             if rotation_angle in (0, 180):
+                offset = (region[1] if rotation_angle==0 else height-region[3])*pitch
                 height = region[3] - region[1]
             else:
-                width = region[3] - region[1]
-            ptr = ctypes.c_void_p(ctypes.addressof(ptr.contents)+region[1]*pitch)#Pointer arithmetic
+                offset = (region[0] if rotation_angle==270 else width-region[2])*pitch
+                width = region[2] - region[0]
+            ptr = ctypes.c_void_p(ctypes.addressof(ptr.contents)+offset)#Pointer arithmetic
 
         if rotation_angle in (0, 180):
             size = pitch * height
@@ -66,6 +68,8 @@ class NumpyProcessor(Processor):
         elif rotation_angle in (90, 270) and pitch != height:
             image = image[:height, :, :]
 
+        if region[3] - region[1] != image.shape[0]:
+            image = image[region[1] : region[3], :, :]
         if region[2] - region[0] != image.shape[1]:
             image = image[:, region[0] : region[2], :]
 
