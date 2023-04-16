@@ -30,16 +30,14 @@ class NumpyProcessor(Processor):
 
     def process(self, rect, width, height, region, rotation_angle):
         pitch = int(rect.Pitch)
-        ptr = rect.pBits
 
-        if region[3] - region[1] != height:
-            if rotation_angle in (0, 180):
-                offset = (region[1] if rotation_angle==0 else height-region[3])*pitch
-                height = region[3] - region[1]
-            else:
-                offset = (region[0] if rotation_angle==270 else width-region[2])*pitch
-                width = region[2] - region[0]
-            ptr = ctypes.c_void_p(ctypes.addressof(ptr.contents)+offset)#Pointer arithmetic
+        if rotation_angle in (0, 180):
+            offset = (region[1] if rotation_angle==0 else height-region[3])*pitch
+            height = region[3] - region[1]
+        else:
+            offset = (region[0] if rotation_angle==270 else width-region[2])*pitch
+            width = region[2] - region[0]
+        ptr = ctypes.c_void_p(ctypes.addressof(rect.pBits.contents)+offset)#Pointer arithmetic
 
         if rotation_angle in (0, 180):
             size = pitch * height
