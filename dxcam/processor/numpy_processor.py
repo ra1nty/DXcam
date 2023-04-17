@@ -7,25 +7,24 @@ class NumpyProcessor(Processor):
     def __init__(self, color_mode):
         self.cvtcolor = None
         self.color_mode = color_mode
+        if self.color_mode=='BGRA':
+            self.color_mode = None
 
     def process_cvtcolor(self, image):
         import cv2
 
         # only one time process
         if self.cvtcolor is None:
-            if self.color_mode!="BGRA":
-                if self.color_mode=="BGR":
-                    self.cvtcolor = lambda image: image[:,:,:3] #BGRA -> BGR conversion
-                elif self.color_mode=='RGB':
-                    self.cvtcolor = lambda image: np.flip(image[:,:,:3],axis=-1) #BGRA -> RGB conversion
-                elif self.color_mode=='RGBA':
-                    self.cvtcolor = lambda image: cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
-                else:
-                    self.cvtcolor = lambda image: cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)[
-                        ..., np.newaxis
-                    ] 
+            if self.color_mode=="BGR":
+                self.cvtcolor = lambda image: image[:,:,:3] #BGRA -> BGR conversion
+            elif self.color_mode=='RGB':
+                self.cvtcolor = lambda image: np.flip(image[:,:,:3],axis=-1) #BGRA -> RGB conversion
+            elif self.color_mode=='RGBA':
+                self.cvtcolor = lambda image: cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
             else:
-                return image
+                self.cvtcolor = lambda image: cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)[
+                    ..., np.newaxis
+                ] 
         return self.cvtcolor(image)
 
     def process(self, rect, width, height, region, rotation_angle):
