@@ -15,14 +15,17 @@ class NumpyProcessor(Processor):
 
         # only one time process
         if self.cvtcolor is None:
-            if self.color_mode=="BGR":
-                self.cvtcolor = lambda image: image[:,:,:3] #BGRA -> BGR conversion
-            elif self.color_mode=='RGB':
-                self.cvtcolor = lambda image: np.flip(image[:,:,:3],axis=-1) #BGRA -> RGB conversion
-            elif self.color_mode=='RGBA':
-                self.cvtcolor = lambda image: cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
+            color_mapping = {
+                "RGB": cv2.COLOR_BGRA2RGB,
+                "RGBA": cv2.COLOR_BGRA2RGBA,
+                "BGR": cv2.COLOR_BGRA2BGR,
+                "GRAY": cv2.COLOR_BGRA2GRAY
+            }
+            cv2_code = color_mapping[self.color_mode]
+            if cv2_code != cv2.COLOR_BGRA2GRAY:
+                self.cvtcolor = lambda image: cv2.cvtColor(image, cv2_code)
             else:
-                self.cvtcolor = lambda image: cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)[
+                self.cvtcolor = lambda image: cv2.cvtColor(image, cv2_code)[
                     ..., np.newaxis
                 ] 
         return self.cvtcolor(image)
