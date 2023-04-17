@@ -37,14 +37,13 @@ class NumpyProcessor(Processor):
         else:
             offset = (region[0] if rotation_angle==270 else width-region[2])*pitch
             width = region[2] - region[0]
-        ptr = ctypes.c_void_p(ctypes.addressof(rect.pBits.contents)+offset)#Pointer arithmetic
 
         if rotation_angle in (0, 180):
             size = pitch * height
         else:
             size = pitch * width
 
-        buffer = ctypes.string_at(ptr, size)
+        buffer = (ctypes.c_char*size).from_address(ctypes.addressof(rect.pBits.contents)+offset)#Pointer arithmetic
         pitch = pitch // 4
         if rotation_angle in (0, 180):
             image = np.ndarray((height, pitch, 4), dtype=np.uint8, buffer=buffer)
