@@ -66,7 +66,8 @@ class DXCamera:
     def grab(self, region: Tuple[int, int, int, int] = None):
         if region is None:
             region = self.region
-        self._validate_region(region)
+        else:
+            self._validate_region(region)
         frame = self._grab(region)
         return frame
 
