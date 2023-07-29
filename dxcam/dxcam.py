@@ -5,6 +5,7 @@ from threading import Thread, Event, Lock
 import comtypes
 import numpy as np
 from dxcam.core import Device, Output, StageSurface, Duplicator
+from dxcam._libs.d3d11 import D3D11_BOX
 from dxcam.processor import Processor
 from dxcam.util.timer import (
     create_high_resolution_timer,
@@ -34,8 +35,12 @@ class DXCamera:
             output=self._output, device=self._device
         )
         self._processor: Processor = Processor(output_color=output_color)
+        self._sourceRegion: D3D11_BOX = D3D11_BOX()
+        self._sourceRegion.front = 0
+        self._sourceRegion.back = 1
 
         self.width, self.height = self._output.resolution
+        self.shot_w, self.shot_h = self.width, self.height
         self.channel_size = len(output_color) if output_color != "GRAY" else 1
         self.rotation_angle: int = self._output.rotation_angle
 
@@ -66,22 +71,60 @@ class DXCamera:
     def grab(self, region: Tuple[int, int, int, int] = None):
         if region is None:
             region = self.region
-        else:
+
+        if not self.region==region:
             self._validate_region(region)
-        frame = self._grab(region)
-        return frame
+
+        return self._grab(region)
+
+    def shot(self, image_ptr, region: Tuple[int, int, int, int] = None):
+        if region is None:
+            region = self.region
+
+        if not self.region==region:
+            self._validate_region(region)
+
+        return self._shot(image_ptr, region)
+
+    def _shot(self, image_ptr, region: Tuple[int, int, int, int]):
+        if self._duplicator.update_frame():
+            if not self._duplicator.updated:
+                return None
+
+            if self._stagesurf.width != region[2]-region[0] or self._stagesurf.height != region[3]-region[1]:
+                self._stagesurf.release()
+                self._stagesurf.width = region[2]-region[0]
+                self._stagesurf.height = region[3]-region[1]
+                self._stagesurf.rebuild(output=self._output, device=self._device)
+            self._device.im_context.CopySubresourceRegion(
+                self._stagesurf.texture, 0, 0, 0, 0, self._duplicator.texture, 0, ctypes.byref(self._sourceRegion)
+            )
+            self._duplicator.release_frame()
+            rect = self._stagesurf.map()
+            self._processor.process2(image_ptr, rect, self.shot_w, self.shot_h)
+            self._stagesurf.unmap()
+            return True
+        else:
+            self._on_output_change()
+            return False
 
     def _grab(self, region: Tuple[int, int, int, int]):
         if self._duplicator.update_frame():
             if not self._duplicator.updated:
                 return None
-            self._device.im_context.CopyResource(
-                self._stagesurf.texture, self._duplicator.texture
+
+            if self._stagesurf.width != region[2]-region[0] or self._stagesurf.height != region[3]-region[1]:
+                self._stagesurf.release()
+                self._stagesurf.width = region[2]-region[0]
+                self._stagesurf.height = region[3]-region[1]
+                self._stagesurf.rebuild(output=self._output, device=self._device)
+            self._device.im_context.CopySubresourceRegion(
+                self._stagesurf.texture, 0, 0, 0, 0, self._duplicator.texture, 0, ctypes.byref(self._sourceRegion)
             )
             self._duplicator.release_frame()
             rect = self._stagesurf.map()
             frame = self._processor.process(
-                rect, self.width, self.height, region, self.rotation_angle
+                rect, self.shot_w, self.shot_h, region, self.rotation_angle
             )
             self._stagesurf.unmap()
             return frame
@@ -234,6 +277,12 @@ class DXCamera:
             raise ValueError(
                 f"Invalid Region: Region should be in {self.width}x{self.height}"
             )
+        self.region = region
+        self._sourceRegion.left = region[0]
+        self._sourceRegion.top = region[1]
+        self._sourceRegion.right = region[2]
+        self._sourceRegion.bottom = region[3]
+        self.shot_w, self.shot_h = region[2]-region[0], region[3]-region[1]
 
     def release(self):
         self.stop()

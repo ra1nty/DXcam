@@ -1,4 +1,5 @@
 import ctypes
+from time import sleep
 from dataclasses import dataclass, InitVar
 from dxcam._libs.d3d11 import *
 from dxcam._libs.dxgi import *
@@ -23,12 +24,15 @@ class Duplicator:
         res = ctypes.POINTER(IDXGIResource)()
         try:
             self.duplicator.AcquireNextFrame(
-                0,
+                10,
                 ctypes.byref(info),
                 ctypes.byref(res),
             )
         except comtypes.COMError as ce:
-            if ctypes.c_int32(DXGI_ERROR_ACCESS_LOST).value == ce.args[0]:
+            if ctypes.c_int32(DXGI_ERROR_ACCESS_LOST).value == ce.args[0] or ctypes.c_int32(ABANDONED_MUTEX_EXCEPTION).value == ce.args[0]:
+                self.release()  # Release resources before reinitializing
+                sleep(0.1)
+                self.__post_init__(self.output, self.device)
                 return False
             if ctypes.c_int32(DXGI_ERROR_WAIT_TIMEOUT).value == ce.args[0]:
                 self.updated = False

@@ -27,7 +27,8 @@ class StageSurface:
             self.texture = None
 
     def rebuild(self, output: Output, device: Device):
-        self.width, self.height = output.surface_size
+        if self.width==0 or self.height==0:
+            self.width, self.height = output.surface_size
         if self.texture is None:
             self.desc.Width = self.width
             self.desc.Height = self.height
