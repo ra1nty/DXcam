@@ -68,6 +68,17 @@ class DXCamera:
         self.__frame_count = 0
         self.__capture_start_time = 0
 
+    # from https://github.com/Agade09/DXcam
+    def region_to_memory_region(self, region: Tuple[int, int, int, int], rotation_angle: int, output: Output):
+        if rotation_angle==0:
+            return region
+        elif rotation_angle==90: #Axes (X,Y) -> (-Y,X)
+            return (region[1], output.surface_size[1]-region[2], region[3], output.surface_size[1]-region[0])
+        elif rotation_angle==180: #Axes (X,Y) -> (-X,-Y)
+            return (output.surface_size[0]-region[2], output.surface_size[1]-region[3], output.surface_size[0]-region[0], output.surface_size[1]-region[1])
+        else: #rotation_angle==270 Axes (X,Y) -> (Y,-X)
+            return (output.surface_size[0]-region[3], region[0], output.surface_size[0]-region[1], region[2])
+
     def grab(self, region: Tuple[int, int, int, int] = None):
         if region is None:
             region = self.region
@@ -91,11 +102,14 @@ class DXCamera:
             if not self._duplicator.updated:
                 return None
 
-            if self._stagesurf.width != region[2]-region[0] or self._stagesurf.height != region[3]-region[1]:
+            _region = self.region_to_memory_region(region, self.rotation_angle, self._output)
+            _width = _region[2] - _region[0]
+            _height = _region[3] - _region[1]
+
+            if self._stagesurf.width != _width or self._stagesurf.height != _height:
                 self._stagesurf.release()
-                self._stagesurf.width = region[2]-region[0]
-                self._stagesurf.height = region[3]-region[1]
-                self._stagesurf.rebuild(output=self._output, device=self._device)
+                self._stagesurf.rebuild(output=self._output, device=self._device, dim=(_width, _height))
+
             self._device.im_context.CopySubresourceRegion(
                 self._stagesurf.texture, 0, 0, 0, 0, self._duplicator.texture, 0, ctypes.byref(self._sourceRegion)
             )
@@ -113,11 +127,14 @@ class DXCamera:
             if not self._duplicator.updated:
                 return None
 
-            if self._stagesurf.width != region[2]-region[0] or self._stagesurf.height != region[3]-region[1]:
+            _region = self.region_to_memory_region(region, self.rotation_angle, self._output)
+            _width = _region[2] - _region[0]
+            _height = _region[3] - _region[1]
+
+            if self._stagesurf.width != _width or self._stagesurf.height != _height:
                 self._stagesurf.release()
-                self._stagesurf.width = region[2]-region[0]
-                self._stagesurf.height = region[3]-region[1]
-                self._stagesurf.rebuild(output=self._output, device=self._device)
+                self._stagesurf.rebuild(output=self._output, device=self._device, dim=(_width, _height))
+
             self._device.im_context.CopySubresourceRegion(
                 self._stagesurf.texture, 0, 0, 0, 0, self._duplicator.texture, 0, ctypes.byref(self._sourceRegion)
             )

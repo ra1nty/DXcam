@@ -1,5 +1,5 @@
 import ctypes
-from numpy import rot90, newaxis, uint8, zeros
+from numpy import rot90, ndarray, newaxis, uint8, zeros
 from numpy.ctypeslib import as_array
 from .base import Processor
 
@@ -36,32 +36,23 @@ class NumpyProcessor(Processor):
         return self.cvtcolor(image)
 
     def shot(self, image_ptr, rect, width, height):
-        ctypes.memmove(image_ptr, rect.pBits, width*height*4)
+        ctypes.memmove(image_ptr, rect.pBits, height*width*4)
 
     def process(self, rect, width, height, region, rotation_angle):
-        pitch = int(rect.Pitch)
+        width = region[2] - region[0]
+        height = region[3] - region[1]
+        if rotation_angle in (90, 270):
+            width, height = height, width
+
         buffer = ctypes.cast(rect.pBits, self.PBYTE)
-        pitch = pitch // 4
+        image = as_array(buffer, (height, width, 4))
 
-        if rotation_angle in (0, 180):
-            image = as_array(buffer, (height, pitch, 4))
-        elif rotation_angle in (90, 270):
-            image = as_array(buffer, (width, pitch, 4))
+        # Another approach from https://github.com/Agade09/DXcam
+        # buffer = (ctypes.c_char*height*width*4).from_address(ctypes.addressof(rect.pBits.contents))
+        # image = ndarray((height, width, 4), dtype=uint8, buffer=buffer)
 
-        if rotation_angle == 90:
-            image = rot90(image, axes=(1, 0))
-        elif rotation_angle == 180:
-            image = rot90(image, k=2, axes=(0, 1))
-        elif rotation_angle == 270:
-            image = rot90(image, axes=(0, 1))
-
-        if rotation_angle in (0, 180) and pitch != width:
-            image = image[:, :width, :]
-        elif rotation_angle in (90, 270) and pitch != height:
-            image = image[:height, :, :]
-
-        if region[2] - region[0] != width or region[3] - region[1] != height:
-            image = image[region[1]:region[3], region[0]:region[2]]
+        if rotation_angle != 0:
+            image = rot90(image, k=rotation_angle//90, axes=(1, 0))
 
         if self.color_mode is not None:
             return self.process_cvtcolor(image)
