@@ -1,3 +1,6 @@
+This fork adds basic cursor support (GetFramePointerShape) via grab_cursor function
+Its used for https://github.com/scamiv/ActiveClone
+
 # **DXcam**
 > ***Fastest Python Screenshot for Windows***
 ```python
