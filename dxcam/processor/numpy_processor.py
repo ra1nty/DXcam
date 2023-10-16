@@ -48,8 +48,8 @@ class NumpyProcessor(Processor):
         image = as_array(buffer, (height, width, 4))
 
         # Another approach from https://github.com/Agade09/DXcam
-        #buffer = (ctypes.c_char*height*width*4).from_address(ctypes.addressof(rect.pBits.contents))
-        #image = ndarray((height, width, 4), dtype=uint8, buffer=buffer)
+        # buffer = (ctypes.c_char*height*width*4).from_address(ctypes.addressof(rect.pBits.contents))
+        # image = ndarray((height, width, 4), dtype=uint8, buffer=buffer)
 
         if rotation_angle != 0:
             image = rot90(image, k=rotation_angle//90, axes=(1, 0))

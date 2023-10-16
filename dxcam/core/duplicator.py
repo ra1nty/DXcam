@@ -14,9 +14,7 @@ class Duplicator:
     updated: bool = False
     output: InitVar[Output] = None
     device: InitVar[Device] = None
-    cursor = ac_Cursor()
-    cursor.shape: bytes = None
-    cursor.PointerShapeInfo: DXGI_OUTDUPL_POINTER_SHAPE_INFO = DXGI_OUTDUPL_POINTER_SHAPE_INFO()  
+    cursor: ac_Cursor = ac_Cursor()
 
     def __post_init__(self, output: Output, device: Device) -> None:
         self.duplicator = ctypes.POINTER(IDXGIOutputDuplication)()
@@ -47,10 +45,11 @@ class Duplicator:
         except comtypes.COMError as ce:
             self.duplicator.ReleaseFrame()
         try:
-            new_PointerInfo, new_PointerShape = self.get_frame_pointer_shape(info)
-            if new_PointerShape != False:
-                self.cursor.Shape = new_PointerShape
-                self.cursor.PointerShapeInfo = new_PointerInfo
+            if info.LastMouseUpdateTime > 0:
+                new_PointerInfo, new_PointerShape = self.get_frame_pointer_shape(info)
+                if new_PointerShape != False:
+                    self.cursor.Shape = new_PointerShape
+                    self.cursor.PointerShapeInfo = new_PointerInfo
                 self.cursor.PointerPositionInfo = info.PointerPosition
         except Exception as e: 
             print(e)
@@ -72,7 +71,6 @@ class Duplicator:
         hr = self.duplicator.GetFramePointerShape(FrameInfo.PointerShapeBufferSize, ctypes.byref(pPointerShapeBuffer), ctypes.byref(buffer_size_required), ctypes.byref(PointerShapeInfo)) 
         if FrameInfo.PointerShapeBufferSize > 0:
             #print("T",PointerShapeInfo.Type,PointerShapeInfo.Width,"x",PointerShapeInfo.Height,"Pitch:",PointerShapeInfo.Pitch,"HS:",PointerShapeInfo.HotSpot.x,PointerShapeInfo.HotSpot.y)
-            if PointerShapeInfo.Type != 2: return False, False # cant handle others rn
             return PointerShapeInfo, pPointerShapeBuffer
         return False, False
 
