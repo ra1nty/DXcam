@@ -78,12 +78,12 @@ class Duplicator:
         hr = self.duplicator.GetFramePointerShape(FrameInfo.PointerShapeBufferSize, ctypes.byref(pPointerShapeBuffer), ctypes.byref(buffer_size_required), ctypes.byref(PointerShapeInfo)) 
         if FrameInfo.PointerShapeBufferSize > 0:
             print("T",PointerShapeInfo.Type,PointerShapeInfo.Width,"x",PointerShapeInfo.Height,"Pitch:",PointerShapeInfo.Pitch,"HS:",PointerShapeInfo.HotSpot.x,PointerShapeInfo.HotSpot.y)
-            if PointerShapeInfo.Type != 2: return False # cant handle others rn
+            if PointerShapeInfo.Type != 2: return False, False # cant handle others rn
             return PointerShapeInfo, pPointerShapeBuffer
         #except:
         #    return False
         #return False
-        return False
+        return False, False
 
     def __repr__(self) -> str:
         return "<{} Initalized:{}>".format(
