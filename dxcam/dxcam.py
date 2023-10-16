@@ -89,7 +89,6 @@ class DXCamera:
         return self._grab(region)
     
     def grab_cursor(self):
-        #convert texture(bytearray) to surface
         return self._duplicator.cursor
 
 
