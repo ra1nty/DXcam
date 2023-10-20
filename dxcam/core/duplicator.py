@@ -29,6 +29,12 @@ class Duplicator:
                 ctypes.byref(info),
                 ctypes.byref(res),
             )
+            if info.LastMouseUpdateTime > 0:
+                new_PointerInfo, new_PointerShape = self.get_frame_pointer_shape(info)
+                if new_PointerShape != False:
+                    self.cursor.Shape = new_PointerShape
+                    self.cursor.PointerShapeInfo = new_PointerInfo
+                self.cursor.PointerPositionInfo = info.PointerPosition
         except comtypes.COMError as ce:
             if ctypes.c_int32(DXGI_ERROR_ACCESS_LOST).value == ce.args[0] or ctypes.c_int32(ABANDONED_MUTEX_EXCEPTION).value == ce.args[0]:
                 self.release()  # Release resources before reinitializing
@@ -44,15 +50,7 @@ class Duplicator:
             self.texture = res.QueryInterface(ID3D11Texture2D)
         except comtypes.COMError as ce:
             self.duplicator.ReleaseFrame()
-        try:
-            if info.LastMouseUpdateTime > 0:
-                new_PointerInfo, new_PointerShape = self.get_frame_pointer_shape(info)
-                if new_PointerShape != False:
-                    self.cursor.Shape = new_PointerShape
-                    self.cursor.PointerShapeInfo = new_PointerInfo
-                self.cursor.PointerPositionInfo = info.PointerPosition
-        except Exception as e: 
-            print(e)
+
         self.updated = True
         return True
 
