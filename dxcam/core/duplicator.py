@@ -46,6 +46,12 @@ class Duplicator:
                 return True
             else:
                 raise ce
+
+        if info.LastPresentTime == 0: 
+            self.duplicator.ReleaseFrame()
+            self.updated = False
+            return True
+   
         try:
             self.texture = res.QueryInterface(ID3D11Texture2D)
         except comtypes.COMError as ce:
