@@ -42,6 +42,20 @@ class DXGI_OUTPUT_DESC(ctypes.Structure):
 class DXGI_OUTDUPL_POINTER_POSITION(ctypes.Structure):
     _fields_ = [("Position", wintypes.POINT), ("Visible", wintypes.BOOL)]
 
+class DXGI_OUTDUPL_POINTER_SHAPE_INFO(ctypes.Structure):
+    _fields_ = [('Type',    wintypes.UINT),
+                ('Width',   wintypes.UINT),
+                ('Height',  wintypes.UINT),
+                ('Pitch',   wintypes.UINT),
+                ('HotSpot', wintypes.POINT),
+    ]
+
+class ac_Cursor():
+    def __init__(self):
+        self.PointerPositionInfo: DXGI_OUTDUPL_POINTER_POSITION = DXGI_OUTDUPL_POINTER_POSITION()
+        self.PointerShapeInfo: DXGI_OUTDUPL_POINTER_SHAPE_INFO = DXGI_OUTDUPL_POINTER_SHAPE_INFO()
+        self.Shape: bytes = None
+
 
 class DXGI_OUTDUPL_FRAME_INFO(ctypes.Structure):
     _fields_ = [
@@ -113,7 +127,12 @@ class IDXGIOutputDuplication(IDXGIObject):
         ),
         comtypes.STDMETHOD(comtypes.HRESULT, "GetFrameDirtyRects"),
         comtypes.STDMETHOD(comtypes.HRESULT, "GetFrameMoveRects"),
-        comtypes.STDMETHOD(comtypes.HRESULT, "GetFramePointerShape"),
+        comtypes.STDMETHOD(comtypes.HRESULT, "GetFramePointerShape", [
+            wintypes.UINT,
+            ctypes.c_void_p,
+            ctypes.POINTER(wintypes.UINT),
+            ctypes.POINTER(DXGI_OUTDUPL_POINTER_SHAPE_INFO),
+            ]),
         comtypes.STDMETHOD(comtypes.HRESULT, "MapDesktopSurface"),
         comtypes.STDMETHOD(comtypes.HRESULT, "UnMapDesktopSurface"),
         comtypes.STDMETHOD(comtypes.HRESULT, "ReleaseFrame"),

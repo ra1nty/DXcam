@@ -87,6 +87,10 @@ class DXCamera:
             self._validate_region(region)
 
         return self._grab(region)
+    
+    def grab_cursor(self):
+        return self._duplicator.cursor
+
 
     def shot(self, image_ptr, region: Tuple[int, int, int, int] = None):
         if region is None:
