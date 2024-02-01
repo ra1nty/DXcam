@@ -12,6 +12,7 @@ class Output:
     desc: DXGI_OUTPUT_DESC = None
 
     def __post_init__(self):
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
         self.desc = DXGI_OUTPUT_DESC()
         self.update_desc()
 

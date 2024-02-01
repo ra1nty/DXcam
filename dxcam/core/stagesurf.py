@@ -4,6 +4,7 @@ from dxcam._libs.d3d11 import *
 from dxcam._libs.dxgi import *
 from dxcam.core.device import Device
 from dxcam.core.output import Output
+from typing import Tuple
 
 
 @dataclass
@@ -26,7 +27,7 @@ class StageSurface:
             self.texture.Release()
             self.texture = None
 
-    def rebuild(self, output: Output, device: Device, dim:tuple[int]=None):
+    def rebuild(self, output: Output, device: Device, dim:Tuple[int]=None):
         if dim is not None:
             self.width, self.height = dim
         else:
