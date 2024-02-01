@@ -5,6 +5,7 @@ from threading import Thread, Event, Lock
 import comtypes
 import numpy as np
 from dxcam.core import Device, Output, StageSurface, Duplicator
+from dxcam._libs.d3d11 import D3D11_BOX
 from dxcam.processor import Processor
 from dxcam.util.timer import (
     create_high_resolution_timer,
@@ -34,8 +35,12 @@ class DXCamera:
             output=self._output, device=self._device
         )
         self._processor: Processor = Processor(output_color=output_color)
+        self._sourceRegion: D3D11_BOX = D3D11_BOX()
+        self._sourceRegion.front = 0
+        self._sourceRegion.back = 1
 
         self.width, self.height = self._output.resolution
+        self.shot_w, self.shot_h = self.width, self.height
         self.channel_size = len(output_color) if output_color != "GRAY" else 1
         self.rotation_angle: int = self._output.rotation_angle
 
@@ -63,24 +68,84 @@ class DXCamera:
         self.__frame_count = 0
         self.__capture_start_time = 0
 
+    # from https://github.com/Agade09/DXcam
+    def region_to_memory_region(self, region: Tuple[int, int, int, int], rotation_angle: int, output: Output):
+        if rotation_angle==0:
+            return region
+        elif rotation_angle==90: #Axes (X,Y) -> (-Y,X)
+            return (region[1], output.surface_size[1]-region[2], region[3], output.surface_size[1]-region[0])
+        elif rotation_angle==180: #Axes (X,Y) -> (-X,-Y)
+            return (output.surface_size[0]-region[2], output.surface_size[1]-region[3], output.surface_size[0]-region[0], output.surface_size[1]-region[1])
+        else: #rotation_angle==270 Axes (X,Y) -> (Y,-X)
+            return (output.surface_size[0]-region[3], region[0], output.surface_size[0]-region[1], region[2])
+
     def grab(self, region: Tuple[int, int, int, int] = None):
         if region is None:
             region = self.region
-        self._validate_region(region)
-        frame = self._grab(region)
-        return frame
+
+        if not self.region==region:
+            self._validate_region(region)
+
+        return self._grab(region)
+    
+    def grab_cursor(self):
+        return self._duplicator.cursor
+
+
+    def shot(self, image_ptr, region: Tuple[int, int, int, int] = None):
+        if region is None:
+            region = self.region
+
+        if not self.region==region:
+            self._validate_region(region)
+
+        return self._shot(image_ptr, region)
+
+    def _shot(self, image_ptr, region: Tuple[int, int, int, int]):
+        if self._duplicator.update_frame():
+            if not self._duplicator.updated:
+                return None
+
+            _region = self.region_to_memory_region(region, self.rotation_angle, self._output)
+            _width = _region[2] - _region[0]
+            _height = _region[3] - _region[1]
+
+            if self._stagesurf.width != _width or self._stagesurf.height != _height:
+                self._stagesurf.release()
+                self._stagesurf.rebuild(output=self._output, device=self._device, dim=(_width, _height))
+
+            self._device.im_context.CopySubresourceRegion(
+                self._stagesurf.texture, 0, 0, 0, 0, self._duplicator.texture, 0, ctypes.byref(self._sourceRegion)
+            )
+            self._duplicator.release_frame()
+            rect = self._stagesurf.map()
+            self._processor.process2(image_ptr, rect, self.shot_w, self.shot_h)
+            self._stagesurf.unmap()
+            return True
+        else:
+            self._on_output_change()
+            return False
 
     def _grab(self, region: Tuple[int, int, int, int]):
         if self._duplicator.update_frame():
             if not self._duplicator.updated:
                 return None
-            self._device.im_context.CopyResource(
-                self._stagesurf.texture, self._duplicator.texture
+
+            _region = self.region_to_memory_region(region, self.rotation_angle, self._output)
+            _width = _region[2] - _region[0]
+            _height = _region[3] - _region[1]
+
+            if self._stagesurf.width != _width or self._stagesurf.height != _height:
+                self._stagesurf.release()
+                self._stagesurf.rebuild(output=self._output, device=self._device, dim=(_width, _height))
+
+            self._device.im_context.CopySubresourceRegion(
+                self._stagesurf.texture, 0, 0, 0, 0, self._duplicator.texture, 0, ctypes.byref(self._sourceRegion)
             )
             self._duplicator.release_frame()
             rect = self._stagesurf.map()
             frame = self._processor.process(
-                rect, self.width, self.height, region, self.rotation_angle
+                rect, self.shot_w, self.shot_h, region, self.rotation_angle
             )
             self._stagesurf.unmap()
             return frame
@@ -233,6 +298,12 @@ class DXCamera:
             raise ValueError(
                 f"Invalid Region: Region should be in {self.width}x{self.height}"
             )
+        self.region = region
+        self._sourceRegion.left = region[0]
+        self._sourceRegion.top = region[1]
+        self._sourceRegion.right = region[2]
+        self._sourceRegion.bottom = region[3]
+        self.shot_w, self.shot_h = region[2]-region[0], region[3]-region[1]
 
     def release(self):
         self.stop()

@@ -85,11 +85,12 @@ class DXFactory(metaclass=Singleton):
             ret += f"Device[{idx}]:{device}\n"
         return ret
 
-    def output_info(self) -> str:
+    def output_info(self) -> str: 
         ret = ""
         for didx, outputs in enumerate(self.outputs):
             for idx, output in enumerate(outputs):
                 ret += f"Device[{didx}] Output[{idx}]: "
+                ret += f"szDevice[{output.devicename}]: "
                 ret += f"Res:{output.resolution} Rot:{output.rotation_angle}"
                 ret += f" Primary:{self.output_metadata.get(output.devicename)[1]}\n"
         return ret
