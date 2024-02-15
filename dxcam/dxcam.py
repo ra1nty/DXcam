@@ -178,6 +178,7 @@ class DXCamera:
                     with self.__lock:
                         # Reconstruct frame buffer when resolution change
                         if frame.shape[0] != self.height or frame.shape[1] != self.width:
+                            self.width, self.height = frame.shape[1], frame.shape[0]
                             region = (0, 0, frame.shape[1], frame.shape[0])
                             frame_shape = (region[3] - region[1], region[2] - region[0], self.channel_size)
                             self.__frame_buffer = np.ndarray(
