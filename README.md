@@ -52,19 +52,18 @@ For screenshot, simply use ```.grab```:
 ```python
 frame = camera.grab()
 ```
-The returned ```frame``` will be a ```numpy.ndarray``` in the shape of ```(Height,  Width, 3[RGB])```. This is the default and the only supported format (**for now**). It is worth noting that ```.grab``` will return ```None``` if there is no new frame since the last time you called ```.grab```. Usually it means there's nothing new to render since last time (E.g. You are idling).
+The returned ```frame``` will be a ```PIL.Image.Image``` in the shape of ```(Height,  Width)```. This is the default and the only supported format (**for now**). It is worth noting that ```.grab``` will return ```None``` if there is no new frame since the last time you called ```.grab```. Usually it means there's nothing new to render since last time (E.g. You are idling).
 
 To view the captured screenshot:
 ```python
-from PIL import Image
-Image.fromarray(frame).show()
+frame.show()
 ```
 To screenshot a specific region, use the ```region``` parameter: it takes ```tuple[int, int, int, int]``` as the left, top, right, bottom coordinates of the bounding box. Similar to [PIL.ImageGrab.grab](https://pillow.readthedocs.io/en/stable/reference/ImageGrab.html).
 ```python
 left, top = (1920 - 640) // 2, (1080 - 640) // 2
 right, bottom = left + 640, top + 640
 region = (left, top, right, bottom)
-frame = camera.grab(region=region)  # numpy.ndarray of size (640x640x3) -> (HXWXC)
+frame = camera.grab(region=region)  # PIL.Image.Image of size (640x640x3) -> (HXWXC)
 ```
 The above code will take a screenshot of the center ```640x640``` portion of a ```1920x1080``` monitor.
 ### Screen Capture
