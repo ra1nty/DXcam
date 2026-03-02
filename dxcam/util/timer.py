@@ -1,39 +1,38 @@
-import ctypes
-from ctypes.wintypes import LARGE_INTEGER
+import time
+import threading
+from typing import Optional
 
 
-INFINITE = 0xFFFFFFFF
-WAIT_FAILED = 0xFFFFFFFF
-CREATE_WAITABLE_TIMER_HIGH_RESOLUTION = 0x00000002
-TIMER_MODIFY_STATE = 0x0002
-TIMER_ALL_ACCESS = 0x1F0003
-
-
-__kernel32 = ctypes.windll.kernel32
+class _Timer:
+    def __init__(self):
+        self.period_s = 0.0
+        self.cancelled = False
+        self._event = threading.Event()
+        self._next_tick: Optional[float] = None
 
 
 def create_high_resolution_timer():
-    handle = __kernel32.CreateWaitableTimerExW(
-        None, None, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS
-    )
-    if handle == 0:
-        raise ctypes.WinError()
-    return handle
+    return _Timer()
 
 
-def set_periodic_timer(handle, period: int):
-    res = __kernel32.SetWaitableTimer(
-        handle,
-        ctypes.byref(LARGE_INTEGER(0)),
-        period,
-        None,
-        None,
-        0,
-    )
-    if res == 0:
-        raise ctypes.WinError()
-    return True
+def set_periodic_timer(handle: _Timer, fps: int):
+    handle.period_s = 1.0 / fps
+    handle.cancelled = False
+    handle._event.clear()
+    handle._next_tick = time.perf_counter() + handle.period_s
 
 
-wait_for_timer = __kernel32.WaitForSingleObject
-cancel_timer = __kernel32.CancelWaitableTimer
+def wait_for_timer(handle: _Timer):
+    if handle.cancelled or handle._next_tick is None:
+        return
+    now = time.perf_counter()
+    sleep_time = handle._next_tick - now
+    if sleep_time > 0:
+        handle._event.wait(timeout=sleep_time)
+    handle._event.clear()
+    handle._next_tick += handle.period_s
+
+
+def cancel_timer(handle: _Timer):
+    handle.cancelled = True
+    handle._event.set()

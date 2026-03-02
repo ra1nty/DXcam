@@ -11,8 +11,6 @@ from dxcam.util.timer import (
     set_periodic_timer,
     wait_for_timer,
     cancel_timer,
-    INFINITE,
-    WAIT_FAILED,
 )
 
 
@@ -157,9 +155,8 @@ class DXCamera:
         self, region: Tuple[int, int, int, int], target_fps: int = 60, video_mode=False
     ):
         if target_fps != 0:
-            period_ms = 1000 // target_fps  # millisenonds for periodic timer
             self.__timer_handle = create_high_resolution_timer()
-            set_periodic_timer(self.__timer_handle, period_ms)
+            set_periodic_timer(self.__timer_handle, target_fps)
 
         self.__capture_start_time = time.perf_counter()
 
@@ -167,11 +164,7 @@ class DXCamera:
 
         while not self.__stop_capture.is_set():
             if self.__timer_handle:
-                res = wait_for_timer(self.__timer_handle, INFINITE)
-                if res == WAIT_FAILED:
-                    self.__stop_capture.set()
-                    capture_error = ctypes.WinError()
-                    continue
+                wait_for_timer(self.__timer_handle)
             try:
                 frame = self._grab(region)
                 if frame is not None:
