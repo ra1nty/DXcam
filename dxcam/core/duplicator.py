@@ -13,10 +13,17 @@ class Duplicator:
     updated: bool = False
     output: InitVar[Output] = None
     device: InitVar[Device] = None
+    latest_frame_time: float = 0.0
+    # ticks per second of the system
+    performance_frequency: int = 0
 
     def __post_init__(self, output: Output, device: Device) -> None:
         self.duplicator = ctypes.POINTER(IDXGIOutputDuplication)()
         output.output.DuplicateOutput(device.device, ctypes.byref(self.duplicator))
+        freq = ctypes.c_longlong()
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.QueryPerformanceFrequency(ctypes.byref(freq))
+        self.performance_frequency = freq.value
 
     def update_frame(self):
         info = DXGI_OUTDUPL_FRAME_INFO()
@@ -39,6 +46,7 @@ class Duplicator:
             self.texture = res.QueryInterface(ID3D11Texture2D)
         except comtypes.COMError as ce:
             self.duplicator.ReleaseFrame()
+        self.latest_frame_time = info.LastPresentTime / self.performance_frequency
         self.updated = True
         return True
 
