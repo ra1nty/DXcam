@@ -14,6 +14,9 @@ class Processor:
     def process(self, rect, width, height, region, rotation_angle):
         return self.backend.process(rect, width, height, region, rotation_angle)
 
+    def process2(self, image_ptr, rect, width, height):
+        self.backend.shot(image_ptr, rect, width, height)
+
     def _initialize_backend(self, backend):
         if backend == ProcessorBackends.NUMPY:
             from dxcam.processor.numpy_processor import NumpyProcessor

@@ -4,6 +4,7 @@ from dxcam._libs.d3d11 import *
 from dxcam._libs.dxgi import *
 from dxcam.core.device import Device
 from dxcam.core.output import Output
+from typing import Tuple
 
 
 @dataclass
@@ -26,8 +27,12 @@ class StageSurface:
             self.texture.Release()
             self.texture = None
 
-    def rebuild(self, output: Output, device: Device):
-        self.width, self.height = output.surface_size
+    def rebuild(self, output: Output, device: Device, dim:Tuple[int]=None):
+        if dim is not None:
+            self.width, self.height = dim
+        else:
+            self.width, self.height = output.surface_size
+
         if self.texture is None:
             self.desc.Width = self.width
             self.desc.Height = self.height
@@ -47,13 +52,15 @@ class StageSurface:
                 ctypes.byref(self.texture),
             )
 
+            self.interface = self.texture.QueryInterface(IDXGISurface)  # Caching to improve performance from https://github.com/Agade09/DXcam
+
     def map(self):
         rect: DXGI_MAPPED_RECT = DXGI_MAPPED_RECT()
-        self.texture.QueryInterface(IDXGISurface).Map(ctypes.byref(rect), 1)
+        self.interface.Map(ctypes.byref(rect), 1)
         return rect
 
     def unmap(self):
-        self.texture.QueryInterface(IDXGISurface).Unmap()
+        self.interface.Unmap()
 
     def __repr__(self) -> str:
         repr = f"{self.width}, {self.height}, {self.dxgi_format}"

@@ -7,6 +7,7 @@ from .d3d11 import ID3D11Device
 DXGI_ERROR_ACCESS_LOST = 0x887A0026
 DXGI_ERROR_NOT_FOUND = 0x887A0002
 DXGI_ERROR_WAIT_TIMEOUT = 0x887A0027
+ABANDONED_MUTEX_EXCEPTION = -0x7785ffda  # -2005270490
 
 
 class LUID(ctypes.Structure):
@@ -40,6 +41,20 @@ class DXGI_OUTPUT_DESC(ctypes.Structure):
 
 class DXGI_OUTDUPL_POINTER_POSITION(ctypes.Structure):
     _fields_ = [("Position", wintypes.POINT), ("Visible", wintypes.BOOL)]
+
+class DXGI_OUTDUPL_POINTER_SHAPE_INFO(ctypes.Structure):
+    _fields_ = [('Type',    wintypes.UINT),
+                ('Width',   wintypes.UINT),
+                ('Height',  wintypes.UINT),
+                ('Pitch',   wintypes.UINT),
+                ('HotSpot', wintypes.POINT),
+    ]
+
+class ac_Cursor():
+    def __init__(self):
+        self.PointerPositionInfo: DXGI_OUTDUPL_POINTER_POSITION = DXGI_OUTDUPL_POINTER_POSITION()
+        self.PointerShapeInfo: DXGI_OUTDUPL_POINTER_SHAPE_INFO = DXGI_OUTDUPL_POINTER_SHAPE_INFO()
+        self.Shape: bytes = None
 
 
 class DXGI_OUTDUPL_FRAME_INFO(ctypes.Structure):
@@ -112,7 +127,12 @@ class IDXGIOutputDuplication(IDXGIObject):
         ),
         comtypes.STDMETHOD(comtypes.HRESULT, "GetFrameDirtyRects"),
         comtypes.STDMETHOD(comtypes.HRESULT, "GetFrameMoveRects"),
-        comtypes.STDMETHOD(comtypes.HRESULT, "GetFramePointerShape"),
+        comtypes.STDMETHOD(comtypes.HRESULT, "GetFramePointerShape", [
+            wintypes.UINT,
+            ctypes.c_void_p,
+            ctypes.POINTER(wintypes.UINT),
+            ctypes.POINTER(DXGI_OUTDUPL_POINTER_SHAPE_INFO),
+            ]),
         comtypes.STDMETHOD(comtypes.HRESULT, "MapDesktopSurface"),
         comtypes.STDMETHOD(comtypes.HRESULT, "UnMapDesktopSurface"),
         comtypes.STDMETHOD(comtypes.HRESULT, "ReleaseFrame"),
