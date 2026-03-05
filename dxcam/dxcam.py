@@ -158,7 +158,7 @@ class DXCamera:
         return np.array(ret)
 
     def __capture(
-        self, region: Tuple[int, int, int, int], target_fps: int = 60, video_mode=False
+        self, region: Tuple[int, int, int, int], target_fps: int = 60, video_mode=False, print_fps=True
     ):
         if target_fps != 0:
             self.__timer_handle = create_high_resolution_timer()
@@ -208,9 +208,10 @@ class DXCamera:
         if capture_error is not None:
             self.stop()
             raise capture_error
-        print(
-            f"Screen Capture FPS: {int(self.__frame_count/(time.perf_counter() - self.__capture_start_time))}"
-        )
+        if print_fps:
+            print(
+                f"Screen Capture FPS: {int(self.__frame_count/(time.perf_counter() - self.__capture_start_time))}"
+            )
 
     def _rebuild_frame_buffer(self, region: Tuple[int, int, int, int]):
         if region is None:
