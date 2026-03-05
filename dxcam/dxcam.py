@@ -1,6 +1,6 @@
 import time
 import ctypes
-from typing import Tuple
+from typing import Optional, Tuple
 from threading import Thread, Event, Lock
 import comtypes
 import numpy as np
@@ -60,6 +60,7 @@ class DXCamera:
 
         self.__frame_count = 0
         self.__capture_start_time = 0
+        self.__latest_frame_time: Optional[float] = None
 
     def grab(self, region: Tuple[int, int, int, int] = None):
         if region is None:
@@ -144,6 +145,11 @@ class DXCamera:
         self.__frame_available.clear()
         self.__stop_capture.clear()
 
+    @property
+    def latest_frame_time(self) -> Optional[float]:
+        with self.__lock:
+            return self.__latest_frame_time
+
     def get_latest_frame(self):
         self.__frame_available.wait()
         with self.__lock:
@@ -173,6 +179,7 @@ class DXCamera:
                         if self.__full:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len
                         self.__head = (self.__head + 1) % self.max_buffer_len
+                        self.__latest_frame_time = self._duplicator.latest_frame_time
                         self.__frame_available.set()
                         self.__frame_count += 1
                         self.__full = self.__head == self.__tail
@@ -184,6 +191,7 @@ class DXCamera:
                         if self.__full:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len
                         self.__head = (self.__head + 1) % self.max_buffer_len
+                        self.__latest_frame_time = self._duplicator.latest_frame_time
                         self.__frame_available.set()
                         self.__frame_count += 1
                         self.__full = self.__head == self.__tail

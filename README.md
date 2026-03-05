@@ -114,11 +114,30 @@ camera = dxcam.create(max_buffer_len=512)
 ***Note:  Right now to consume frames during capturing there is only `get_latest_frame` available which assume the user to process frames in a LIFO pattern. This is a read-only action and won't pop the processed frame from the buffer. we will make changes to support various of consuming pattern soon.***
 
 ### Target FPS
-To make ```DXCamera``` capture close to the user specified ```target_fps```, we used the undocumented ```CREATE_WAITABLE_TIMER_HIGH_RESOLUTION ``` flag to create a Windows [Waitable Timer Object](https://docs.microsoft.com/en-us/windows/win32/sync/waitable-timer-objects). This is far more accurate (+/- 1ms) than Python (<3.11) ```time.sleep``` (min resolution 16ms). The implementation is done through ```ctypes``` creating a perodic timer. Python 3.11 used a similar approach[^2]. 
+To make ```DXCamera``` capture close to the user specified ```target_fps```, DXcam uses a high-resolution timer for precise frame pacing with drift correction.
+
+On **Python 3.11+**, `time.sleep()` internally uses `CreateWaitableTimerExW` with the `CREATE_WAITABLE_TIMER_HIGH_RESOLUTION` flag on Windows[^2], achieving sub-millisecond precision with no manual WinAPI calls.
+
+On **Python < 3.11**, DXcam calls `CreateWaitableTimerExW` with `CREATE_WAITABLE_TIMER_HIGH_RESOLUTION` directly via `ctypes`, then arms it each frame with a fresh negative-value `LARGE_INTEGER` due time (relative, in 100-nanosecond intervals) and waits via `WaitForSingleObject`. This gives the same sub-millisecond resolution on Windows 10 1803+ without relying on the OS scheduler's default ~15ms timer resolution.
+
+In both cases, DXcam tracks an absolute next-tick timestamp per frame to prevent drift accumulation over long capture sessions.
 ```python
 camera.start(target_fps=120)  # Should not be made greater than 160.
 ```
-However, due to Windows itself is a preemptive OS[^1] and the overhead of Python calls, the target FPS can not be guarenteed accurate when greater than 160. (See Benchmarks)
+However, due to Windows itself being a preemptive OS[^1] and the overhead of Python calls, the target FPS cannot be guaranteed accurate when greater than 160. (See Benchmarks)
+
+### Frame Timestamp
+While in capture mode, you can read the timestamp of the most recently captured frame via the `latest_frame_time` property:
+```python
+camera.start(target_fps=60)
+frame = camera.get_latest_frame()
+t = camera.latest_frame_time
+camera.stop()
+```
+
+This value is derived from [`LastPresentTime` in `DXGI_OUTDUPL_FRAME_INFO`](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_2/ns-dxgi1_2-dxgi_outdupl_frame_info) divided by current system performance frequency. The resulting frame time value is in seconds. It can be compared against `time.perf_counter()` since they have the same reference and unit.
+
+This is useful for precise latency measurement or synchronizing captures with other timed events. Returns `None` before any frame is captured.
 
 
 ### Video Mode
