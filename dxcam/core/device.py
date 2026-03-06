@@ -1,18 +1,33 @@
+from __future__ import annotations
+
 import ctypes
 from dataclasses import dataclass
-from typing import List
+from typing import Any, cast
+
 import comtypes
-from dxcam._libs.d3d11 import *
-from dxcam._libs.dxgi import *
+from dxcam._libs.d3d11 import (
+    D3D_FEATURE_LEVEL_10_0,
+    D3D_FEATURE_LEVEL_10_1,
+    D3D_FEATURE_LEVEL_11_0,
+    ID3D11Device,
+    ID3D11DeviceContext,
+)
+from dxcam._libs.dxgi import (
+    DXGI_ADAPTER_DESC1,
+    DXGI_ERROR_NOT_FOUND,
+    IDXGIOutput1,
+)
 
 
 @dataclass
 class Device:
-    adapter: ctypes.POINTER(IDXGIAdapter1)
-    device: ctypes.POINTER(ID3D11Device) = None
-    context: ctypes.POINTER(ID3D11DeviceContext) = None
-    im_context: ctypes.POINTER(ID3D11DeviceContext) = None
-    desc: DXGI_ADAPTER_DESC1 = None
+    """Direct3D11 device wrapper for one DXGI adapter."""
+
+    adapter: Any
+    device: Any = None
+    context: Any = None
+    im_context: Any = None
+    desc: DXGI_ADAPTER_DESC1 | None = None
 
     def __post_init__(self) -> None:
         self.desc = DXGI_ADAPTER_DESC1()
@@ -42,11 +57,12 @@ class Device:
             None,
             ctypes.byref(self.context),
         )
-        self.device.GetImmediateContext(ctypes.byref(self.im_context))
+        device = cast(Any, self.device)
+        device.GetImmediateContext(ctypes.byref(self.im_context))
 
-    def enum_outputs(self) -> List[ctypes.POINTER(IDXGIOutput1)]:
+    def enum_outputs(self) -> list[Any]:
         i = 0
-        p_outputs = []
+        p_outputs: list[Any] = []
         while True:
             try:
                 p_output = ctypes.POINTER(IDXGIOutput1)()
@@ -56,23 +72,26 @@ class Device:
             except comtypes.COMError as ce:
                 if ctypes.c_int32(DXGI_ERROR_NOT_FOUND).value == ce.args[0]:
                     break
-                else:
-                    raise ce
+                raise
         return p_outputs
 
     @property
     def description(self) -> str:
+        assert self.desc is not None
         return self.desc.Description
 
     @property
     def vram_size(self) -> int:
+        assert self.desc is not None
         return self.desc.DedicatedVideoMemory
 
     @property
     def vendor_id(self) -> int:
+        assert self.desc is not None
         return self.desc.VendorId
 
     def __repr__(self) -> str:
+        assert self.desc is not None
         return "<{} Name:{} Dedicated VRAM:{}Mb VendorId:{}>".format(
             self.__class__.__name__,
             self.desc.Description,

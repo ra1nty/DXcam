@@ -1,31 +1,45 @@
+from __future__ import annotations
+
+import logging
 import weakref
 import time
+from typing import Any
+
 from dxcam.dxcam import DXCamera, Output, Device
+from dxcam.types import ColorMode, Region
 from dxcam.util.io import (
     enum_dxgi_adapters,
     get_output_metadata,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class Singleton(type):
+    """Metaclass that allows exactly one instance per class."""
+
     _instances = {}
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         else:
-            print(f"Only 1 instance of {cls.__name__} is allowed.")
+            logger.warning("Only 1 instance of %s is allowed.", cls.__name__)
 
         return cls._instances[cls]
 
 
 class DXFactory(metaclass=Singleton):
+    """Factory that owns device/output discovery and camera singletons."""
 
-    _camera_instances = weakref.WeakValueDictionary()
+    _camera_instances: weakref.WeakValueDictionary[tuple[int, int], DXCamera] = (
+        weakref.WeakValueDictionary()
+    )
 
     def __init__(self) -> None:
         p_adapters = enum_dxgi_adapters()
-        self.devices, self.outputs = [], []
+        self.devices: list[Device] = []
+        self.outputs: list[list[Output]] = []
         for p_adapter in p_adapters:
             device = Device(p_adapter)
             p_outputs = device.enum_outputs()
@@ -37,32 +51,33 @@ class DXFactory(metaclass=Singleton):
     def create(
         self,
         device_idx: int = 0,
-        output_idx: int = None,
-        region: tuple = None,
-        output_color: str = "RGB",
+        output_idx: int | None = None,
+        region: Region | None = None,
+        output_color: ColorMode = "RGB",
         max_buffer_len: int = 64,
-    ):
+    ) -> DXCamera:
         device = self.devices[device_idx]
         if output_idx is None:
             # Select Primary Output
-            output_idx = [
+            primary_output_indices = [
                 idx
                 for idx, metadata in enumerate(
                     self.output_metadata.get(output.devicename)
                     for output in self.outputs[device_idx]
                 )
-                if metadata[1]
-            ][0]
+                if metadata and metadata[1]
+            ]
+            if not primary_output_indices:
+                raise RuntimeError(f"No primary output found for device index {device_idx}")
+            output_idx = primary_output_indices[0]
         instance_key = (device_idx, output_idx)
         if instance_key in self._camera_instances:
-            print(
-                "".join(
-                    (
-                        f"You already created a DXCamera Instance for Device {device_idx}--Output {output_idx}!\n",
-                        "Returning the existed instance...\n",
-                        "To change capture parameters you can manually delete the old object using `del obj`.",
-                    )
-                )
+            logger.warning(
+                "DXCamera instance already exists for device=%s output=%s; "
+                "returning existing instance. Delete the old object with `del obj` "
+                "to recreate it with new parameters.",
+                device_idx,
+                output_idx,
             )
             return self._camera_instances[instance_key]
 
@@ -89,12 +104,14 @@ class DXFactory(metaclass=Singleton):
         ret = ""
         for didx, outputs in enumerate(self.outputs):
             for idx, output in enumerate(outputs):
+                metadata = self.output_metadata.get(output.devicename)
+                is_primary = metadata[1] if metadata else False
                 ret += f"Device[{didx}] Output[{idx}]: "
                 ret += f"Res:{output.resolution} Rot:{output.rotation_angle}"
-                ret += f" Primary:{self.output_metadata.get(output.devicename)[1]}\n"
+                ret += f" Primary:{is_primary}\n"
         return ret
 
-    def clean_up(self):
+    def clean_up(self) -> None:
         for _, camera in self._camera_instances.items():
             camera.release()
 
@@ -104,11 +121,11 @@ __factory = DXFactory()
 
 def create(
     device_idx: int = 0,
-    output_idx: int = None,
-    region: tuple = None,
-    output_color: str = "RGB",
+    output_idx: int | None = None,
+    region: Region | None = None,
+    output_color: ColorMode = "RGB",
     max_buffer_len: int = 64,
-):
+) -> DXCamera:
     return __factory.create(
         device_idx=device_idx,
         output_idx=output_idx,
@@ -118,9 +135,9 @@ def create(
     )
 
 
-def device_info():
+def device_info() -> str:
     return __factory.device_info()
 
 
-def output_info():
+def output_info() -> str:
     return __factory.output_info()

@@ -1,1 +1,1 @@
-from .base import Processor
+from .base import Processor as Processor

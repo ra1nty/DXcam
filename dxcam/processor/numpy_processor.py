@@ -1,19 +1,29 @@
+from __future__ import annotations
+
 import ctypes
+from importlib import import_module
+from typing import Any, Callable
+
 import numpy as np
+from numpy.typing import NDArray
+
+from dxcam.types import ColorMode, Region
 from .base import Processor
 
 
 class NumpyProcessor(Processor):
-    def __init__(self, color_mode):
-        self.cvtcolor = None
+    """NumPy-based frame processor with optional OpenCV color conversion."""
+
+    def __init__(self, color_mode: ColorMode) -> None:
+        self.cvtcolor: Callable[[NDArray[np.uint8]], NDArray[np.uint8]] | None = None
         self.color_mode = color_mode
 
-    def process_cvtcolor(self, image):
-        import cv2
+    def process_cvtcolor(self, image: NDArray[np.uint8]) -> NDArray[np.uint8]:
+        cv2 = import_module("cv2")
 
         # only one time process
         if self.cvtcolor is None:
-            color_mapping = {
+            color_mapping: dict[str, int | None] = {
                 "RGB": cv2.COLOR_BGRA2RGB,
                 "RGBA": cv2.COLOR_BGRA2RGBA,
                 "BGR": cv2.COLOR_BGRA2BGR,
@@ -30,9 +40,17 @@ class NumpyProcessor(Processor):
                     ]
             else:
                 return image
+        assert self.cvtcolor is not None
         return self.cvtcolor(image)
 
-    def process(self, rect, width, height, region, rotation_angle):
+    def process(
+        self,
+        rect: Any,
+        width: int,
+        height: int,
+        region: Region,
+        rotation_angle: int,
+    ) -> NDArray[np.uint8]:
         pitch = int(rect.Pitch)
 
         if rotation_angle in (0, 180):
@@ -46,8 +64,10 @@ class NumpyProcessor(Processor):
             image = np.ndarray((height, pitch, 4), dtype=np.uint8, buffer=buffer)
         elif rotation_angle in (90, 270):
             image = np.ndarray((width, pitch, 4), dtype=np.uint8, buffer=buffer)
+        else:
+            raise ValueError(f"Unsupported rotation angle: {rotation_angle}")
 
-        if not self.color_mode is None:
+        if self.color_mode is not None:
             image = self.process_cvtcolor(image)
 
         if rotation_angle == 90:

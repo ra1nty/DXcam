@@ -19,19 +19,33 @@ Compared to these existed solutions, DXcam provides:
 > ***Contributions are welcome!***
 
 ## Installation
-### From PyPI:
+DXcam now targets Python 3.11+.
+
+### From PyPI (uv):
+```bash
+uv add dxcam
+```
+
+**Note:** OpenCV is required by DXcam for colorspace conversion. If you don't already have OpenCV, install it with `uv add "dxcam[cv2]"`.
+
+### From PyPI (pip):
 ```bash
 pip install dxcam
 ```
 
-**Note:** OpenCV is required by DXcam for colorspace conversion. If you don't already have OpenCV, install it easily with command `pip install dxcam[cv2]`.
-
-### From source:
+### From source (uv):
 ```bash
-pip install --editable .
-
+uv sync
 # for installing OpenCV also
-pip install --editable .[cv2]
+uv sync --extra cv2
+```
+
+### Dev environment (uv + ruff + ty):
+```bash
+uv venv --python 3.11 .venv
+uv sync --dev
+uv run ruff check dxcam
+uv run ty check dxcam
 ```
 
 ## Usage

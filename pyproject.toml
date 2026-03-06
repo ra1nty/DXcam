@@ -1,3 +1,61 @@
 [build-system]
-requires = ["setuptools>=42"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "dxcam"
+version = "0.0.5"
+description = "A Python high-performance screenshot library for Windows using Desktop Duplication API"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "ra1nty" }]
+keywords = ["screen", "screenshot", "screencapture", "screengrab", "windows"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Multimedia :: Graphics :: Capture",
+    "Topic :: Multimedia :: Graphics :: Capture :: Screen Capture",
+]
+dependencies = [
+    "comtypes",
+    "numpy",
+]
+
+[project.optional-dependencies]
+cv2 = ["opencv-python"]
+
+[project.urls]
+Source = "https://github.com/ra1nty/DXcam"
+Tracker = "https://github.com/ra1nty/DXcam/issues"
+
+[tool.setuptools.packages.find]
+include = ["dxcam*"]
+
+[dependency-groups]
+dev = [
+    "opencv-python>=4.13.0.92",
+    "ruff>=0.15.5",
+    "ty>=0.0.21",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+extend-exclude = ["benchmarks"]
+
+[tool.ty.src]
+include = ["dxcam", "examples"]
+exclude = ["benchmarks"]
+
+[tool.ty.analysis]
+allowed-unresolved-imports = ["cv2"]
