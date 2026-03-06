@@ -1,3 +1,8 @@
+### [Unreleased]
+- Removed unnecessary ctypes import in dxcam.py
+- Removed unnecessary formatting in dxcam.py (before DXCamera class)
+- Removed unnecessary "as ce" in try-except block catching COMError
+- Added CONTRIBUTING.md
 ### 0.0.5
 - Fixed black screen for rotated display
 - Added delay on start to prevent black screenshot 

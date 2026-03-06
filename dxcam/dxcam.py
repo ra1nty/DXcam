@@ -1,5 +1,4 @@
 import time
-import ctypes
 from typing import Optional, Tuple
 from threading import Thread, Event, Lock
 import comtypes
@@ -12,7 +11,6 @@ from dxcam.util.timer import (
     wait_for_timer,
     cancel_timer,
 )
-
 
 class DXCamera:
     def __init__(
@@ -103,7 +101,7 @@ class DXCamera:
             try:
                 self._stagesurf.rebuild(output=self._output, device=self._device)
                 self._duplicator = Duplicator(output=self._output, device=self._device)
-            except comtypes.COMError as ce:
+            except comtypes.COMError:
                 continue
             break
 
