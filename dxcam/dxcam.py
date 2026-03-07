@@ -115,6 +115,14 @@ class DXCamera:
         return frame
 
     def _grab_into(self, region: Region, dst: Frame) -> tuple[bool, int, int, int]:
+        """Capture into ``dst`` and return ``(captured, frame_ticks, width, height)``.
+
+        Contract:
+        - ``captured`` is True only when ``dst`` has been fully written with a new frame.
+        - ``captured`` is False with ``width == height == 0`` when no new frame is available.
+        - ``captured`` is False with non-zero ``width``/``height`` when a new frame exists
+          but ``dst`` shape does not match, so caller should rebuild and retry.
+        """
         if not self._duplicator.update_frame():
             self._on_output_change()
             return False, 0, 0, 0
@@ -210,6 +218,44 @@ class DXCamera:
                 continue
             break
 
+    def _allocate_frame_buffer_for_shape(
+        self, frame_height: int, frame_width: int
+    ) -> None:
+        frame_shape = (frame_height, frame_width, self.channel_size)
+        self.__frame_buffer = np.empty(
+            (self.max_buffer_len, *frame_shape), dtype=np.uint8
+        )
+        self.__frame_time_ticks = np.zeros(self.max_buffer_len, dtype=np.int64)
+        self.__head = 0
+        self.__tail = 0
+        self.__full = False
+        self.__has_frame = False
+
+    def _handle_frame_size_change(
+        self, frame_height: int, frame_width: int, region: Region
+    ) -> Region:
+        """Rebuild frame buffers after a source size change.
+
+        Caller must hold ``self.__lock``.
+        """
+        assert self.__frame_buffer is not None
+        logger.info(
+            "Frame size changed from %dx%d to %dx%d; rebuilding frame buffer.",
+            self.__frame_buffer.shape[2],
+            self.__frame_buffer.shape[1],
+            frame_width,
+            frame_height,
+        )
+        self.width, self.height = frame_width, frame_height
+        if not self._region_set_by_user:
+            self.region = (0, 0, self.width, self.height)
+            region = self.region
+        self._rebuild_frame_buffer_for_shape(
+            frame_height=frame_height,
+            frame_width=frame_width,
+        )
+        return region
+
     def start(
         self,
         region: Region | None = None,
@@ -225,15 +271,12 @@ class DXCamera:
             region = self.region
         self._validate_region(region)
         self.is_capturing = True
-        frame_shape = (region[3] - region[1], region[2] - region[0], self.channel_size)
-        self.__frame_buffer = np.empty(
-            (self.max_buffer_len, *frame_shape), dtype=np.uint8
+        frame_height = region[3] - region[1]
+        frame_width = region[2] - region[0]
+        self._allocate_frame_buffer_for_shape(
+            frame_height=frame_height,
+            frame_width=frame_width,
         )
-        self.__frame_time_ticks = np.zeros(self.max_buffer_len, dtype=np.int64)
-        self.__head = 0
-        self.__tail = 0
-        self.__full = False
-        self.__has_frame = False
         self.__frame_available.clear()
         self.__thread = Thread(
             target=self.__capture,
@@ -377,20 +420,10 @@ class DXCamera:
                             frame.shape[0] != self.__frame_buffer.shape[1]
                             or frame.shape[1] != self.__frame_buffer.shape[2]
                         ):
-                            logger.info(
-                                "Frame size changed from %dx%d to %dx%d; rebuilding frame buffer.",
-                                self.__frame_buffer.shape[2],
-                                self.__frame_buffer.shape[1],
-                                frame.shape[1],
-                                frame.shape[0],
-                            )
-                            self.width, self.height = frame.shape[1], frame.shape[0]
-                            if not self._region_set_by_user:
-                                self.region = (0, 0, self.width, self.height)
-                                region = self.region
-                            self._rebuild_frame_buffer_for_shape(
+                            region = self._handle_frame_size_change(
                                 frame_height=frame.shape[0],
                                 frame_width=frame.shape[1],
+                                region=region,
                             )
                         if self.__frame_buffer is None or self.__frame_time_ticks is None:
                             continue
@@ -461,33 +494,21 @@ class DXCamera:
     def _rebuild_frame_buffer(self, region: Region | None) -> None:
         if region is None:
             region = self.region
-        frame_shape = (
-            region[3] - region[1],
-            region[2] - region[0],
-            self.channel_size,
-        )
+        frame_height = region[3] - region[1]
+        frame_width = region[2] - region[0]
         with self.__lock:
-            self.__frame_buffer = np.empty(
-                (self.max_buffer_len, *frame_shape), dtype=np.uint8
+            self._allocate_frame_buffer_for_shape(
+                frame_height=frame_height,
+                frame_width=frame_width,
             )
-            self.__frame_time_ticks = np.zeros(self.max_buffer_len, dtype=np.int64)
-            self.__head = 0
-            self.__tail = 0
-            self.__full = False
-            self.__has_frame = False
 
     def _rebuild_frame_buffer_for_shape(
         self, frame_height: int, frame_width: int
     ) -> None:
-        frame_shape = (frame_height, frame_width, self.channel_size)
-        self.__frame_buffer = np.empty(
-            (self.max_buffer_len, *frame_shape), dtype=np.uint8
+        self._allocate_frame_buffer_for_shape(
+            frame_height=frame_height,
+            frame_width=frame_width,
         )
-        self.__frame_time_ticks = np.zeros(self.max_buffer_len, dtype=np.int64)
-        self.__head = 0
-        self.__tail = 0
-        self.__full = False
-        self.__has_frame = False
 
     def _region_to_memory_region(self, region: Region) -> Region:
         if self.rotation_angle == 0:
