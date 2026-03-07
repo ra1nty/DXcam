@@ -1,3 +1,11 @@
+### 0.1.0
+- Switched frame transfer from full-surface CopyResource to region-aware CopySubresourceRegion
+- Made IDXGIOutput5.DuplicateOutput1 the default capture path, with env-var fallback to legacy DuplicateOutput.
+- Added explicit DXGI access-lost/session-disconnect handling with safe recovery
+- Reduced capture-thread lock hold time
+- Optimized NumPy/OpenCV processing
+- Added per-frame DXGI timestamp tracking and optional timestamp return
+- Optimized timer pacing
 ### 0.0.5
 - Fixed black screen for rotated display
 - Added delay on start to prevent black screenshot 

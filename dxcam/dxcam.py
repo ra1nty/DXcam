@@ -164,6 +164,7 @@ class DXCamera:
             0,
             ctypes.byref(self._source_region),
         )
+        self._duplicator.release_frame()  #  See remarks in release_frame
         return region[2] - region[0], region[3] - region[1]
 
     def _process_staging_frame(self, frame_width: int, frame_height: int) -> Frame:
@@ -355,7 +356,9 @@ class DXCamera:
             return frame
 
     @overload
-    def get_latest_frame_view(self, with_timestamp: Literal[False] = False) -> Frame | None: ...
+    def get_latest_frame_view(
+        self, with_timestamp: Literal[False] = False
+    ) -> Frame | None: ...
 
     @overload
     def get_latest_frame_view(
@@ -397,7 +400,10 @@ class DXCamera:
                 )
                 if captured:
                     with self.__lock:
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         if self.__full:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len
@@ -414,7 +420,10 @@ class DXCamera:
                         frame_height=frame_height,
                     )
                     with self.__lock:
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         if (
                             frame.shape[0] != self.__frame_buffer.shape[1]
@@ -425,14 +434,20 @@ class DXCamera:
                                 frame_width=frame.shape[1],
                                 region=region,
                             )
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         write_idx = self.__head
                         write_slot = self.__frame_buffer[write_idx]
                         advance_tail = self.__full
                     np.copyto(write_slot, frame)
                     with self.__lock:
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         if advance_tail:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len
@@ -445,7 +460,10 @@ class DXCamera:
                         self.__has_frame = True
                 elif video_mode and self.__has_frame:
                     with self.__lock:
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         write_idx = self.__head
                         previous_idx = (self.__head - 1) % self.max_buffer_len
@@ -455,7 +473,10 @@ class DXCamera:
                         advance_tail = self.__full
                     np.copyto(write_slot, src_slot)
                     with self.__lock:
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         if advance_tail:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len

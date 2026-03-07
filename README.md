@@ -1,46 +1,43 @@
 # **DXcam**
-> ***Fastest Python Screenshot for Windows***
+> ***Fast Python Screen Capture for Windows - Updated 2026***
+
 ```python
 import dxcam
+
 camera = dxcam.create()
-camera.grab()
+frame = camera.grab()
 ```
 
 ## Introduction
-DXcam is a Python high-performance screenshot library for Windows using Desktop Duplication API. Capable of 240Hz+ capturing. It was originally built as a part of deep learning pipeline for FPS games to perform better than existed python solutions ([python-mss](https://github.com/BoboTiG/python-mss), [D3DShot](https://github.com/SerpentAI/D3DShot/)). 
+DXcam is a high-performance python screenshot and capture library for Windows based on the Desktop Duplication API.
+It is designed for low-latency, high-FPS capture pipelines (including full-screen Direct3D applications).
 
-Compared to these existed solutions, DXcam provides:
-- Way faster screen capturing speed (> 240Hz)
-- Capturing of Direct3D exclusive full-screen application without interrupting, even when alt+tab.
-- Automatic handling of scaled / stretched resolution.
-- Accurate FPS targeting when in capturing mode, makes it suitable for Video output. 
-- Seamless integration with NumPy, OpenCV, PyTorch, etc.
-
-> ***Contributions are welcome!***
+Compared with common Python alternatives, DXcam focuses on:
+- Higher capture throughput
+- Stable capture for full-screen exclusive Direct3D apps
+- Correct handling of scaled/stretched outputs
+- Better FPS pacing for continuous/video capture
 
 ## Installation
-DXcam now targets Python 3.11+.
-
-### From PyPI (uv):
+### From PyPI (pip)
+Recommended (with OpenCV):
 ```bash
-uv add dxcam
+pip install "dxcam[cv2]"
 ```
 
-**Note:** OpenCV is required by DXcam for colorspace conversion. If you don't already have OpenCV, install it with `uv add "dxcam[cv2]"`.
-
-### From PyPI (pip):
+Minimal install:
 ```bash
 pip install dxcam
 ```
 
-### From source (uv):
+### From source (uv)
 ```bash
 uv sync
-# for installing OpenCV also
+# include OpenCV
 uv sync --extra cv2
 ```
 
-### Dev environment (uv + ruff + ty):
+### Dev environment (uv + ruff + ty)
 ```bash
 uv venv --python 3.11 .venv
 uv sync --dev
@@ -49,50 +46,46 @@ uv run ty check dxcam
 ```
 
 ## Usage
-In DXCam, each output (monitor) is asscociated to a ```DXCamera``` instance.
-To create a DXCamera instance:
+Each output (monitor) is associated with one `DXCamera` instance.
+
 ```python
 import dxcam
-camera = dxcam.create()  # returns a DXCamera instance on primary monitor
+camera = dxcam.create()  # primary output on device 0
 ```
+
 ### Screenshot
-For screenshot, simply use ```.grab```:
 ```python
 frame = camera.grab()
 ```
-The returned ```frame``` will be a ```numpy.ndarray``` in the shape of ```(Height,  Width, 3[RGB])```. This is the default and the only supported format (**for now**). It is worth noting that ```.grab``` will return ```None``` if there is no new frame since the last time you called ```.grab```. Usually it means there's nothing new to render since last time (E.g. You are idling).
 
-To view the captured screenshot:
-```python
-from PIL import Image
-Image.fromarray(frame).show()
-```
-To screenshot a specific region, use the ```region``` parameter: it takes ```tuple[int, int, int, int]``` as the left, top, right, bottom coordinates of the bounding box. Similar to [PIL.ImageGrab.grab](https://pillow.readthedocs.io/en/stable/reference/ImageGrab.html).
+`grab()` returns a `numpy.ndarray`. `None` if no new frame is available since the last capture.
+
+To capture a region:
 ```python
 left, top = (1920 - 640) // 2, (1080 - 640) // 2
 right, bottom = left + 640, top + 640
-region = (left, top, right, bottom)
-frame = camera.grab(region=region)  # numpy.ndarray of size (640x640x3) -> (HXWXC)
+frame = camera.grab(region=(left, top, right, bottom)) # numpy.ndarray of size (640x640x3) -> (HXWXC)
 ```
-The above code will take a screenshot of the center ```640x640``` portion of a ```1920x1080``` monitor.
+
 ### Screen Capture
-To start a screen capture, simply use ```.start```: the capture will be started in a separated thread, default at 60Hz. Use ```.stop``` to stop the capture.
 ```python
-camera.start(region=(left, top, right, bottom))  # Optional argument to capture a region
+camera.start(region=(left, top, right, bottom), target_fps=60)
 camera.is_capturing  # True
-# ... Do Something
+# ...
 camera.stop()
 camera.is_capturing  # False
 ```
-### Consume the Screen Capture Data
-While the ```DXCamera``` instance is in capture mode, you can use ```.get_latest_frame``` to get the latest frame in the frame buffer:
+
+#### Consume the Screen Capture Data
 ```python
-camera.start()
-for i in range(1000):
-    image = camera.get_latest_frame()  # Will block until new frame available
-camera.stop()
+for _ in range(1000):
+    frame = camera.get_latest_frame()  # blocks until a frame is available
 ```
-Notice that ```.get_latest_frame``` by default will block until there is a new frame available since the last call to ```.get_latest_frame```. To change this behavior, use ```video_mode=True```.
+>The screen capture mode spins up a thread polling the rendered new frames and store in an in-memory frame buffer. The blocking / video_mode behavior is designed with downstream video recording / machine learning applications in mind. 
+
+Useful variants:
+- `camera.get_latest_frame(with_timestamp=True)` -> `(frame, frame_timestamp)` -> return frame timestamp
+- `camera.get_latest_frame_view()` -> zero-copy view into the frame buffer
 
 ## Advanced Usage and Remarks
 ### Multiple monitors / GPUs
@@ -100,129 +93,111 @@ Notice that ```.get_latest_frame``` by default will block until there is a new f
 cam1 = dxcam.create(device_idx=0, output_idx=0)
 cam2 = dxcam.create(device_idx=0, output_idx=1)
 cam3 = dxcam.create(device_idx=1, output_idx=1)
+
 img1 = cam1.grab()
 img2 = cam2.grab()
-img2 = cam3.grab()
+img3 = cam3.grab()
 ```
-The above code creates three ```DXCamera``` instances for: ```[monitor0, GPU0], [monitor1, GPU0], [monitor1, GPU1]```, and subsequently takes three full-screen screenshots. (cross GPU untested, but I hope it works.) To get a complete list of devices and outputs:
+
+Inspect available devices/outputs:
 ```pycon
 >>> import dxcam
->>> dxcam.device_info()
+>>> print(dxcam.device_info())
 'Device[0]:<Device Name:NVIDIA GeForce RTX 3090 Dedicated VRAM:24348Mb VendorId:4318>\n'
->>> dxcam.output_info()
+>>> print(dxcam.output_info())
 'Device[0] Output[0]: Res:(1920, 1080) Rot:0 Primary:True\nDevice[0] Output[1]: Res:(1920, 1080) Rot:0 Primary:False\n'
 ```
 
 ### Output Format
-You can specify the output color mode upon creation of the DXCamera instance:
+Set output color mode when creating the camera:
 ```python
-dxcam.create(output_idx=0, output_color="BGRA")
+dxcam.create(output_color="BGRA")
 ```
-We currently support "RGB", "RGBA", "BGR", "BGRA", "GRAY", with "GRAY being the gray scale. As for the data format, ```DXCamera``` only supports ```numpy.ndarray```  in shape of ```(Height, Width, Channels)``` right now. ***We will soon add support for other output formats.***
 
-### Video Buffer
-The captured frames will be insert into a fixed-size ring buffer, and when the buffer is full the newest frame will replace the oldest frame. You can specify the max buffer length (defualt to 64) using the argument ```max_buffer_len``` upon creation of the ```DXCamera``` instance. 
+Supported modes: `"RGB"`, `"RGBA"`, `"BGR"`, `"BGRA"`, `"GRAY"`.
+
+Notes:
+- Data is returned as `numpy.ndarray`.
+- `BGRA` does not require OpenCV.
+- Other color modes conversion require OpenCV (`dxcam[cv2]`).
+
+### Frame Buffer
+DXcam uses a fixed-size ring buffer in-memory. New frames overwrite old frames when full.
+
 ```python
-camera = dxcam.create(max_buffer_len=512)
+camera = dxcam.create(max_buffer_len=120)  # default is 8
 ```
-***Note:  Right now to consume frames during capturing there is only `get_latest_frame` available which assume the user to process frames in a LIFO pattern. This is a read-only action and won't pop the processed frame from the buffer. we will make changes to support various of consuming pattern soon.***
 
 ### Target FPS
-To make ```DXCamera``` capture close to the user specified ```target_fps```, DXcam uses a high-resolution timer for precise frame pacing with drift correction.
+DXcam uses high-resolution pacing with drift correction to run near `target_fps`.
 
-On **Python 3.11+**, `time.sleep()` internally uses `CreateWaitableTimerExW` with the `CREATE_WAITABLE_TIMER_HIGH_RESOLUTION` flag on Windows[^2], achieving sub-millisecond precision with no manual WinAPI calls.
-
-On **Python < 3.11**, DXcam calls `CreateWaitableTimerExW` with `CREATE_WAITABLE_TIMER_HIGH_RESOLUTION` directly via `ctypes`, then arms it each frame with a fresh negative-value `LARGE_INTEGER` due time (relative, in 100-nanosecond intervals) and waits via `WaitForSingleObject`. This gives the same sub-millisecond resolution on Windows 10 1803+ without relying on the OS scheduler's default ~15ms timer resolution.
-
-In both cases, DXcam tracks an absolute next-tick timestamp per frame to prevent drift accumulation over long capture sessions.
 ```python
-camera.start(target_fps=120)  # Should not be made greater than 160.
+camera.start(target_fps=120)  # default to 60, greater than 120 is resource heavy
 ```
-However, due to Windows itself being a preemptive OS[^1] and the overhead of Python calls, the target FPS cannot be guaranteed accurate when greater than 160. (See Benchmarks)
+
+On Python 3.11+, DXcam relies on Windows high-resolution timer behavior used by `time.sleep()`.
+On older versions, DXcam uses WinAPI waitable timers directly.
 
 ### Frame Timestamp
-While in capture mode, you can read the timestamp of the most recently captured frame via the `latest_frame_time` property:
+Read the most recent frame timestamp (seconds):
 ```python
 camera.start(target_fps=60)
-frame = camera.get_latest_frame()
-t = camera.latest_frame_time
+frame, ts = camera.get_latest_frame(with_timestamp=True)
 camera.stop()
 ```
 
-This value is derived from [`LastPresentTime` in `DXGI_OUTDUPL_FRAME_INFO`](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_2/ns-dxgi1_2-dxgi_outdupl_frame_info) divided by current system performance frequency. The resulting frame time value is in seconds. It can be compared against `time.perf_counter()` since they have the same reference and unit.
-
-This is useful for precise latency measurement or synchronizing captures with other timed events. Returns `None` before any frame is captured.
-
+This value is directly from `DXGI_OUTDUPL_FRAME_INFO.LastPresentTime`, which can be used to calculate PTS / achieve VFR in video capture.
 
 ### Video Mode
-The default behavior of ```.get_latest_frame``` only put newly rendered frame in the buffer, which suits the usage scenario of a object detection/machine learning pipeline. However, when recording a video that is not ideal since we aim to get the frames at a constant framerate: When the ```video_mode=True``` is specified when calling ```.start``` method of a ```DXCamera``` instance, the frame buffer will be feeded at the target fps, using the last frame if there is no new frame available. For example, the following code output a 5-second, 120Hz screen capture:
+With `video_mode=True`, DXcam fills the buffer at target FPS, reusing the previous frame if needed, even if no new frame is rendered.
+
 ```python
-target_fps = 120
-camera = dxcam.create(output_idx=0, output_color="BGR")
+import cv2
+import dxcam
+
+target_fps = 30
+camera = dxcam.create(output_color="BGR")
 camera.start(target_fps=target_fps, video_mode=True)
+
 writer = cv2.VideoWriter(
     "video.mp4", cv2.VideoWriter_fourcc(*"mp4v"), target_fps, (1920, 1080)
 )
-for i in range(600):
+for _ in range(600):
     writer.write(camera.get_latest_frame())
+
 camera.stop()
 writer.release()
 ```
-> You can do interesting stuff with libraries like ```pyav``` and ```pynput```: see examples/instant_replay.py for a ghetto implementation of instant replay using hot-keys
 
+### Safely Releasing Resources
+`release()` stops capture, frees buffers, and releases DXGI resources.
+After `release()`, the same instance cannot be reused.
 
-### Safely Releasing of Resource
-Upon calling ```.release``` on a DXCamera instance, it will stop any active capturing, free the buffer and release the duplicator and staging resource. Upon calling ```.stop()```, DXCamera will stop the active capture and free the frame buffer. If you want to manually recreate a ```DXCamera``` instance on the same output with different parameters, you can also manully delete it:
 ```python
-camera1 = dxcam.create(output_idx=0, output_color="BGR")
-camera2 = dxcam.create(output_idx=0)  # Not allowed, camera1 will be returned
-camera1 is camera2  # True
-del camera1
-del camera2
-camera2 = dxcam.create(output_idx=0)  # Allowed
+camera = dxcam.create(output_idx=0, output_color="BGR")
+camera.release()
+# camera.start()  # raises RuntimeError
 ```
 
 ## Benchmarks
-### For Max FPS Capability:
-```python
-start_time, fps = time.perf_counter(), 0
-cam = dxcam.create()
-start = time.perf_counter()
-while fps < 1000:
-    frame = cam.grab()
-    if frame is not None:  # New frame
-        fps += 1
-end_time = time.perf_counter() - start_time
-print(f"{title}: {fps/end_time}")
-```
-When using a similar logistic (only captured new frame counts), ```DXCam, python-mss, D3DShot``` benchmarked as follow:
+When using a similar logic (only captured newly rendered frames), ```DXCam, python-mss, D3DShot``` benchmarked as follow:
 
 |             | DXcam  | python-mss | D3DShot |
 |-------------|--------|------------|---------|
-| Average FPS | 238.79 :checkered_flag: | 75.87      | 118.36  |
+| Average FPS | 239.19 :checkered_flag: | 75.87      | 118.36  |
 | Std Dev     | 1.25   | 0.5447     | 0.3224   |
 
-The benchmark is across 5 runs, with a light-moderate usage on my PC (5900X + 3090; Chrome ~30tabs, VS Code opened, etc.), I used the [Blur Buster UFO test](https://www.testufo.com/framerates#count=5&background=stars&pps=960) to constantly render 240 fps on my monitor (Zowie 2546K). DXcam captured almost every frame rendered.
+The benchmark is across 5 runs, with a light-moderate usage on my PC (5900X + 3090; Chrome ~30tabs, VS Code opened, etc.), I used the [Blur Buster UFO test](https://www.testufo.com/framerates#count=5&background=stars&pps=960) to constantly render 240 fps on my monitor (Zowie 2546K). DXcam captured almost every frame rendered. You will see some benchmarks online claiming 1000+fps capture while most of them is busy-spinning a for loop on a staled frame (no new frame rendered on screen in test scenario).
 
 ### For Targeting FPS:
-```python
-camera = dxcam.create(output_idx=0)
-camera.start(target_fps=60)
-for i in range(1000):
-    image = camera.get_latest_frame()
-camera.stop()
-```
 |   (Target)\\(mean,std)          | DXcam  | python-mss | D3DShot |
 |-------------  |--------                 |------------|---------|
 | 60fps         | 61.71, 0.26 :checkered_flag: | N/A     | 47.11, 1.33  |
 | 30fps         | 30.08, 0.02 :checkered_flag:  | N/A     | 21.24, 0.17  |
 
+
 ## Work Referenced
+
+[OBS Studio](https://github.com/obsproject/obs-studio) - implementation ideas and references.
+
 [D3DShot](https://github.com/SerpentAI/D3DShot/) : DXcam borrows the ctypes header directly from the no-longer maintained D3DShot.
-
-[OBS Studio](https://github.com/obsproject/obs-studio) : Learned a lot from it.
-
-
-[^1]: <https://en.wikipedia.org/wiki/Preemption_(computing)> Preemption (computing)
-
-[^2]: <https://github.com/python/cpython/issues/65501> bpo-21302: time.sleep() uses waitable timer on Windows
