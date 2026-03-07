@@ -1,49 +1,52 @@
+from __future__ import annotations
+
 import ctypes
-from typing import List
 from collections import defaultdict
+from typing import Any, cast
+
 import comtypes
 from dxcam._libs.dxgi import (
-    IDXGIFactory1,
-    IDXGIAdapter1,
-    IDXGIOutput1,
     DXGI_ERROR_NOT_FOUND,
+    IDXGIAdapter1,
+    IDXGIFactory1,
+    IDXGIOutput1,
 )
 from dxcam._libs.user32 import (
     DISPLAY_DEVICE,
-    MONITORINFOEXW,
     DISPLAY_DEVICE_ACTIVE,
     DISPLAY_DEVICE_PRIMARY_DEVICE,
+    MONITORINFOEXW,
 )
 
 
-def enum_dxgi_adapters() -> List[ctypes.POINTER(IDXGIAdapter1)]:
+def enum_dxgi_adapters() -> list[Any]:
     create_dxgi_factory = ctypes.windll.dxgi.CreateDXGIFactory1
     create_dxgi_factory.argtypes = (comtypes.GUID, ctypes.POINTER(ctypes.c_void_p))
     create_dxgi_factory.restype = ctypes.c_int32
     pfactory = ctypes.c_void_p(0)
     create_dxgi_factory(IDXGIFactory1._iid_, ctypes.byref(pfactory))
-    dxgi_factory = ctypes.POINTER(IDXGIFactory1)(pfactory.value)
+    dxgi_factory = ctypes.cast(pfactory, ctypes.POINTER(IDXGIFactory1))
+    factory = cast(Any, dxgi_factory)
     i = 0
-    p_adapters = list()
+    p_adapters: list[Any] = []
     while True:
         try:
             p_adapter = ctypes.POINTER(IDXGIAdapter1)()
-            dxgi_factory.EnumAdapters1(i, ctypes.byref(p_adapter))
+            factory.EnumAdapters1(i, ctypes.byref(p_adapter))
             p_adapters.append(p_adapter)
             i += 1
         except comtypes.COMError as ce:
             if ctypes.c_int32(DXGI_ERROR_NOT_FOUND).value == ce.args[0]:
                 break
-            else:
-                raise ce
+            raise
     return p_adapters
 
 
 def enum_dxgi_outputs(
-    dxgi_adapter: ctypes.POINTER(IDXGIAdapter1),
-) -> List[ctypes.POINTER(IDXGIOutput1)]:
+    dxgi_adapter: Any,
+) -> list[Any]:
     i = 0
-    p_outputs = list()
+    p_outputs: list[Any] = []
     while True:
         try:
             p_output = ctypes.POINTER(IDXGIOutput1)()
@@ -53,13 +56,12 @@ def enum_dxgi_outputs(
         except comtypes.COMError as ce:
             if ctypes.c_int32(DXGI_ERROR_NOT_FOUND).value == ce.args[0]:
                 break
-            else:
-                raise ce
+            raise
     return p_outputs
 
 
-def get_output_metadata():
-    mapping_adapter = defaultdict(list)
+def get_output_metadata() -> dict[str, list[Any]]:
+    mapping_adapter: dict[str, list[Any]] = defaultdict(list)
     adapter = DISPLAY_DEVICE()
     adapter.cb = ctypes.sizeof(adapter)
     i = 0
@@ -83,10 +85,10 @@ def get_output_metadata():
                 )
                 j += 1
         i += 1
-    return mapping_adapter
+    return dict(mapping_adapter)
 
 
-def get_monitor_name_by_handle(hmonitor):
+def get_monitor_name_by_handle(hmonitor: Any) -> MONITORINFOEXW | None:
     info = MONITORINFOEXW()
     info.cbSize = ctypes.sizeof(MONITORINFOEXW)
     if ctypes.windll.user32.GetMonitorInfoW(hmonitor, ctypes.byref(info)):

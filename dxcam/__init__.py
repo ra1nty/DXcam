@@ -1,31 +1,55 @@
-import weakref
+from __future__ import annotations
+
+import logging
+import signal
 import time
+import weakref
+from types import FrameType
+from typing import Any, Callable, cast
+
 from dxcam.dxcam import DXCamera, Output, Device
+from dxcam.types import ColorMode, Region
 from dxcam.util.io import (
     enum_dxgi_adapters,
     get_output_metadata,
 )
 
+logger = logging.getLogger(__name__)
+_sigterm_handler_installed = False
+_previous_sigterm_handler: int | Callable[[int, FrameType | None], Any] | None = None
+
+
+def _configure_comtypes_logging() -> None:
+    # Suppress noisy per-frame COM Release debug logs from comtypes internals.
+    logging.getLogger("comtypes").setLevel(logging.INFO)
+    logging.getLogger("comtypes._post_coinit.unknwn").setLevel(logging.INFO)
+
 
 class Singleton(type):
+    """Metaclass that allows exactly one instance per class."""
+
     _instances = {}
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         else:
-            print(f"Only 1 instance of {cls.__name__} is allowed.")
+            logger.warning("Only 1 instance of %s is allowed.", cls.__name__)
 
         return cls._instances[cls]
 
 
 class DXFactory(metaclass=Singleton):
+    """Factory that owns device/output discovery and camera singletons."""
 
-    _camera_instances = weakref.WeakValueDictionary()
+    _camera_instances: weakref.WeakValueDictionary[tuple[int, int], DXCamera] = (
+        weakref.WeakValueDictionary()
+    )
 
     def __init__(self) -> None:
         p_adapters = enum_dxgi_adapters()
-        self.devices, self.outputs = [], []
+        self.devices: list[Device] = []
+        self.outputs: list[list[Output]] = []
         for p_adapter in p_adapters:
             device = Device(p_adapter)
             p_outputs = device.enum_outputs()
@@ -37,34 +61,44 @@ class DXFactory(metaclass=Singleton):
     def create(
         self,
         device_idx: int = 0,
-        output_idx: int = None,
-        region: tuple = None,
-        output_color: str = "RGB",
+        output_idx: int | None = None,
+        region: Region | None = None,
+        output_color: ColorMode = "RGB",
         max_buffer_len: int = 64,
-    ):
+    ) -> DXCamera:
         device = self.devices[device_idx]
         if output_idx is None:
             # Select Primary Output
-            output_idx = [
+            primary_output_indices = [
                 idx
                 for idx, metadata in enumerate(
                     self.output_metadata.get(output.devicename)
                     for output in self.outputs[device_idx]
                 )
-                if metadata[1]
-            ][0]
+                if metadata and metadata[1]
+            ]
+            if not primary_output_indices:
+                raise RuntimeError(f"No primary output found for device index {device_idx}")
+            output_idx = primary_output_indices[0]
         instance_key = (device_idx, output_idx)
-        if instance_key in self._camera_instances:
-            print(
-                "".join(
-                    (
-                        f"You already created a DXCamera Instance for Device {device_idx}--Output {output_idx}!\n",
-                        "Returning the existed instance...\n",
-                        "To change capture parameters you can manually delete the old object using `del obj`.",
-                    )
-                )
+        existing_camera = self._camera_instances.get(instance_key)
+        if existing_camera is not None and existing_camera.is_released:
+            logger.info(
+                "Dropping released DXCamera instance for device=%s output=%s.",
+                device_idx,
+                output_idx,
             )
-            return self._camera_instances[instance_key]
+            del self._camera_instances[instance_key]
+            existing_camera = None
+        if existing_camera is not None:
+            logger.warning(
+                "DXCamera instance already exists for device=%s output=%s; "
+                "returning existing instance. Delete the old object with `del obj` "
+                "to recreate it with new parameters.",
+                device_idx,
+                output_idx,
+            )
+            return existing_camera
 
         output = self.outputs[device_idx][output_idx]
         output.update_desc()
@@ -89,26 +123,63 @@ class DXFactory(metaclass=Singleton):
         ret = ""
         for didx, outputs in enumerate(self.outputs):
             for idx, output in enumerate(outputs):
+                metadata = self.output_metadata.get(output.devicename)
+                is_primary = metadata[1] if metadata else False
                 ret += f"Device[{didx}] Output[{idx}]: "
                 ret += f"Res:{output.resolution} Rot:{output.rotation_angle}"
-                ret += f" Primary:{self.output_metadata.get(output.devicename)[1]}\n"
+                ret += f" Primary:{is_primary}\n"
         return ret
 
-    def clean_up(self):
-        for _, camera in self._camera_instances.items():
+    def clean_up(self) -> None:
+        for _, camera in list(self._camera_instances.items()):
             camera.release()
 
 
 __factory = DXFactory()
+_configure_comtypes_logging()
+
+
+def _handle_sigterm(signum: int, frame: FrameType | None) -> None:
+    logger.info("Received SIGTERM; releasing active DXCamera instances.")
+    try:
+        __factory.clean_up()
+    except Exception:
+        logger.exception("Failed during DXCamera SIGTERM cleanup.")
+
+    previous = _previous_sigterm_handler
+    if previous is None or previous is signal.SIG_IGN:
+        return
+    if previous is signal.SIG_DFL:
+        raise SystemExit(128 + signum)
+    if callable(previous):
+        handler = cast(Callable[[int, FrameType | None], Any], previous)
+        handler(signum, frame)
+
+
+def _install_sigterm_handler() -> None:
+    global _sigterm_handler_installed
+    global _previous_sigterm_handler
+
+    if _sigterm_handler_installed:
+        return
+    try:
+        _previous_sigterm_handler = signal.getsignal(signal.SIGTERM)
+        signal.signal(signal.SIGTERM, _handle_sigterm)
+        _sigterm_handler_installed = True
+    except (ValueError, AttributeError):
+        # ValueError: called outside the main thread.
+        # AttributeError: platform/runtime without SIGTERM.
+        logger.debug("SIGTERM handler was not installed.", exc_info=True)
 
 
 def create(
     device_idx: int = 0,
-    output_idx: int = None,
-    region: tuple = None,
-    output_color: str = "RGB",
+    output_idx: int | None = None,
+    region: Region | None = None,
+    output_color: ColorMode = "RGB",
     max_buffer_len: int = 64,
-):
+) -> DXCamera:
+    _install_sigterm_handler()
     return __factory.create(
         device_idx=device_idx,
         output_idx=output_idx,
@@ -118,9 +189,9 @@ def create(
     )
 
 
-def device_info():
+def device_info() -> str:
     return __factory.device_info()
 
 
-def output_info():
+def output_info() -> str:
     return __factory.output_info()

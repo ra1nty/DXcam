@@ -1,31 +1,124 @@
+from __future__ import annotations
+
 import ctypes
-from dataclasses import dataclass, InitVar
-from dxcam._libs.d3d11 import *
-from dxcam._libs.dxgi import *
+import logging
+import os
+from dataclasses import InitVar, dataclass, field
+from typing import Any, cast
+
+import comtypes
+
+from dxcam._libs.d3d11 import DXGI_FORMAT_B8G8R8A8_UNORM, ID3D11Texture2D
+from dxcam._libs.dxgi import (
+    DXGI_OUTDUPL_FLAG_NONE,
+    DXGI_ERROR_ACCESS_LOST,
+    DXGI_ERROR_SESSION_DISCONNECTED,
+    DXGI_ERROR_WAIT_TIMEOUT,
+    DXGI_OUTDUPL_FRAME_INFO,
+    IDXGIOutputDuplication,
+    IDXGIOutput5,
+    IDXGIResource,
+)
 from dxcam.core.device import Device
 from dxcam.core.output import Output
+
+logger = logging.getLogger(__name__)
+ENABLE_DUPLICATE_OUTPUT1 = os.getenv("DXCAM_USE_DUPLICATE_OUTPUT1", "1").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+DXGI_ERROR_ACCESS_LOST_U32 = ctypes.c_uint32(DXGI_ERROR_ACCESS_LOST).value
+DXGI_ERROR_SESSION_DISCONNECTED_U32 = ctypes.c_uint32(
+    DXGI_ERROR_SESSION_DISCONNECTED
+).value
+DXGI_ERROR_WAIT_TIMEOUT_U32 = ctypes.c_uint32(DXGI_ERROR_WAIT_TIMEOUT).value
+
+
+def _com_error_hresult_u32(error: comtypes.COMError) -> int:
+    hresult = getattr(error, "hresult", None)
+    if hresult is None and len(error.args) > 0:
+        hresult = error.args[0]
+    if hresult is None:
+        return 0
+    return ctypes.c_uint32(int(hresult)).value
+
+
+def _is_access_lost_style_hresult_u32(hresult_u32: int) -> bool:
+    return hresult_u32 in (
+        DXGI_ERROR_ACCESS_LOST_U32,
+        DXGI_ERROR_SESSION_DISCONNECTED_U32,
+    )
 
 
 @dataclass
 class Duplicator:
-    texture: ctypes.POINTER(ID3D11Texture2D) = ctypes.POINTER(ID3D11Texture2D)()
-    duplicator: ctypes.POINTER(IDXGIOutputDuplication) = None
+    """Desktop Duplication API wrapper for acquiring frame textures."""
+
+    texture: Any = field(default_factory=lambda: ctypes.POINTER(ID3D11Texture2D)())
+    duplicator: Any = None
     updated: bool = False
-    output: InitVar[Output] = None
-    device: InitVar[Device] = None
-    latest_frame_time: float = 0.0
+    output: InitVar[Output | None] = None
+    device: InitVar[Device | None] = None
+    latest_frame_ticks: int = 0
     # ticks per second of the system
     performance_frequency: int = 0
+    _frame_held: bool = False
 
-    def __post_init__(self, output: Output, device: Device) -> None:
+    def __post_init__(self, output: Output | None, device: Device | None) -> None:
+        if output is None or device is None:
+            raise ValueError("Duplicator requires valid output and device instances.")
         self.duplicator = ctypes.POINTER(IDXGIOutputDuplication)()
-        output.output.DuplicateOutput(device.device, ctypes.byref(self.duplicator))
+        self._duplicate_output(output=output, device=device)
         freq = ctypes.c_longlong()
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel32.QueryPerformanceFrequency(ctypes.byref(freq))
         self.performance_frequency = freq.value
 
-    def update_frame(self):
+    def _duplicate_output(self, output: Output, device: Device) -> None:
+        output_ptr = output.output
+        if ENABLE_DUPLICATE_OUTPUT1 and self._try_duplicate_output1(
+            output_ptr=output_ptr, device=device
+        ):
+            return
+        if not ENABLE_DUPLICATE_OUTPUT1:
+            logger.debug(
+                "Using legacy IDXGIOutput1.DuplicateOutput. "
+                "Set DXCAM_USE_DUPLICATE_OUTPUT1=1 to enable DuplicateOutput1."
+            )
+        output_ptr.DuplicateOutput(device.device, ctypes.byref(self.duplicator))
+
+    def _try_duplicate_output1(self, output_ptr: Any, device: Device) -> bool:
+        try:
+            output5 = output_ptr.QueryInterface(IDXGIOutput5)
+        except comtypes.COMError:
+            return False
+
+        supported_formats = (ctypes.c_uint * 1)(DXGI_FORMAT_B8G8R8A8_UNORM)
+        try:
+            output5.DuplicateOutput1(
+                ctypes.cast(device.device, ctypes.c_void_p),
+                DXGI_OUTDUPL_FLAG_NONE,
+                len(supported_formats),
+                supported_formats,
+                ctypes.byref(self.duplicator),
+            )
+            logger.debug("Using IDXGIOutput5.DuplicateOutput1 for capture.")
+            return True
+        except comtypes.COMError:
+            logger.debug(
+                "DuplicateOutput1 failed; falling back to IDXGIOutput1.DuplicateOutput.",
+                exc_info=True,
+            )
+            self.duplicator = ctypes.POINTER(IDXGIOutputDuplication)()
+            return False
+
+    def update_frame(self) -> bool:
+        if self._frame_held:
+            if not self.release_frame():
+                self.updated = False
+                return False
+
         info = DXGI_OUTDUPL_FRAME_INFO()
         res = ctypes.POINTER(IDXGIResource)()
         try:
@@ -35,27 +128,75 @@ class Duplicator:
                 ctypes.byref(res),
             )
         except comtypes.COMError as ce:
-            if ctypes.c_int32(DXGI_ERROR_ACCESS_LOST).value == ce.args[0]:
+            hresult_u32 = _com_error_hresult_u32(ce)
+            if _is_access_lost_style_hresult_u32(hresult_u32):
+                logger.warning(
+                    "Desktop duplication lost (HRESULT=0x%08X). "
+                    "Triggering output-change recovery.",
+                    hresult_u32,
+                )
+                self.updated = False
+                self._frame_held = False
                 return False
-            if ctypes.c_int32(DXGI_ERROR_WAIT_TIMEOUT).value == ce.args[0]:
+            if hresult_u32 == DXGI_ERROR_WAIT_TIMEOUT_U32:
                 self.updated = False
                 return True
-            else:
-                raise ce
+            raise
+        self._frame_held = True
         try:
-            self.texture = res.QueryInterface(ID3D11Texture2D)
-        except comtypes.COMError as ce:
-            self.duplicator.ReleaseFrame()
-        self.latest_frame_time = info.LastPresentTime / self.performance_frequency
+            resource = cast(Any, res)
+            self.texture = resource.QueryInterface(ID3D11Texture2D)
+        except comtypes.COMError:
+            self.release_frame()
+            self.texture = ctypes.POINTER(ID3D11Texture2D)()
+            self.updated = False
+            return True
+        present_ticks = int(info.LastPresentTime)
+        if present_ticks > 0:
+            self.latest_frame_ticks = present_ticks
+        else:
+            mouse_ticks = int(info.LastMouseUpdateTime)
+            if mouse_ticks > 0:
+                self.latest_frame_ticks = mouse_ticks
         self.updated = True
         return True
 
-    def release_frame(self):
-        self.duplicator.ReleaseFrame()
+    @property
+    def latest_frame_time(self) -> float:
+        return self.ticks_to_seconds(self.latest_frame_ticks)
 
-    def release(self):
+    def ticks_to_seconds(self, ticks: int) -> float:
+        if self.performance_frequency <= 0:
+            return 0.0
+        return ticks / self.performance_frequency
+
+    def release_frame(self) -> bool:
+        if self.duplicator is None or not self._frame_held:
+            return True
+        try:
+            self.duplicator.ReleaseFrame()
+        except comtypes.COMError as ce:
+            hresult_u32 = _com_error_hresult_u32(ce)
+            self._frame_held = False
+            if _is_access_lost_style_hresult_u32(hresult_u32):
+                logger.warning(
+                    "ReleaseFrame hit recoverable duplication loss (HRESULT=0x%08X).",
+                    hresult_u32,
+                )
+                return False
+            raise
+        self._frame_held = False
+        return True
+
+    def release(self) -> None:
         if self.duplicator is not None:
-            self.duplicator.Release()
+            self.release_frame()
+            try:
+                self.duplicator.Release()
+            except comtypes.COMError:
+                logger.debug(
+                    "Ignoring COMError while releasing duplicator.", exc_info=True
+                )
             self.duplicator = None
 
     def __repr__(self) -> str:

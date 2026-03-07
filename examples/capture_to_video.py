@@ -1,22 +1,47 @@
+from __future__ import annotations
+
+from importlib import import_module
+from typing import Any, cast
+
 import dxcam
 
-# install OpenCV using `pip install dxcam[cv2]` command.
-import cv2
+from dxcam.types import Region
 
 TOP = 0
 LEFT = 0
 RIGHT = 1920
 BOTTOM = 1080
-region = (LEFT, TOP, RIGHT, BOTTOM)
-title = "[DXcam] Capture benchmark"
+REGION: Region = (LEFT, TOP, RIGHT, BOTTOM)
+TARGET_FPS = 60
+FRAME_COUNT = 600
 
-target_fps = 30
-camera = dxcam.create(output_idx=0, output_color="BGR")
-camera.start(target_fps=target_fps, video_mode=True)
-writer = cv2.VideoWriter(
-    "video.mp4", cv2.VideoWriter_fourcc(*"mp4v"), target_fps, (1920, 1080)
-)
-for i in range(600):
-    writer.write(camera.get_latest_frame())
-camera.stop()
-writer.release()
+
+def main() -> None:
+    """Record a short MP4 from DXcam's video-mode capture."""
+    # install OpenCV using: `pip install dxcam[cv2]`
+    cv2 = cast(Any, import_module("cv2"))
+
+    width = REGION[2] - REGION[0]
+    height = REGION[3] - REGION[1]
+
+    camera = dxcam.create(output_idx=0, output_color="BGR")
+    writer = cv2.VideoWriter(
+        "video.mp4",
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        TARGET_FPS,
+        (width, height),
+    )
+    try:
+        camera.start(region=REGION, target_fps=TARGET_FPS, video_mode=True)
+        for _ in range(FRAME_COUNT):
+            frame = camera.get_latest_frame()
+            if frame is None:
+                continue
+            writer.write(frame)
+    finally:
+        camera.stop()
+        writer.release()
+
+
+if __name__ == "__main__":
+    main()
