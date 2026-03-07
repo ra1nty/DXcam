@@ -63,7 +63,9 @@ class NumpyProcessor(Processor):
             self._cv2_dst_shape = dst_shape
         return self._cv2_dst
 
-    def _init_cvtcolor_impl(self, image: NDArray[np.uint8]) -> NDArray[np.uint8]:
+    def _ensure_cvtcolor_initialized(self) -> None:
+        if self._cv2 is not None and self._cv2_code is not None:
+            return
         self._cv2 = import_module("cv2")
         color_mapping: dict[str, int] = {
             "RGB": self._cv2.COLOR_BGRA2RGB,
@@ -77,6 +79,9 @@ class NumpyProcessor(Processor):
             self._cvtcolor_impl = self._process_cvtcolor_gray
         else:
             self._cvtcolor_impl = self._process_cvtcolor_color
+
+    def _init_cvtcolor_impl(self, image: NDArray[np.uint8]) -> NDArray[np.uint8]:
+        self._ensure_cvtcolor_initialized()
         return self._cvtcolor_impl(image)
 
     def _process_cvtcolor_color(self, image: NDArray[np.uint8]) -> NDArray[np.uint8]:
@@ -98,7 +103,7 @@ class NumpyProcessor(Processor):
     def process_cvtcolor(self, image: NDArray[np.uint8]) -> NDArray[np.uint8]:
         return self._cvtcolor_impl(image)
 
-    def process(
+    def _prepare_image(
         self,
         rect: Any,
         width: int,
@@ -123,9 +128,44 @@ class NumpyProcessor(Processor):
         if region[2] - region[0] != width or region[3] - region[1] != height:
             image = image[region[1] : region[3], region[0] : region[2], :]
 
+        return image
+
+    def process(
+        self,
+        rect: Any,
+        width: int,
+        height: int,
+        region: Region,
+        rotation_angle: int,
+    ) -> NDArray[np.uint8]:
+        image = self._prepare_image(rect, width, height, region, rotation_angle)
+
         # BGRA mode may still reference mapped desktop memory. Copy so callers
         # can safely use the returned frame after IDXGISurface.Unmap().
         if self.color_mode is None:
             return np.array(image, copy=True)
 
         return self.process_cvtcolor(image)
+
+    def process_into(
+        self,
+        rect: Any,
+        width: int,
+        height: int,
+        region: Region,
+        rotation_angle: int,
+        dst: NDArray[np.uint8],
+    ) -> None:
+        image = self._prepare_image(rect, width, height, region, rotation_angle)
+
+        if self.color_mode is None:
+            np.copyto(dst, image, casting="no")
+            return
+
+        self._ensure_cvtcolor_initialized()
+        assert self._cv2 is not None
+        assert self._cv2_code is not None
+        if self._is_gray:
+            self._cv2.cvtColor(image, self._cv2_code, dst=dst[..., 0])
+        else:
+            self._cv2.cvtColor(image, self._cv2_code, dst=dst)

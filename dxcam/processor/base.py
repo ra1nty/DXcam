@@ -34,6 +34,17 @@ class Processor:
     ) -> NDArray[np.uint8]:
         return self.backend.process(rect, width, height, region, rotation_angle)
 
+    def process_into(
+        self,
+        rect: Any,
+        width: int,
+        height: int,
+        region: Region,
+        rotation_angle: int,
+        dst: NDArray[np.uint8],
+    ) -> None:
+        self.backend.process_into(rect, width, height, region, rotation_angle, dst)
+
     def _initialize_backend(self, backend: ProcessorBackends) -> Any:
         if backend == ProcessorBackends.NUMPY:
             from dxcam.processor.numpy_processor import NumpyProcessor

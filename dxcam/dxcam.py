@@ -59,7 +59,14 @@ class DXCamera:
         )
         self._validate_region(self.region)
 
-        self.max_buffer_len = max_buffer_len
+        if max_buffer_len <= 1:
+            logger.warning(
+                "max_buffer_len=%d is not supported for concurrent capture; clamping to 2.",
+                max_buffer_len,
+            )
+            self.max_buffer_len = 2
+        else:
+            self.max_buffer_len = max_buffer_len
         self.is_capturing = False
         self._is_released = False
 
@@ -107,6 +114,23 @@ class DXCamera:
             return np.array(frame, copy=True)
         return frame
 
+    def _grab_into(self, region: Region, dst: Frame) -> tuple[bool, int, int, int]:
+        if not self._duplicator.update_frame():
+            self._on_output_change()
+            return False, 0, 0, 0
+        if not self._duplicator.updated:
+            return False, 0, 0, 0
+
+        frame_width, frame_height = self._copy_region_to_stage(region)
+        if frame_height != dst.shape[0] or frame_width != dst.shape[1]:
+            return False, self._duplicator.latest_frame_ticks, frame_width, frame_height
+        self._process_staging_frame_into(
+            frame_width=frame_width,
+            frame_height=frame_height,
+            dst=dst,
+        )
+        return True, self._duplicator.latest_frame_ticks, frame_width, frame_height
+
     def _copy_region_to_stage(self, region: Region) -> tuple[int, int]:
         memory_region = self._region_to_memory_region(region)
         memory_width = memory_region[2] - memory_region[0]
@@ -143,6 +167,25 @@ class DXCamera:
                 frame_height,
                 (0, 0, frame_width, frame_height),
                 self.rotation_angle,
+            )
+        finally:
+            self._stagesurf.unmap()
+
+    def _process_staging_frame_into(
+        self,
+        frame_width: int,
+        frame_height: int,
+        dst: Frame,
+    ) -> None:
+        rect = self._stagesurf.map()
+        try:
+            self._processor.process_into(
+                rect,
+                frame_width,
+                frame_height,
+                (0, 0, frame_width, frame_height),
+                self.rotation_angle,
+                dst,
             )
         finally:
             self._stagesurf.unmap()
@@ -300,12 +343,36 @@ class DXCamera:
             if self.__timer_handle:
                 wait_for_timer(self.__timer_handle)
             try:
-                frame = self._grab(region)
-                if frame is not None:
+                with self.__lock:
+                    if self.__frame_buffer is None:
+                        continue
+                    write_idx = self.__head
+                    write_slot = self.__frame_buffer[write_idx]
+                captured, frame_ticks, frame_width, frame_height = self._grab_into(
+                    region=region,
+                    dst=write_slot,
+                )
+                if captured:
                     with self.__lock:
-                        if self.__frame_buffer is None:
+                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
                             continue
-                        frame_ticks = self._duplicator.latest_frame_ticks
+                        if self.__full:
+                            self.__tail = (self.__tail + 1) % self.max_buffer_len
+                        self.__frame_time_ticks[write_idx] = frame_ticks
+                        self.__head = (write_idx + 1) % self.max_buffer_len
+                        self.__latest_frame_ticks = frame_ticks
+                        self.__frame_available.set()
+                        self.__frame_count += 1
+                        self.__full = self.__head == self.__tail
+                        self.__has_frame = True
+                elif frame_width > 0 and frame_height > 0:
+                    frame = self._process_staging_frame(
+                        frame_width=frame_width,
+                        frame_height=frame_height,
+                    )
+                    with self.__lock:
+                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                            continue
                         if (
                             frame.shape[0] != self.__frame_buffer.shape[1]
                             or frame.shape[1] != self.__frame_buffer.shape[2]
@@ -325,12 +392,19 @@ class DXCamera:
                                 frame_height=frame.shape[0],
                                 frame_width=frame.shape[1],
                             )
-                        self.__frame_buffer[self.__head] = frame
-                        if self.__frame_time_ticks is not None:
-                            self.__frame_time_ticks[self.__head] = frame_ticks
-                        if self.__full:
+                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                            continue
+                        write_idx = self.__head
+                        write_slot = self.__frame_buffer[write_idx]
+                        advance_tail = self.__full
+                    np.copyto(write_slot, frame)
+                    with self.__lock:
+                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                            continue
+                        if advance_tail:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len
-                        self.__head = (self.__head + 1) % self.max_buffer_len
+                        self.__frame_time_ticks[write_idx] = frame_ticks
+                        self.__head = (write_idx + 1) % self.max_buffer_len
                         self.__latest_frame_ticks = frame_ticks
                         self.__frame_available.set()
                         self.__frame_count += 1
@@ -340,20 +414,21 @@ class DXCamera:
                     with self.__lock:
                         if self.__frame_buffer is None or self.__frame_time_ticks is None:
                             continue
+                        write_idx = self.__head
                         previous_idx = (self.__head - 1) % self.max_buffer_len
-                        np.copyto(
-                            self.__frame_buffer[self.__head],
-                            self.__frame_buffer[previous_idx],
-                        )
-                        self.__frame_time_ticks[self.__head] = self.__frame_time_ticks[
-                            previous_idx
-                        ]
-                        if self.__full:
+                        src_slot = self.__frame_buffer[previous_idx]
+                        write_slot = self.__frame_buffer[write_idx]
+                        frame_ticks = int(self.__frame_time_ticks[previous_idx])
+                        advance_tail = self.__full
+                    np.copyto(write_slot, src_slot)
+                    with self.__lock:
+                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                            continue
+                        if advance_tail:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len
-                        self.__head = (self.__head + 1) % self.max_buffer_len
-                        self.__latest_frame_ticks = int(
-                            self.__frame_time_ticks[previous_idx]
-                        )
+                        self.__frame_time_ticks[write_idx] = frame_ticks
+                        self.__head = (write_idx + 1) % self.max_buffer_len
+                        self.__latest_frame_ticks = frame_ticks
                         self.__frame_available.set()
                         self.__frame_count += 1
                         self.__full = self.__head == self.__tail
