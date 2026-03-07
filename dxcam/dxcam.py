@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import logging
 import time
 from threading import Event, Lock, Thread, current_thread
@@ -8,6 +9,7 @@ from typing import Any
 import comtypes
 import numpy as np
 
+from dxcam._libs.d3d11 import D3D11_BOX
 from dxcam.core import Device, Output, StageSurface, Duplicator
 from dxcam.processor import Processor
 from dxcam.types import ColorMode, Frame, Region
@@ -41,6 +43,9 @@ class DXCamera:
             output=self._output, device=self._device
         )
         self._processor: Processor = Processor(output_color=output_color)
+        self._source_region: D3D11_BOX = D3D11_BOX()
+        self._source_region.front = 0
+        self._source_region.back = 1
 
         self.width, self.height = self._output.resolution
         self.channel_size = len(output_color) if output_color != "GRAY" else 1
@@ -75,27 +80,67 @@ class DXCamera:
     def grab(self, region: Region | None = None) -> Frame | None:
         if region is None:
             region = self.region
-        self._validate_region(region)
+        else:
+            self._validate_region(region)
         frame = self._grab(region)
         return frame
 
     def _grab(self, region: Region) -> Frame | None:
-        if self._duplicator.update_frame():
-            if not self._duplicator.updated:
-                return None
-            self._device.im_context.CopyResource(
-                self._stagesurf.texture, self._duplicator.texture
-            )
-            self._duplicator.release_frame()
-            rect = self._stagesurf.map()
-            frame = self._processor.process(
-                rect, self.width, self.height, region, self.rotation_angle
-            )
-            self._stagesurf.unmap()
-            return frame
-        else:
+        if not self._duplicator.update_frame():
             self._on_output_change()
             return None
+        if not self._duplicator.updated:
+            return None
+
+        frame_width, frame_height = self._copy_region_to_stage(region)
+        frame = self._process_staging_frame(
+            frame_width=frame_width, frame_height=frame_height
+        )
+
+        if not self.is_capturing:
+            self._duplicator.release_frame()
+            return np.array(frame, copy=True)
+        return frame
+
+    def _copy_region_to_stage(self, region: Region) -> tuple[int, int]:
+        memory_region = self._region_to_memory_region(region)
+        memory_width = memory_region[2] - memory_region[0]
+        memory_height = memory_region[3] - memory_region[1]
+        if (
+            self._stagesurf.width != memory_width
+            or self._stagesurf.height != memory_height
+        ):
+            self._stagesurf.release()
+            self._stagesurf.rebuild(
+                output=self._output,
+                device=self._device,
+                dim=(memory_width, memory_height),
+            )
+        self._update_source_region(memory_region)
+        self._device.im_context.CopySubresourceRegion(
+            self._stagesurf.texture,
+            0,
+            0,
+            0,
+            0,
+            self._duplicator.texture,
+            0,
+            ctypes.byref(self._source_region),
+        )
+        return region[2] - region[0], region[3] - region[1]
+
+    def _process_staging_frame(self, frame_width: int, frame_height: int) -> Frame:
+        rect = self._stagesurf.map()
+        try:
+            return self._processor.process(
+                rect,
+                frame_width,
+                frame_height,
+                (0, 0, frame_width, frame_height),
+                self.rotation_angle,
+            )
+        finally:
+            self._stagesurf.unmap()
 
     def _on_output_change(self) -> None:
         time.sleep(0.1)  # Wait for Display mode change (Access Lost)
@@ -132,7 +177,7 @@ class DXCamera:
         self._validate_region(region)
         self.is_capturing = True
         frame_shape = (region[3] - region[1], region[2] - region[0], self.channel_size)
-        self.__frame_buffer = np.zeros(
+        self.__frame_buffer = np.empty(
             (self.max_buffer_len, *frame_shape), dtype=np.uint8
         )
         self.__head = 0
@@ -176,7 +221,7 @@ class DXCamera:
         with self.__lock:
             return self.__latest_frame_time
 
-    def get_latest_frame(self) -> Frame | None:
+    def get_latest_frame(self, copy: bool = True) -> Frame | None:
         while True:
             with self.__lock:
                 if self.__frame_buffer is None:
@@ -189,7 +234,13 @@ class DXCamera:
                     return None
                 ret = self.__frame_buffer[(self.__head - 1) % self.max_buffer_len]
                 self.__frame_available.clear()
-            return np.array(ret)
+            if copy:
+                return np.array(ret, copy=True)
+            return ret
+
+    def get_latest_frame_view(self) -> Frame | None:
+        """Return a zero-copy view into the ring buffer for the latest frame."""
+        return self.get_latest_frame(copy=False)
 
     def __capture(
         self,
@@ -214,6 +265,25 @@ class DXCamera:
                     with self.__lock:
                         if self.__frame_buffer is None:
                             continue
+                        if (
+                            frame.shape[0] != self.__frame_buffer.shape[1]
+                            or frame.shape[1] != self.__frame_buffer.shape[2]
+                        ):
+                            logger.info(
+                                "Frame size changed from %dx%d to %dx%d; rebuilding frame buffer.",
+                                self.__frame_buffer.shape[2],
+                                self.__frame_buffer.shape[1],
+                                frame.shape[1],
+                                frame.shape[0],
+                            )
+                            self.width, self.height = frame.shape[1], frame.shape[0]
+                            if not self._region_set_by_user:
+                                self.region = (0, 0, self.width, self.height)
+                                region = self.region
+                            self._rebuild_frame_buffer_for_shape(
+                                frame_height=frame.shape[0],
+                                frame_width=frame.shape[1],
+                            )
                         self.__frame_buffer[self.__head] = frame
                         if self.__full:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len
@@ -227,8 +297,11 @@ class DXCamera:
                     with self.__lock:
                         if self.__frame_buffer is None:
                             continue
-                        self.__frame_buffer[self.__head] = np.array(
-                            self.__frame_buffer[(self.__head - 1) % self.max_buffer_len]
+                        np.copyto(
+                            self.__frame_buffer[self.__head],
+                            self.__frame_buffer[
+                                (self.__head - 1) % self.max_buffer_len
+                            ],
                         )
                         if self.__full:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len
@@ -260,7 +333,7 @@ class DXCamera:
             raise capture_error
         elapsed_s = time.perf_counter() - self.__capture_start_time
         if elapsed_s > 0:
-            logger.info("Screen Capture FPS: %d", int(self.__frame_count / elapsed_s))
+            logger.info("Screen Capture FPS: %.4f", self.__frame_count / elapsed_s)
 
     def _rebuild_frame_buffer(self, region: Region | None) -> None:
         if region is None:
@@ -271,7 +344,7 @@ class DXCamera:
             self.channel_size,
         )
         with self.__lock:
-            self.__frame_buffer = np.zeros(
+            self.__frame_buffer = np.empty(
                 (self.max_buffer_len, *frame_shape), dtype=np.uint8
             )
             self.__head = 0
@@ -279,11 +352,53 @@ class DXCamera:
             self.__full = False
             self.__has_frame = False
 
+    def _rebuild_frame_buffer_for_shape(
+        self, frame_height: int, frame_width: int
+    ) -> None:
+        frame_shape = (frame_height, frame_width, self.channel_size)
+        self.__frame_buffer = np.empty(
+            (self.max_buffer_len, *frame_shape), dtype=np.uint8
+        )
+        self.__head = 0
+        self.__tail = 0
+        self.__full = False
+        self.__has_frame = False
+
+    def _region_to_memory_region(self, region: Region) -> Region:
+        if self.rotation_angle == 0:
+            return region
+        if self.rotation_angle == 90:
+            return (
+                region[1],
+                self._output.surface_size[1] - region[2],
+                region[3],
+                self._output.surface_size[1] - region[0],
+            )
+        if self.rotation_angle == 180:
+            return (
+                self._output.surface_size[0] - region[2],
+                self._output.surface_size[1] - region[3],
+                self._output.surface_size[0] - region[0],
+                self._output.surface_size[1] - region[1],
+            )
+        if self.rotation_angle == 270:
+            return (
+                self._output.surface_size[0] - region[3],
+                region[0],
+                self._output.surface_size[0] - region[1],
+                region[2],
+            )
+        raise ValueError(f"Unsupported rotation angle: {self.rotation_angle}")
+
+    def _update_source_region(self, region: Region) -> None:
+        self._source_region.left = region[0]
+        self._source_region.top = region[1]
+        self._source_region.right = region[2]
+        self._source_region.bottom = region[3]
+
     def _validate_region(self, region: Region) -> None:
         left, top, right, bottom = region
-        if not (
-            self.width >= right > left >= 0 and self.height >= bottom > top >= 0
-        ):
+        if not (self.width >= right > left >= 0 and self.height >= bottom > top >= 0):
             raise ValueError(
                 f"Invalid Region: Region should be in {self.width}x{self.height}"
             )

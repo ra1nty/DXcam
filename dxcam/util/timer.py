@@ -24,9 +24,17 @@ if sys.version_info >= (3, 11):
     def wait_for_timer(timer: _Timer):
         if timer._next_tick is None:
             return
-        sleep_s = timer._next_tick - time.perf_counter()
+        now = time.perf_counter()
+        sleep_s = timer._next_tick - now
         if sleep_s > 0:
             time.sleep(sleep_s)
+            timer._next_tick += timer.period_s
+            return
+        # If we are late by more than one period, drop missed ticks
+        # instead of bursting catch-up iterations.
+        if -sleep_s > timer.period_s:
+            timer._next_tick = time.perf_counter() + timer.period_s
+            return
         timer._next_tick += timer.period_s
 
     def cancel_timer(_timer: _Timer):
@@ -80,7 +88,8 @@ else:
     def wait_for_timer(timer: _Timer):
         if timer.cancelled or timer._next_tick is None:
             return
-        sleep_s = timer._next_tick - time.perf_counter()
+        now = time.perf_counter()
+        sleep_s = timer._next_tick - now
         if sleep_s > 0:
             # Negative value = relative time in 100-nanosecond intervals.
             due_time = ctypes.c_longlong(-int(sleep_s * 10_000_000))
@@ -88,7 +97,13 @@ else:
                 timer._handle, ctypes.byref(due_time), 0, None, None, 0
             )
             _kernel32.WaitForSingleObject(timer._handle, _INFINITE)
+            if not timer.cancelled:
+                timer._next_tick += timer.period_s
+            return
         if not timer.cancelled:
+            if -sleep_s > timer.period_s:
+                timer._next_tick = time.perf_counter() + timer.period_s
+                return
             timer._next_tick += timer.period_s
 
     def cancel_timer(timer: _Timer):

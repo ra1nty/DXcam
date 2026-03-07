@@ -5,6 +5,7 @@ Run with Python 3.11+ for the time.sleep() path, or Python < 3.11 for the
 CreateWaitableTimerExW path.  Reports actual FPS, mean error, and max jitter.
 """
 
+import logging
 import sys
 import time
 import statistics
@@ -28,8 +29,15 @@ DURATION_S = 5
 WARMUP_TICKS = 10
 TARGET_FPS_LIST = [60, 120, 240]
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 
 def run(fps: int) -> list:
+    logger.info("Running timer benchmark for target fps=%d", fps)
     timer = create_high_resolution_timer()
     set_periodic_timer(timer, fps)
     period_s = 1.0 / fps
@@ -44,6 +52,8 @@ def run(fps: int) -> list:
             intervals.append(now - last)
         last = now
         tick += 1
+        if tick % (fps or 1) == 0:
+            logger.debug("fps=%d progressed to tick=%d", fps, tick)
     cancel_timer(timer)
     return intervals
 
@@ -52,14 +62,21 @@ def report(fps: int, intervals: list):
     target_s = 1.0 / fps
     errors = [abs(iv - target_s) * 1000 for iv in intervals]
     actual_fps = len(intervals) / sum(intervals)
-    print(
-        f"  target={fps:>3} fps  actual={actual_fps:>7.3f} fps  "
-        f"mean_err={statistics.mean(errors):.3f} ms  max_err={max(errors):.3f} ms"
+    logger.info(
+        "target=%3d fps  actual=%7.3f fps  mean_err=%.3f ms  max_err=%.3f ms",
+        fps,
+        actual_fps,
+        statistics.mean(errors),
+        max(errors),
     )
 
 
 if __name__ == "__main__":
-    print(f"Python {sys.version}")
-    print(f"Duration: {DURATION_S}s per target, warmup: {WARMUP_TICKS} ticks\n")
+    logger.info("Python %s", sys.version)
+    logger.info(
+        "Duration: %ss per target, warmup: %d ticks",
+        DURATION_S,
+        WARMUP_TICKS,
+    )
     for fps in TARGET_FPS_LIST:
         report(fps, run(fps))

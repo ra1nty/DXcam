@@ -9,10 +9,10 @@ from dxcam.types import Region
 
 TOP = 0
 LEFT = 0
-RIGHT = 1920
-BOTTOM = 1080
+RIGHT = 3840
+BOTTOM = 2160
 REGION: Region = (LEFT, TOP, RIGHT, BOTTOM)
-TARGET_FPS = 30
+TARGET_FPS = 60
 FRAME_COUNT = 600
 
 

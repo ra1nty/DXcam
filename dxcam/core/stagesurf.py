@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ctypes
 from dataclasses import InitVar, dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from dxcam._libs.d3d11 import (
     D3D11_CPU_ACCESS_READ,
@@ -25,6 +25,7 @@ class StageSurface:
     dxgi_format: int = DXGI_FORMAT_B8G8R8A8_UNORM
     desc: D3D11_TEXTURE2D_DESC = field(default_factory=D3D11_TEXTURE2D_DESC)
     texture: Any = None
+    interface: Any = None
     output: InitVar[Output | None] = None
     device: InitVar[Device | None] = None
 
@@ -39,9 +40,18 @@ class StageSurface:
             self.height = 0
             self.texture.Release()
             self.texture = None
+            self.interface = None
 
-    def rebuild(self, output: Output, device: Device) -> None:
-        self.width, self.height = output.surface_size
+    def rebuild(
+        self,
+        output: Output,
+        device: Device,
+        dim: tuple[int, int] | None = None,
+    ) -> None:
+        if dim is not None:
+            self.width, self.height = dim
+        else:
+            self.width, self.height = output.surface_size
         if self.texture is None:
             self.desc.Width = self.width
             self.desc.Height = self.height
@@ -60,14 +70,20 @@ class StageSurface:
                 None,
                 ctypes.byref(self.texture),
             )
+            texture = cast(Any, self.texture)
+            self.interface = texture.QueryInterface(IDXGISurface)
 
     def map(self) -> DXGI_MAPPED_RECT:
+        if self.interface is None:
+            raise RuntimeError("StageSurface interface is not initialized.")
         rect: DXGI_MAPPED_RECT = DXGI_MAPPED_RECT()
-        self.texture.QueryInterface(IDXGISurface).Map(ctypes.byref(rect), 1)
+        self.interface.Map(ctypes.byref(rect), 1)
         return rect
 
     def unmap(self) -> None:
-        self.texture.QueryInterface(IDXGISurface).Unmap()
+        if self.interface is None:
+            raise RuntimeError("StageSurface interface is not initialized.")
+        self.interface.Unmap()
 
     def __repr__(self) -> str:
         return "<{} Initialized:{} Size:{} Format:{}>".format(

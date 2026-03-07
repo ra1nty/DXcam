@@ -6,7 +6,11 @@ from .d3d11 import ID3D11Device
 
 DXGI_ERROR_ACCESS_LOST = 0x887A0026
 DXGI_ERROR_NOT_FOUND = 0x887A0002
+DXGI_ERROR_SESSION_DISCONNECTED = 0x887A0028
 DXGI_ERROR_WAIT_TIMEOUT = 0x887A0027
+
+DXGI_OUTDUPL_FLAG_NONE = 0x0
+DXGI_OUTDUPL_FLAG_COMPOSITED_UI_CAPTURE_ONLY = 0x1
 
 
 class LUID(ctypes.Structure):
@@ -56,7 +60,7 @@ class DXGI_OUTDUPL_FRAME_INFO(ctypes.Structure):
 
 
 class DXGI_MAPPED_RECT(ctypes.Structure):
-    _fields_ = [("Pitch", wintypes.INT), ("pBits", ctypes.POINTER(wintypes.FLOAT))]
+    _fields_ = [("Pitch", wintypes.INT), ("pBits", ctypes.POINTER(ctypes.c_ubyte))]
 
 
 class IDXGIObject(comtypes.IUnknown):
@@ -150,6 +154,57 @@ class IDXGIOutput1(IDXGIOutput):
             "DuplicateOutput",
             [
                 ctypes.POINTER(ID3D11Device),
+                ctypes.POINTER(ctypes.POINTER(IDXGIOutputDuplication)),
+            ],
+        ),
+    ]
+
+
+class IDXGIOutput2(IDXGIOutput1):
+    _iid_ = comtypes.GUID("{595e39d1-2724-4663-99b1-da969de28364}")
+    _methods_ = [
+        comtypes.STDMETHOD(wintypes.BOOL, "SupportsOverlays"),
+    ]
+
+
+class IDXGIOutput3(IDXGIOutput2):
+    _iid_ = comtypes.GUID("{8a6bb301-7e7e-41f4-a8e0-5b32f7f99b18}")
+    _methods_ = [
+        comtypes.STDMETHOD(
+            comtypes.HRESULT,
+            "CheckOverlaySupport",
+            [wintypes.UINT, ctypes.c_void_p, ctypes.POINTER(wintypes.UINT)],
+        ),
+    ]
+
+
+class IDXGIOutput4(IDXGIOutput3):
+    _iid_ = comtypes.GUID("{dc7dca35-2196-414d-9f53-617884032a60}")
+    _methods_ = [
+        comtypes.STDMETHOD(
+            comtypes.HRESULT,
+            "CheckOverlayColorSpaceSupport",
+            [
+                wintypes.UINT,
+                wintypes.UINT,
+                ctypes.c_void_p,
+                ctypes.POINTER(wintypes.UINT),
+            ],
+        ),
+    ]
+
+
+class IDXGIOutput5(IDXGIOutput4):
+    _iid_ = comtypes.GUID("{80a07424-ab52-42eb-833c-0c42fd282d98}")
+    _methods_ = [
+        comtypes.STDMETHOD(
+            comtypes.HRESULT,
+            "DuplicateOutput1",
+            [
+                ctypes.c_void_p,
+                wintypes.UINT,
+                wintypes.UINT,
+                ctypes.POINTER(wintypes.UINT),
                 ctypes.POINTER(ctypes.POINTER(IDXGIOutputDuplication)),
             ],
         ),
