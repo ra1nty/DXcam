@@ -60,7 +60,7 @@ class Duplicator:
     updated: bool = False
     output: InitVar[Output | None] = None
     device: InitVar[Device | None] = None
-    latest_frame_time: float = 0.0
+    latest_frame_ticks: int = 0
     # ticks per second of the system
     performance_frequency: int = 0
     _frame_held: bool = False
@@ -151,9 +151,24 @@ class Duplicator:
             self.texture = ctypes.POINTER(ID3D11Texture2D)()
             self.updated = False
             return True
-        self.latest_frame_time = info.LastPresentTime / self.performance_frequency
+        present_ticks = int(info.LastPresentTime)
+        if present_ticks > 0:
+            self.latest_frame_ticks = present_ticks
+        else:
+            mouse_ticks = int(info.LastMouseUpdateTime)
+            if mouse_ticks > 0:
+                self.latest_frame_ticks = mouse_ticks
         self.updated = True
         return True
+
+    @property
+    def latest_frame_time(self) -> float:
+        return self.ticks_to_seconds(self.latest_frame_ticks)
+
+    def ticks_to_seconds(self, ticks: int) -> float:
+        if self.performance_frequency <= 0:
+            return 0.0
+        return ticks / self.performance_frequency
 
     def release_frame(self) -> bool:
         if self.duplicator is None or not self._frame_held:
@@ -179,7 +194,9 @@ class Duplicator:
             try:
                 self.duplicator.Release()
             except comtypes.COMError:
-                logger.debug("Ignoring COMError while releasing duplicator.", exc_info=True)
+                logger.debug(
+                    "Ignoring COMError while releasing duplicator.", exc_info=True
+                )
             self.duplicator = None
 
     def __repr__(self) -> str:

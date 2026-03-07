@@ -6,12 +6,12 @@ import dxcam
 
 TOP = 0
 LEFT = 0
-RIGHT = 1920
-BOTTOM = 1080
+RIGHT = 3840
+BOTTOM = 2160
 region = (LEFT, TOP, RIGHT, BOTTOM)
 title = "[DXcam] Capture benchmark"
 TARGET_FRAMES = 1000
-TARGET_FPS = 60
+TARGET_FPS = 500
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -20,7 +20,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 camera = dxcam.create(output_idx=0)
-camera.start(target_fps=TARGET_FPS)
+camera.start(target_fps=TARGET_FPS, video_mode=False)
 logger.info(
     "Starting %s. region=%s target_fps=%d target_frames=%d",
     title,
@@ -43,10 +43,4 @@ for idx in range(TARGET_FRAMES):
         )
 camera.stop()
 elapsed_s = time.perf_counter() - start_time
-logger.info(
-    "%s result: %.3f read-fps non_none=%d",
-    title,
-    TARGET_FRAMES / elapsed_s,
-    captured,
-)
 del camera

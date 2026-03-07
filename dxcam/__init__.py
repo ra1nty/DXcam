@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
-import weakref
+import signal
 import time
-from typing import Any
+import weakref
+from types import FrameType
+from typing import Any, Callable, cast
 
 from dxcam.dxcam import DXCamera, Output, Device
 from dxcam.types import ColorMode, Region
@@ -13,6 +15,14 @@ from dxcam.util.io import (
 )
 
 logger = logging.getLogger(__name__)
+_sigterm_handler_installed = False
+_previous_sigterm_handler: int | Callable[[int, FrameType | None], Any] | None = None
+
+
+def _configure_comtypes_logging() -> None:
+    # Suppress noisy per-frame COM Release debug logs from comtypes internals.
+    logging.getLogger("comtypes").setLevel(logging.INFO)
+    logging.getLogger("comtypes._post_coinit.unknwn").setLevel(logging.INFO)
 
 
 class Singleton(type):
@@ -71,7 +81,16 @@ class DXFactory(metaclass=Singleton):
                 raise RuntimeError(f"No primary output found for device index {device_idx}")
             output_idx = primary_output_indices[0]
         instance_key = (device_idx, output_idx)
-        if instance_key in self._camera_instances:
+        existing_camera = self._camera_instances.get(instance_key)
+        if existing_camera is not None and existing_camera.is_released:
+            logger.info(
+                "Dropping released DXCamera instance for device=%s output=%s.",
+                device_idx,
+                output_idx,
+            )
+            del self._camera_instances[instance_key]
+            existing_camera = None
+        if existing_camera is not None:
             logger.warning(
                 "DXCamera instance already exists for device=%s output=%s; "
                 "returning existing instance. Delete the old object with `del obj` "
@@ -79,7 +98,7 @@ class DXFactory(metaclass=Singleton):
                 device_idx,
                 output_idx,
             )
-            return self._camera_instances[instance_key]
+            return existing_camera
 
         output = self.outputs[device_idx][output_idx]
         output.update_desc()
@@ -112,11 +131,45 @@ class DXFactory(metaclass=Singleton):
         return ret
 
     def clean_up(self) -> None:
-        for _, camera in self._camera_instances.items():
+        for _, camera in list(self._camera_instances.items()):
             camera.release()
 
 
 __factory = DXFactory()
+_configure_comtypes_logging()
+
+
+def _handle_sigterm(signum: int, frame: FrameType | None) -> None:
+    logger.info("Received SIGTERM; releasing active DXCamera instances.")
+    try:
+        __factory.clean_up()
+    except Exception:
+        logger.exception("Failed during DXCamera SIGTERM cleanup.")
+
+    previous = _previous_sigterm_handler
+    if previous is None or previous is signal.SIG_IGN:
+        return
+    if previous is signal.SIG_DFL:
+        raise SystemExit(128 + signum)
+    if callable(previous):
+        handler = cast(Callable[[int, FrameType | None], Any], previous)
+        handler(signum, frame)
+
+
+def _install_sigterm_handler() -> None:
+    global _sigterm_handler_installed
+    global _previous_sigterm_handler
+
+    if _sigterm_handler_installed:
+        return
+    try:
+        _previous_sigterm_handler = signal.getsignal(signal.SIGTERM)
+        signal.signal(signal.SIGTERM, _handle_sigterm)
+        _sigterm_handler_installed = True
+    except (ValueError, AttributeError):
+        # ValueError: called outside the main thread.
+        # AttributeError: platform/runtime without SIGTERM.
+        logger.debug("SIGTERM handler was not installed.", exc_info=True)
 
 
 def create(
@@ -126,6 +179,7 @@ def create(
     output_color: ColorMode = "RGB",
     max_buffer_len: int = 64,
 ) -> DXCamera:
+    _install_sigterm_handler()
     return __factory.create(
         device_idx=device_idx,
         output_idx=output_idx,
