@@ -37,16 +37,47 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install build twine
 
+      - name: Detect package version
+        id: version
+        shell: python
+        run: |
+          from pathlib import Path
+          import os
+          import re
+
+          match = re.search(
+              r'^version\s*=\s*"([^"]+)"\s*$',
+              Path("pyproject.toml").read_text(encoding="utf-8"),
+              flags=re.MULTILINE,
+          )
+          if match is None:
+              raise RuntimeError("Could not find project version in pyproject.toml")
+          version = match.group(1)
+          is_dev = ".dev" in version
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"version={version}\n")
+              fh.write(f"is_dev={'true' if is_dev else 'false'}\n")
+
+      - name: Skip for non-dev versions
+        if: steps.version.outputs.is_dev != 'true'
+        run: |
+          echo "Version ${{ steps.version.outputs.version }} is not a dev release."
+          echo "Skipping dev publish workflow."
+
       - name: Verify development version
+        if: steps.version.outputs.is_dev == 'true'
         run: python scripts/check_dev_version.py
 
       - name: Build sdist and wheel
+        if: steps.version.outputs.is_dev == 'true'
         run: python -m build
 
       - name: Check distributions
+        if: steps.version.outputs.is_dev == 'true'
         run: python -m twine check --strict dist/*
 
       - name: Publish package to PyPI
+        if: steps.version.outputs.is_dev == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
