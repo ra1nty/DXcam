@@ -124,7 +124,7 @@ class Duplicator:
         res = ctypes.POINTER(IDXGIResource)()
         try:
             self.duplicator.AcquireNextFrame(
-                1,
+                0,
                 ctypes.byref(info),
                 ctypes.byref(res),
             )

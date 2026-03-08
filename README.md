@@ -57,8 +57,9 @@ camera = dxcam.create()  # primary output on device 0
 ```python
 frame = camera.grab()
 ```
+`grab()` returns a `numpy.ndarray`. `None` if no new frame is available since the last capture, mainly for backward compatibility. You can use `new_frame_only=False` to change this behavior.
 
-`grab()` returns a `numpy.ndarray`. `None` if no new frame is available since the last capture.
+Use `copy=False` (or `camera.grab_view()`) for a zero-copy view.
 
 To capture a region:
 ```python
@@ -86,6 +87,9 @@ for _ in range(1000):
 Useful variants:
 - `camera.get_latest_frame(with_timestamp=True)` -> `(frame, frame_timestamp)` -> return frame timestamp
 - `camera.get_latest_frame_view()` -> zero-copy view into the frame buffer
+- `camera.grab(copy=False)` / `camera.grab_view()` -> zero-copy latest-frame snapshot
+
+** When `start()` capture is running, calling `grab()` reads from the in-memory ring buffer instead of directly polling DXGI.
 
 ## Advanced Usage and Remarks
 ### Multiple monitors / GPUs
@@ -180,14 +184,14 @@ camera.release()
 ```
 
 ## Benchmarks
-When using a similar logic (only captured newly rendered frames), ```DXCam, python-mss, D3DShot``` benchmarked as follow:
+When using a similar logic (only capture newly rendered frames) running on a 240fps output, ```DXCam, python-mss, D3DShot``` benchmarked as follow:
 
 |             | DXcam  | python-mss | D3DShot |
 |-------------|--------|------------|---------|
 | Average FPS | 239.19 :checkered_flag: | 75.87      | 118.36  |
 | Std Dev     | 1.25   | 0.5447     | 0.3224   |
 
-The benchmark is across 5 runs, with a light-moderate usage on my PC (5900X + 3090; Chrome ~30tabs, VS Code opened, etc.), I used the [Blur Buster UFO test](https://www.testufo.com/framerates#count=5&background=stars&pps=960) to constantly render 240 fps on my monitor (Zowie 2546K). DXcam captured almost every frame rendered. You will see some benchmarks online claiming 1000+fps capture while most of them is busy-spinning a for loop on a staled frame (no new frame rendered on screen in test scenario).
+The benchmark is across 5 runs, with a light-moderate usage on my PC (5900X + 3090; Chrome ~30tabs, VS Code opened, etc.), I used the [Blur Buster UFO test](https://www.testufo.com/framerates#count=5&background=stars&pps=960) to constantly render 240 fps on my monitor. DXcam captured almost every frame rendered. You will see some benchmarks online claiming 1000+fps capture while most of them is busy-spinning a for loop on a staled frame (no new frame rendered on screen in test scenario).
 
 ### For Targeting FPS:
 |   (Target)\\(mean,std)          | DXcam  | python-mss | D3DShot |

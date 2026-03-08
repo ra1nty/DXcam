@@ -11,6 +11,7 @@ BOTTOM = 1080
 region = (LEFT, TOP, RIGHT, BOTTOM)
 title = "[DXcam] FPS benchmark"
 TARGET_FRAMES = 1000
+NEW_FRAME_ONLY = False
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -24,7 +25,7 @@ start_time = time.perf_counter()
 logger.info("Starting %s. region=%s target_frames=%d", title, region, TARGET_FRAMES)
 
 while fps < TARGET_FRAMES:
-    frame = cam.grab(region=region)
+    frame = cam.grab(region=region, new_frame_only=NEW_FRAME_ONLY)
     if frame is not None:
         fps += 1
         if fps % 250 == 0:
