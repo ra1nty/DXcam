@@ -7,12 +7,16 @@ import dxcam
 
 from dxcam.types import Region
 
+TOP = (2160 - 640) // 2
+LEFT = (3840 - 640) // 2
+RIGHT = LEFT + 640
+BOTTOM = TOP + 640
 TOP = 0
 LEFT = 0
-RIGHT = 1920
-BOTTOM = 1080
+RIGHT = 3840
+BOTTOM = 2160
 REGION: Region = (LEFT, TOP, RIGHT, BOTTOM)
-TARGET_FPS = 60
+TARGET_FPS = 30
 FRAME_COUNT = 600
 
 

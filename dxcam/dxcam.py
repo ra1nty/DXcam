@@ -87,32 +87,93 @@ class DXCamera:
         self.__frame_count = 0
         self.__capture_start_time = 0
         self.__latest_frame_ticks: int | None = None
+        self.__last_grab_entry: tuple[Region, Frame] | None = None
 
-    def grab(self, region: Region | None = None) -> Frame | None:
+    def grab(
+        self,
+        region: Region | None = None,
+        copy: bool = True,
+        new_frame_only: bool = True,
+    ) -> Frame | None:
+        """Grab one frame.
+
+        Ownership contract:
+        - ``copy=True`` returns caller-owned memory.
+        - ``copy=False`` may return internal memory reused by future grabs.
+        - ``new_frame_only=True`` returns ``None`` when no new frame is available
+          in one-shot mode.
+        - ``new_frame_only=False`` falls back to the last successfully grabbed
+          frame for the same region in one-shot mode.
+
+        When capture is running (``start()``), this reads from the ring buffer
+        instead of touching DXGI objects directly. ``new_frame_only`` does not
+        apply while capture is running.
+        """
         self._ensure_not_released()
+        if self.is_capturing:
+            if region is not None and region != self.region:
+                raise ValueError(
+                    "grab(region=...) is not supported while capture is running. "
+                    "Use start(region=...) to configure capture region."
+                )
+            return self._peek_latest_buffered_frame(copy=copy)
         if region is None:
             region = self.region
         else:
             self._validate_region(region)
-        frame = self._grab(region)
+        frame = self._grab(region, copy=copy, new_frame_only=new_frame_only)
         return frame
 
-    def _grab(self, region: Region) -> Frame | None:
+    def grab_view(self, region: Region | None = None) -> Frame | None:
+        """Zero-copy variant of ``grab()``."""
+        return self.grab(region=region, copy=False)
+
+    def _peek_latest_buffered_frame(self, copy: bool = True) -> Frame | None:
+        with self.__lock:
+            if self.__frame_buffer is None or not self.__has_frame:
+                return None
+            latest_idx = (self.__head - 1) % self.max_buffer_len
+            ret = self.__frame_buffer[latest_idx]
+        return np.array(ret, copy=True) if copy else ret
+
+    def _set_cached_grab_frame(self, region: Region, frame: Frame) -> None:
+        self.__last_grab_entry = (region, frame)
+
+    def _get_cached_grab_frame(
+        self, region: Region, copy: bool = True
+    ) -> Frame | None:
+        entry = self.__last_grab_entry
+        if entry is None:
+            return None
+        cached_region, cached = entry
+        if cached_region != region:
+            return None
+        return np.array(cached, copy=True) if copy else cached
+
+    def _grab(
+        self,
+        region: Region,
+        copy: bool = True,
+        new_frame_only: bool = True,
+    ) -> Frame | None:
         if not self._duplicator.update_frame():
             self._on_output_change()
-            return None
+            if new_frame_only:
+                return None
+            return self._get_cached_grab_frame(region=region, copy=copy)
         if not self._duplicator.updated:
-            return None
+            if new_frame_only:
+                return None
+            return self._get_cached_grab_frame(region=region, copy=copy)
 
         frame_width, frame_height = self._copy_region_to_stage(region)
         frame = self._process_staging_frame(
             frame_width=frame_width, frame_height=frame_height
         )
-
-        if not self.is_capturing:
-            self._duplicator.release_frame()
-            return np.array(frame, copy=True)
-        return frame
+        result = np.array(frame, copy=True) if copy else frame
+        if not new_frame_only:
+            self._set_cached_grab_frame(region=region, frame=result)
+        return result
 
     def _grab_into(self, region: Region, dst: Frame) -> tuple[bool, int, int, int]:
         """Capture into ``dst`` and return ``(captured, frame_ticks, width, height)``.
@@ -164,6 +225,7 @@ class DXCamera:
             0,
             ctypes.byref(self._source_region),
         )
+        self._duplicator.release_frame()  #  See remarks in release_frame
         return region[2] - region[0], region[3] - region[1]
 
     def _process_staging_frame(self, frame_width: int, frame_height: int) -> Frame:
@@ -202,6 +264,7 @@ class DXCamera:
         time.sleep(0.1)  # Wait for Display mode change (Access Lost)
         self._duplicator.release()
         self._stagesurf.release()
+        self.__last_grab_entry = None
         self._output.update_desc()
         self.width, self.height = self._output.resolution
         if not self._region_set_by_user:
@@ -302,6 +365,7 @@ class DXCamera:
             self.__frame_time_ticks = None
             self.__frame_count = 0
             self.__latest_frame_ticks = None
+            self.__last_grab_entry = None
             self.__head = 0
             self.__tail = 0
             self.__full = False
@@ -355,7 +419,9 @@ class DXCamera:
             return frame
 
     @overload
-    def get_latest_frame_view(self, with_timestamp: Literal[False] = False) -> Frame | None: ...
+    def get_latest_frame_view(
+        self, with_timestamp: Literal[False] = False
+    ) -> Frame | None: ...
 
     @overload
     def get_latest_frame_view(
@@ -397,7 +463,10 @@ class DXCamera:
                 )
                 if captured:
                     with self.__lock:
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         if self.__full:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len
@@ -414,7 +483,10 @@ class DXCamera:
                         frame_height=frame_height,
                     )
                     with self.__lock:
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         if (
                             frame.shape[0] != self.__frame_buffer.shape[1]
@@ -425,14 +497,20 @@ class DXCamera:
                                 frame_width=frame.shape[1],
                                 region=region,
                             )
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         write_idx = self.__head
                         write_slot = self.__frame_buffer[write_idx]
                         advance_tail = self.__full
                     np.copyto(write_slot, frame)
                     with self.__lock:
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         if advance_tail:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len
@@ -445,7 +523,10 @@ class DXCamera:
                         self.__has_frame = True
                 elif video_mode and self.__has_frame:
                     with self.__lock:
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         write_idx = self.__head
                         previous_idx = (self.__head - 1) % self.max_buffer_len
@@ -455,7 +536,10 @@ class DXCamera:
                         advance_tail = self.__full
                     np.copyto(write_slot, src_slot)
                     with self.__lock:
-                        if self.__frame_buffer is None or self.__frame_time_ticks is None:
+                        if (
+                            self.__frame_buffer is None
+                            or self.__frame_time_ticks is None
+                        ):
                             continue
                         if advance_tail:
                             self.__tail = (self.__tail + 1) % self.max_buffer_len

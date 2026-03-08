@@ -61,6 +61,7 @@ class Duplicator:
     output: InitVar[Output | None] = None
     device: InitVar[Device | None] = None
     latest_frame_ticks: int = 0
+    accumulated_frames: int = 0
     # ticks per second of the system
     performance_frequency: int = 0
     _frame_held: bool = False
@@ -140,6 +141,7 @@ class Duplicator:
                 return False
             if hresult_u32 == DXGI_ERROR_WAIT_TIMEOUT_U32:
                 self.updated = False
+                self.accumulated_frames = 0
                 return True
             raise
         self._frame_held = True
@@ -152,6 +154,7 @@ class Duplicator:
             self.updated = False
             return True
         present_ticks = int(info.LastPresentTime)
+        self.accumulated_frames = int(info.AccumulatedFrames)
         if present_ticks > 0:
             self.latest_frame_ticks = present_ticks
         else:
@@ -171,6 +174,16 @@ class Duplicator:
         return ticks / self.performance_frequency
 
     def release_frame(self) -> bool:
+        """Per Microsoft Doc
+        https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_2/nf-dxgi1_2-idxgioutputduplication-releaseframe#remarks
+        This should be called just before AquireNextFrame, but we found audio artifacts
+        and frame pacing issue (need longer timeout for AquireNextFrame to compensate)
+
+        So DXCam default to early release.
+
+        Returns:
+            bool: Sucessfully
+        """
         if self.duplicator is None or not self._frame_held:
             return True
         try:

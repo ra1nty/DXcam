@@ -8,6 +8,10 @@ class _Timer:
     def __init__(self):
         self.period_s: float = 0.0
         self._next_tick: Optional[float] = None
+        # Declared on the base type so static checkers can validate both
+        # modern and legacy timer paths through a shared interface.
+        self.cancelled: bool = False
+        self._handle: Optional[int] = None
 
 
 if sys.version_info >= (3, 11):
