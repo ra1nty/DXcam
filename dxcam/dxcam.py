@@ -8,7 +8,7 @@ Typical one-shot usage:
 
 Threaded capture usage:
     >>> import dxcam
-    >>> cam = dxcam.create(output_color="BGR")
+    >>> cam = dxcam.create(output_color="BGR", processor_backend="cv2")
     >>> cam.start(target_fps=60, video_mode=True)
     >>> frame, ts = cam.get_latest_frame(with_timestamp=True)
     >>> cam.stop()
@@ -33,7 +33,7 @@ from dxcam._libs.d3d11 import D3D11_BOX
 from dxcam.core import Device, Output, StageSurface
 from dxcam.core.backend import create_backend_duplicator
 from dxcam.processor import Processor
-from dxcam.types import CaptureBackend, ColorMode, Frame, Region
+from dxcam.types import CaptureBackend, ColorMode, Frame, ProcessorBackend, Region
 from dxcam.util.timer import (
     create_high_resolution_timer,
     set_periodic_timer,
@@ -64,6 +64,7 @@ class DXCamera:
         output_color: ColorMode = "RGB",
         max_buffer_len: int = 8,
         backend: CaptureBackend = "dxgi",
+        processor_backend: ProcessorBackend = "cv2",
     ) -> None:
         """Initialize a camera bound to one output on one device.
 
@@ -77,6 +78,8 @@ class DXCamera:
             output_color: Returned color format.
             max_buffer_len: Ring-buffer size for threaded capture mode.
             backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
+            processor_backend: Post-processing backend, ``"cv2"`` or
+                ``"numpy"``.
         """
         self._is_released = False
         self._output: Output = output
@@ -90,7 +93,10 @@ class DXCamera:
         except Exception:
             self._stagesurf.release()
             raise
-        self._processor: Processor = Processor(output_color=output_color)
+        self._processor: Processor = Processor(
+            output_color=output_color,
+            backend=processor_backend,
+        )
         self._source_region: D3D11_BOX = D3D11_BOX()
         self._source_region.front = 0
         self._source_region.back = 1
@@ -257,12 +263,23 @@ class DXCamera:
         try:
             with self._multithread_guard():
                 frame_width, frame_height = self._copy_region_to_stage(region)
-                frame = self._process_staging_frame(
-                    frame_width=frame_width, frame_height=frame_height
-                )
+                if copy:
+                    frame = self._allocate_output_frame(
+                        frame_width=frame_width,
+                        frame_height=frame_height,
+                    )
+                    self._process_staging_frame_into(
+                        frame_width=frame_width,
+                        frame_height=frame_height,
+                        dst=frame,
+                    )
+                else:
+                    frame = self._process_staging_frame(
+                        frame_width=frame_width, frame_height=frame_height
+                    )
         finally:
             self._release_frame_if_late_release()
-        result = np.array(frame, copy=True) if copy else frame
+        result = frame
         if not new_frame_only:
             self._set_cached_grab_frame(region=region, frame=result)
         return result
@@ -325,6 +342,9 @@ class DXCamera:
         )
         self._release_frame_if_early_release()  # See remarks in release_frame
         return region[2] - region[0], region[3] - region[1]
+
+    def _allocate_output_frame(self, frame_width: int, frame_height: int) -> Frame:
+        return np.empty((frame_height, frame_width, self.channel_size), dtype=np.uint8)
 
     def _process_staging_frame(self, frame_width: int, frame_height: int) -> Frame:
         rect = self._stagesurf.map()

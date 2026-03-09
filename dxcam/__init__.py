@@ -26,7 +26,8 @@ from typing import Any, Callable, cast
 
 from dxcam.core.backend import normalize_backend_name
 from dxcam.dxcam import DXCamera, Output, Device
-from dxcam.types import CaptureBackend, ColorMode, Region
+from dxcam.processor import normalize_processor_backend_name
+from dxcam.types import CaptureBackend, ColorMode, ProcessorBackend, Region
 from dxcam.util.io import (
     enum_dxgi_adapters,
     get_output_metadata,
@@ -40,6 +41,7 @@ __all__ = [
     "DXCamera",
     "CaptureBackend",
     "ColorMode",
+    "ProcessorBackend",
     "Region",
     "create",
     "device_info",
@@ -104,8 +106,10 @@ class DXFactory(metaclass=Singleton):
         output_color: ColorMode = "RGB",
         max_buffer_len: int = 64,
         backend: CaptureBackend = "dxgi",
+        processor_backend: ProcessorBackend = "cv2",
     ) -> DXCamera:
         backend = normalize_backend_name(str(backend))
+        processor_backend = normalize_processor_backend_name(str(processor_backend))
         device = self.devices[device_idx]
         if output_idx is None:
             # Select Primary Output
@@ -151,6 +155,7 @@ class DXFactory(metaclass=Singleton):
             output_color=output_color,
             max_buffer_len=max_buffer_len,
             backend=backend,
+            processor_backend=processor_backend,
         )
         self._camera_instances[instance_key] = camera
         time.sleep(0.1)  # Fix for https://github.com/ra1nty/DXcam/issues/31
@@ -222,6 +227,7 @@ def create(
     output_color: ColorMode = "RGB",
     max_buffer_len: int = 64,
     backend: CaptureBackend = "dxgi",
+    processor_backend: ProcessorBackend = "cv2",
 ) -> DXCamera:
     """Create or return a singleton camera for a device/output/backend tuple.
 
@@ -233,13 +239,20 @@ def create(
         output_color: Output pixel format.
         max_buffer_len: Ring-buffer size used in threaded capture mode.
         backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
+        processor_backend: Post-processing backend, ``"cv2"`` (default)
+            or ``"numpy"``. The ``"numpy"`` backend uses compiled Cython
+            kernels when available and falls back to cv2 behavior otherwise.
 
     Returns:
         A :class:`dxcam.dxcam.DXCamera` instance.
 
     Example:
         >>> import dxcam
-        >>> cam = dxcam.create(output_color="BGR", backend="winrt")
+        >>> cam = dxcam.create(
+        ...     output_color="BGR",
+        ...     backend="winrt",
+        ...     processor_backend="cv2",
+        ... )
         >>> frame = cam.grab()
         >>> cam.release()
     """
@@ -251,6 +264,7 @@ def create(
         output_color=output_color,
         max_buffer_len=max_buffer_len,
         backend=backend,
+        processor_backend=processor_backend,
     )
 
 
