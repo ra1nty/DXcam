@@ -1,3 +1,6 @@
+### [Unreleased]
+- Added CONTRIBUTING.md
+- Fixed broken formatting in README.md
 ### 0.1.0
 - Switched frame transfer from full-surface CopyResource to region-aware CopySubresourceRegion
 - Made IDXGIOutput5.DuplicateOutput1 the default capture path, with env-var fallback to legacy DuplicateOutput.

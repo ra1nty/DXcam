@@ -89,7 +89,7 @@ Useful variants:
 - `camera.get_latest_frame_view()` -> zero-copy view into the frame buffer
 - `camera.grab(copy=False)` / `camera.grab_view()` -> zero-copy latest-frame snapshot
 
-** When `start()` capture is running, calling `grab()` reads from the in-memory ring buffer instead of directly polling DXGI.
+>When `start()` capture is running, calling `grab()` reads from the in-memory ring buffer instead of directly polling DXGI.
 
 ## Advanced Usage and Remarks
 ### Multiple monitors / GPUs
