@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+import importlib
 import logging
 import os
 from dataclasses import InitVar, dataclass, field
@@ -22,9 +23,9 @@ _DIRTY_REGION_DEFAULT = "default"
 _DIRTY_REGION_REPORT_ONLY = "report_only"
 _DIRTY_REGION_REPORT_AND_RENDER = "report_and_render"
 DirtyRegionSetting = Literal[
-    _DIRTY_REGION_DEFAULT,
-    _DIRTY_REGION_REPORT_ONLY,
-    _DIRTY_REGION_REPORT_AND_RENDER,
+    "default",
+    "report_only",
+    "report_and_render",
 ]
 
 
@@ -40,19 +41,34 @@ class _WinRTCaptureBindings:
     @classmethod
     def load(cls) -> "_WinRTCaptureBindings":
         try:
-            from winrt.windows.graphics.capture import Direct3D11CaptureFramePool
-            from winrt.windows.graphics.capture import GraphicsCaptureDirtyRegionMode
-            from winrt.windows.graphics.capture.interop import create_for_monitor
-            from winrt.windows.graphics.directx import DirectXPixelFormat
-            from winrt.windows.graphics.directx.direct3d11.interop import (
-                create_direct3d11_device_from_dxgi_device,
-                get_dxgi_surface_from_object,
+            capture_module = importlib.import_module("winrt.windows.graphics.capture")
+            capture_interop_module = importlib.import_module(
+                "winrt.windows.graphics.capture.interop"
+            )
+            directx_module = importlib.import_module("winrt.windows.graphics.directx")
+            d3d11_interop_module = importlib.import_module(
+                "winrt.windows.graphics.directx.direct3d11.interop"
             )
         except ModuleNotFoundError as exc:
             raise ModuleNotFoundError(
                 "WinRT backend requires optional dependencies. Install with "
                 '`pip install "dxcam[winrt]"`.'
             ) from exc
+
+        Direct3D11CaptureFramePool = getattr(
+            capture_module, "Direct3D11CaptureFramePool"
+        )
+        GraphicsCaptureDirtyRegionMode = getattr(
+            capture_module, "GraphicsCaptureDirtyRegionMode"
+        )
+        create_for_monitor = getattr(capture_interop_module, "create_for_monitor")
+        DirectXPixelFormat = getattr(directx_module, "DirectXPixelFormat")
+        create_direct3d11_device_from_dxgi_device = getattr(
+            d3d11_interop_module, "create_direct3d11_device_from_dxgi_device"
+        )
+        get_dxgi_surface_from_object = getattr(
+            d3d11_interop_module, "get_dxgi_surface_from_object"
+        )
 
         return cls(
             frame_pool_cls=Direct3D11CaptureFramePool,
@@ -182,12 +198,12 @@ class WinRTDuplicator:
         if raw is None:
             return _DIRTY_REGION_DEFAULT
         normalized = raw.strip().lower().replace("-", "_")
-        if normalized in (
-            _DIRTY_REGION_DEFAULT,
-            _DIRTY_REGION_REPORT_ONLY,
-            _DIRTY_REGION_REPORT_AND_RENDER,
-        ):
-            return cast(DirtyRegionSetting, normalized)
+        if normalized == _DIRTY_REGION_DEFAULT:
+            return _DIRTY_REGION_DEFAULT
+        if normalized == _DIRTY_REGION_REPORT_ONLY:
+            return _DIRTY_REGION_REPORT_ONLY
+        if normalized == _DIRTY_REGION_REPORT_AND_RENDER:
+            return _DIRTY_REGION_REPORT_AND_RENDER
         logger.warning(
             "Invalid DXCAM_WINRT_DIRTY_REGION_MODE=%r; using %s.",
             raw,
@@ -256,7 +272,7 @@ class WinRTDuplicator:
         self._dirty_region_mode_enum = bindings.dirty_region_mode_enum
         self._pixel_format = bindings.directx_pixel_format.B8_G8_R8_A8_UINT_NORMALIZED
 
-        dxgi_device = cast(Any, device.device).QueryInterface(IDXGIDevice)
+        dxgi_device = device.device.QueryInterface(IDXGIDevice)
         dxgi_device_ptr = ctypes.cast(dxgi_device, ctypes.c_void_p).value
         if dxgi_device_ptr is None:
             raise RuntimeError("Failed to get IDXGIDevice pointer for WinRT backend.")
@@ -314,9 +330,7 @@ class WinRTDuplicator:
 
     def _configure_multithread_protection(self, device: Device) -> None:
         try:
-            self._multithread = cast(Any, device.im_context).QueryInterface(
-                ID3D11Multithread
-            )
+            self._multithread = device.im_context.QueryInterface(ID3D11Multithread)
         except comtypes.COMError:
             logger.debug("ID3D11Multithread not available for WinRT backend.")
             self._multithread = None
