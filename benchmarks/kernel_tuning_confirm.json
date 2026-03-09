@@ -1,0 +1,607 @@
+[
+  {
+    "threshold": 16384,
+    "tile": 32,
+    "score_all": 314.2773972860344,
+    "score_rot0": 681.4104647917028,
+    "score_rotated": 191.89970811747824,
+    "scenarios": [
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 0,
+        "avg_fps": 643.9641804753869,
+        "fps_variance": 336.5414200040886
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 90,
+        "avg_fps": 209.1796166440114,
+        "fps_variance": 279.5883120612944
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 180,
+        "avg_fps": 223.2209212072279,
+        "fps_variance": 58.78484559145871
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 270,
+        "avg_fps": 201.21853639867538,
+        "fps_variance": 15.042935809237582
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 0,
+        "avg_fps": 469.6655861382741,
+        "fps_variance": 370.2262897126257
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 90,
+        "avg_fps": 148.29289735815956,
+        "fps_variance": 31.240913324635233
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 180,
+        "avg_fps": 166.69798140028283,
+        "fps_variance": 6.625926572569832
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 270,
+        "avg_fps": 148.17283294690063,
+        "fps_variance": 46.902055867229045
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 0,
+        "avg_fps": 529.4479676440676,
+        "fps_variance": 9992.72519292803
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 90,
+        "avg_fps": 203.0914736465697,
+        "fps_variance": 207.41541704089917
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 180,
+        "avg_fps": 220.7794972974337,
+        "fps_variance": 864.7016578967585
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 270,
+        "avg_fps": 188.12658731724335,
+        "fps_variance": 84.9037604439116
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 0,
+        "avg_fps": 1082.5641249090825,
+        "fps_variance": 27836.293835345605
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 90,
+        "avg_fps": 178.27949771270252,
+        "fps_variance": 29.255131719540497
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 180,
+        "avg_fps": 223.44607314618716,
+        "fps_variance": 319.99504347496134
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 270,
+        "avg_fps": 192.29058233434506,
+        "fps_variance": 38.634274602937026
+      }
+    ]
+  },
+  {
+    "threshold": 65536,
+    "tile": 16,
+    "score_all": 312.7169897819324,
+    "score_rot0": 678.6753103399658,
+    "score_rotated": 190.7308829292546,
+    "scenarios": [
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 0,
+        "avg_fps": 555.2417355276805,
+        "fps_variance": 6078.4639726885425
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 90,
+        "avg_fps": 194.86391979770224,
+        "fps_variance": 73.54191738775077
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 180,
+        "avg_fps": 237.53748644144008,
+        "fps_variance": 49.58499199987708
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 270,
+        "avg_fps": 192.82883372522207,
+        "fps_variance": 176.28444338830704
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 0,
+        "avg_fps": 465.42818511419375,
+        "fps_variance": 209.76250301739606
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 90,
+        "avg_fps": 133.24741070031843,
+        "fps_variance": 217.12040864889627
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 180,
+        "avg_fps": 164.58863942194512,
+        "fps_variance": 28.44719812809824
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 270,
+        "avg_fps": 147.37353646228195,
+        "fps_variance": 15.951935955828246
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 0,
+        "avg_fps": 507.4624822717917,
+        "fps_variance": 2473.2518781861163
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 90,
+        "avg_fps": 191.7198089839638,
+        "fps_variance": 69.64621255042857
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 180,
+        "avg_fps": 205.80581136825663,
+        "fps_variance": 1354.912685743709
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 270,
+        "avg_fps": 200.2399632466716,
+        "fps_variance": 124.41107311827912
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 0,
+        "avg_fps": 1186.5688384461973,
+        "fps_variance": 41972.384187203286
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 90,
+        "avg_fps": 193.95788175614896,
+        "fps_variance": 174.47225427581742
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 180,
+        "avg_fps": 231.44751018042615,
+        "fps_variance": 106.92663890418916
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 270,
+        "avg_fps": 195.15979306667816,
+        "fps_variance": 43.80692617114853
+      }
+    ]
+  },
+  {
+    "threshold": 65536,
+    "tile": 32,
+    "score_all": 298.7947245354336,
+    "score_rot0": 657.7195502042172,
+    "score_rotated": 179.15311597917238,
+    "scenarios": [
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 0,
+        "avg_fps": 428.21600975863646,
+        "fps_variance": 5055.663237481224
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 90,
+        "avg_fps": 168.76404904263683,
+        "fps_variance": 52.227407106725586
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 180,
+        "avg_fps": 192.6850456128696,
+        "fps_variance": 647.0753733475333
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 270,
+        "avg_fps": 151.80489104853945,
+        "fps_variance": 488.60147551558566
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 0,
+        "avg_fps": 381.6885762386879,
+        "fps_variance": 125.04693211467401
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 90,
+        "avg_fps": 135.7861863109014,
+        "fps_variance": 93.70191487146626
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 180,
+        "avg_fps": 144.38581624240751,
+        "fps_variance": 122.52353029852416
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 270,
+        "avg_fps": 129.38075118513936,
+        "fps_variance": 21.590602990972496
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 0,
+        "avg_fps": 452.34169490422227,
+        "fps_variance": 16694.404768918062
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 90,
+        "avg_fps": 182.77432750184346,
+        "fps_variance": 272.82142195344477
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 180,
+        "avg_fps": 225.595766765909,
+        "fps_variance": 98.17944092127337
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 270,
+        "avg_fps": 192.95225783674655,
+        "fps_variance": 19.595765955475322
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 0,
+        "avg_fps": 1368.6319199153222,
+        "fps_variance": 19733.961683095757
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 90,
+        "avg_fps": 199.24886508529343,
+        "fps_variance": 69.33598875282556
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 180,
+        "avg_fps": 227.62121674714064,
+        "fps_variance": 394.493057435862
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 270,
+        "avg_fps": 198.83821837064147,
+        "fps_variance": 58.95604698552332
+      }
+    ]
+  },
+  {
+    "threshold": 16384,
+    "tile": 48,
+    "score_all": 297.1564451697397,
+    "score_rot0": 660.1521237905008,
+    "score_rotated": 176.15788562948603,
+    "scenarios": [
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 0,
+        "avg_fps": 532.3484795275969,
+        "fps_variance": 12603.072878731231
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 90,
+        "avg_fps": 198.32129727329428,
+        "fps_variance": 48.810435857762755
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 180,
+        "avg_fps": 224.46755107258016,
+        "fps_variance": 24.821356444500854
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 270,
+        "avg_fps": 191.702448509236,
+        "fps_variance": 129.90252253214152
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 0,
+        "avg_fps": 475.22475049368427,
+        "fps_variance": 44.84543694859712
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 90,
+        "avg_fps": 149.88753424571007,
+        "fps_variance": 3.420680629123898
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 180,
+        "avg_fps": 163.467356939748,
+        "fps_variance": 16.207724338723395
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 270,
+        "avg_fps": 118.61176917971615,
+        "fps_variance": 141.57665018713308
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 0,
+        "avg_fps": 335.7343751368079,
+        "fps_variance": 717.0317728856406
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 90,
+        "avg_fps": 156.07223487264167,
+        "fps_variance": 462.1510045818113
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 180,
+        "avg_fps": 180.1959145653083,
+        "fps_variance": 740.314889195032
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 270,
+        "avg_fps": 168.04617791239673,
+        "fps_variance": 1765.4610502846876
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 0,
+        "avg_fps": 1297.3008900039142,
+        "fps_variance": 28860.145411882968
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 90,
+        "avg_fps": 175.22239528826472,
+        "fps_variance": 334.47192712266053
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 180,
+        "avg_fps": 218.1730564607873,
+        "fps_variance": 541.8303622087524
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 270,
+        "avg_fps": 169.7268912341489,
+        "fps_variance": 458.4662429168427
+      }
+    ]
+  },
+  {
+    "threshold": 65536,
+    "tile": 24,
+    "score_all": 295.4461411898124,
+    "score_rot0": 623.4936496316313,
+    "score_rotated": 186.0969717092061,
+    "scenarios": [
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 0,
+        "avg_fps": 537.7656202975489,
+        "fps_variance": 6488.947858666825
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 90,
+        "avg_fps": 186.28963020263535,
+        "fps_variance": 110.49971288996758
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 180,
+        "avg_fps": 233.89785198201534,
+        "fps_variance": 19.445809274935986
+      },
+      {
+        "backend": "cv2",
+        "mode": "BGRA",
+        "rotation": 270,
+        "avg_fps": 191.03582763973003,
+        "fps_variance": 109.06126188638217
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 0,
+        "avg_fps": 474.032598697797,
+        "fps_variance": 297.2005721784846
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 90,
+        "avg_fps": 144.0713633866084,
+        "fps_variance": 7.164204504388109
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 180,
+        "avg_fps": 162.51157770138877,
+        "fps_variance": 76.77454583077585
+      },
+      {
+        "backend": "cv2",
+        "mode": "RGB",
+        "rotation": 270,
+        "avg_fps": 140.5416070563244,
+        "fps_variance": 53.62163128250241
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 0,
+        "avg_fps": 524.7219742091505,
+        "fps_variance": 5319.57084440961
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 90,
+        "avg_fps": 176.3967027276715,
+        "fps_variance": 345.9769042015398
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 180,
+        "avg_fps": 235.4237811725472,
+        "fps_variance": 3.2965896421843897
+      },
+      {
+        "backend": "numpy",
+        "mode": "BGRA",
+        "rotation": 270,
+        "avg_fps": 185.2375753334898,
+        "fps_variance": 193.8220627545476
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 0,
+        "avg_fps": 957.4544053220288,
+        "fps_variance": 8807.742962180942
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 90,
+        "avg_fps": 178.15951672920588,
+        "fps_variance": 51.67414589141934
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 180,
+        "avg_fps": 219.5801382609502,
+        "fps_variance": 410.01817138277437
+      },
+      {
+        "backend": "numpy",
+        "mode": "RGB",
+        "rotation": 270,
+        "avg_fps": 180.01808831790635,
+        "fps_variance": 9.832059447378686
+      }
+    ]
+  }
+]

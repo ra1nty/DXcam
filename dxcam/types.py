@@ -25,6 +25,12 @@ ColorMode: TypeAlias = Literal["RGB", "RGBA", "BGR", "BGRA", "GRAY"]
 #:     >>> backend: CaptureBackend = "dxgi"
 CaptureBackend: TypeAlias = Literal["dxgi", "winrt"]
 
+#: Processor backend accepted by :func:`dxcam.create`.
+#:
+#: Example:
+#:     >>> p_backend: ProcessorBackend = "cv2"
+ProcessorBackend: TypeAlias = Literal["cv2", "numpy"]
+
 #: Rectangle tuple ``(left, top, right, bottom)`` in output coordinates.
 #:
 #: Example:
@@ -38,4 +44,4 @@ Region: TypeAlias = tuple[int, int, int, int]
 #:     >>> frame: Frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
 Frame: TypeAlias = NDArray[np.uint8]
 
-__all__ = ["ColorMode", "CaptureBackend", "Region", "Frame"]
+__all__ = ["ColorMode", "CaptureBackend", "ProcessorBackend", "Region", "Frame"]

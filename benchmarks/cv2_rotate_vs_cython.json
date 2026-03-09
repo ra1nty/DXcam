@@ -1,0 +1,164 @@
+{
+  "results": [
+    {
+      "region": "full",
+      "rotation": 0,
+      "mode": "BGRA",
+      "cv2_rotate_avg_fps": 648.7339820599993,
+      "cv2_rotate_var": 176.06349435582675,
+      "cython_avg_fps": 669.2279263900348,
+      "cython_var": 3419.361312501241,
+      "cython_vs_cv2_rotate_pct": 3.1590674909550254
+    },
+    {
+      "region": "full",
+      "rotation": 0,
+      "mode": "RGB",
+      "cv2_rotate_avg_fps": 406.9764157727413,
+      "cv2_rotate_var": 768.7710725473218,
+      "cython_avg_fps": 376.0707033415413,
+      "cython_var": 1610.775119225313,
+      "cython_vs_cv2_rotate_pct": -7.593981182550391
+    },
+    {
+      "region": "full",
+      "rotation": 90,
+      "mode": "BGRA",
+      "cv2_rotate_avg_fps": 43.86898741280652,
+      "cv2_rotate_var": 0.759091612398357,
+      "cython_avg_fps": 220.5505014153897,
+      "cython_var": 47.66107535003826,
+      "cython_vs_cv2_rotate_pct": 402.7481016145022
+    },
+    {
+      "region": "full",
+      "rotation": 90,
+      "mode": "RGB",
+      "cv2_rotate_avg_fps": 40.77909469745536,
+      "cv2_rotate_var": 0.0512996015535829,
+      "cython_avg_fps": 150.83823007492293,
+      "cython_var": 29.21564159386291,
+      "cython_vs_cv2_rotate_pct": 269.89107088818065
+    },
+    {
+      "region": "full",
+      "rotation": 180,
+      "mode": "BGRA",
+      "cv2_rotate_avg_fps": 55.078088247027495,
+      "cv2_rotate_var": 0.6347989795695216,
+      "cython_avg_fps": 249.5631591586016,
+      "cython_var": 47.27381890185304,
+      "cython_vs_cv2_rotate_pct": 353.10788210240804
+    },
+    {
+      "region": "full",
+      "rotation": 180,
+      "mode": "RGB",
+      "cv2_rotate_avg_fps": 50.058328501732944,
+      "cv2_rotate_var": 0.08075118841653764,
+      "cython_avg_fps": 160.79973479215914,
+      "cython_var": 2.3362340974303795,
+      "cython_vs_cv2_rotate_pct": 221.22473843007464
+    },
+    {
+      "region": "full",
+      "rotation": 270,
+      "mode": "BGRA",
+      "cv2_rotate_avg_fps": 46.31937467680496,
+      "cv2_rotate_var": 0.08103107961725774,
+      "cython_avg_fps": 214.3939618027041,
+      "cython_var": 106.08497110831233,
+      "cython_vs_cv2_rotate_pct": 362.8602249029599
+    },
+    {
+      "region": "full",
+      "rotation": 270,
+      "mode": "RGB",
+      "cv2_rotate_avg_fps": 41.260929992180834,
+      "cv2_rotate_var": 0.17649312047902926,
+      "cython_avg_fps": 150.65362401841466,
+      "cython_var": 6.2139611581827365,
+      "cython_vs_cv2_rotate_pct": 265.1241599425033
+    },
+    {
+      "region": "crop",
+      "rotation": 0,
+      "mode": "BGRA",
+      "cv2_rotate_avg_fps": 521.0526568899209,
+      "cv2_rotate_var": 379.24492807358007,
+      "cython_avg_fps": 360.693853534685,
+      "cython_var": 129.52254512015062,
+      "cython_vs_cv2_rotate_pct": -30.775930462074918
+    },
+    {
+      "region": "crop",
+      "rotation": 0,
+      "mode": "RGB",
+      "cv2_rotate_avg_fps": 805.2550709965512,
+      "cv2_rotate_var": 1939.4613553964462,
+      "cython_avg_fps": 221.6018044756404,
+      "cython_var": 41.37759046596778,
+      "cython_vs_cv2_rotate_pct": -72.48054530083307
+    },
+    {
+      "region": "crop",
+      "rotation": 90,
+      "mode": "BGRA",
+      "cv2_rotate_avg_fps": 42.04638091866825,
+      "cv2_rotate_var": 0.3389076264821766,
+      "cython_avg_fps": 273.38990437811503,
+      "cython_var": 60.009498040464756,
+      "cython_vs_cv2_rotate_pct": 550.2103115769761
+    },
+    {
+      "region": "crop",
+      "rotation": 90,
+      "mode": "RGB",
+      "cv2_rotate_avg_fps": 39.4536018403989,
+      "cv2_rotate_var": 3.817200285905456,
+      "cython_avg_fps": 181.92998530890773,
+      "cython_var": 100.50906202961562,
+      "cython_vs_cv2_rotate_pct": 361.1238944542162
+    },
+    {
+      "region": "crop",
+      "rotation": 180,
+      "mode": "BGRA",
+      "cv2_rotate_avg_fps": 53.69306748255828,
+      "cv2_rotate_var": 0.09081787160585304,
+      "cython_avg_fps": 346.0521593304118,
+      "cython_var": 61.218326195898726,
+      "cython_vs_cv2_rotate_pct": 544.5006321213141
+    },
+    {
+      "region": "crop",
+      "rotation": 180,
+      "mode": "RGB",
+      "cv2_rotate_avg_fps": 51.67684275179095,
+      "cv2_rotate_var": 0.8614927704351003,
+      "cython_avg_fps": 218.14391041303003,
+      "cython_var": 48.96963607405166,
+      "cython_vs_cv2_rotate_pct": 322.1308787396263
+    },
+    {
+      "region": "crop",
+      "rotation": 270,
+      "mode": "BGRA",
+      "cv2_rotate_avg_fps": 44.10119602322944,
+      "cv2_rotate_var": 0.3747844963149731,
+      "cython_avg_fps": 244.32915016690362,
+      "cython_var": 88.01049295449036,
+      "cython_vs_cv2_rotate_pct": 454.0193287234388
+    },
+    {
+      "region": "crop",
+      "rotation": 270,
+      "mode": "RGB",
+      "cv2_rotate_avg_fps": 42.65509813956626,
+      "cv2_rotate_var": 0.29998037983500364,
+      "cython_avg_fps": 191.28939178039113,
+      "cython_var": 33.1902389190959,
+      "cython_vs_cv2_rotate_pct": 348.4561051869995
+    }
+  ]
+}

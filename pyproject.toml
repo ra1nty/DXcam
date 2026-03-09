@@ -16,9 +16,11 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: Microsoft :: Windows :: Windows 10",
     "Operating System :: Microsoft :: Windows :: Windows 11",
@@ -33,6 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 cv2 = ["opencv-python"]
+cython = ["Cython>=3.1.1"]
 winrt = [
     "winrt-runtime>=3.2.1",
     "winrt-Windows.Foundation>=3.2.1",
@@ -51,6 +54,9 @@ Tracker = "https://github.com/ra1nty/DXcam/issues"
 
 [tool.setuptools.packages.find]
 include = ["dxcam*"]
+
+[tool.setuptools.package-data]
+dxcam = ["processor/*.pyx"]
 
 [dependency-groups]
 dev = [
@@ -71,3 +77,12 @@ exclude = ["benchmarks"]
 
 [tool.ty.analysis]
 allowed-unresolved-imports = ["cv2"]
+
+[tool.cibuildwheel]
+build = "cp310-win_amd64 cp311-win_amd64 cp312-win_amd64 cp313-win_amd64 cp314-win_amd64"
+build-frontend = "pip; args: --no-build-isolation"
+test-command = "python -c \"import dxcam; import dxcam.processor._numpy_kernels as kernels; assert kernels.get_parallel_pixels_threshold() >= 0\""
+
+[tool.cibuildwheel.windows]
+before-build = "python -m pip install --upgrade pip && python -m pip install \"Cython>=3.1.1\" \"numpy>=1.26\""
+environment = { DXCAM_BUILD_CYTHON = "1" }

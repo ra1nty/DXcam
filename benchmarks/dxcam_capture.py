@@ -40,17 +40,28 @@ def parse_args() -> argparse.Namespace:
         default=TARGET_FRAMES,
         help=f"Number of benchmark reads (default: {TARGET_FRAMES}).",
     )
+    parser.add_argument(
+        "--processor-backend",
+        choices=("cv2", "numpy"),
+        default="cv2",
+        help="Post-processing backend (default: cv2).",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    camera = dxcam.create(output_idx=0, backend=args.backend)
+    camera = dxcam.create(
+        output_idx=0,
+        backend=args.backend,
+        processor_backend=args.processor_backend,
+    )
     camera.start(target_fps=args.target_fps, video_mode=False)
     logger.info(
-        "Starting %s. backend=%s region=%s target_fps=%d target_frames=%d",
+        "Starting %s. backend=%s processor_backend=%s region=%s target_fps=%d target_frames=%d",
         TITLE,
         args.backend,
+        args.processor_backend,
         REGION,
         args.target_fps,
         args.target_frames,
@@ -60,7 +71,7 @@ def main() -> None:
     duplicate_timestamps = 0
     estimated_skipped_frames = 0
     last_ts = None
-    target_period = 1.0 / args.target_fps
+    target_period = (1.0 / args.target_fps) if args.target_fps > 0 else None
     for idx in range(args.target_frames):
         result = camera.get_latest_frame(with_timestamp=True)
         if result is not None:
@@ -70,7 +81,7 @@ def main() -> None:
                 delta = ts - last_ts
                 if delta <= 0:
                     duplicate_timestamps += 1
-                elif delta > (target_period * 1.5):
+                elif target_period is not None and delta > (target_period * 1.5):
                     estimated_skipped_frames += max(
                         0, round(delta / target_period) - 1
                     )

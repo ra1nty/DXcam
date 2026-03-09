@@ -1,0 +1,2370 @@
+[
+  {
+    "threshold": 0,
+    "score_all": 7830.947014869236,
+    "scenarios": [
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 40852.61353315786,
+        "fps_variance": 4268683.942851425
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 28897.79819651884,
+        "fps_variance": 297524.4430284033
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 42889.17335221179,
+        "fps_variance": 3358664.6927541457
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 22775.91155229804,
+        "fps_variance": 698786.5467964271
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 10056.47412655945,
+        "fps_variance": 76184.61328648856
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 9159.740491602077,
+        "fps_variance": 9914.838765073235
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 10129.830878731931,
+        "fps_variance": 28838.962490603037
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 9434.768609209195,
+        "fps_variance": 2162757.9737945558
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 6706.221842097616,
+        "fps_variance": 2597.578078985598
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 14832.048898661831,
+        "fps_variance": 206921.45943193603
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 6673.970462535212,
+        "fps_variance": 4240.909507654126
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 8622.852307653802,
+        "fps_variance": 19172.1974952885
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2885.434279367844,
+        "fps_variance": 1402.7971412763711
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 3135.1319635843115,
+        "fps_variance": 40736.13720624013
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 2800.889094794887,
+        "fps_variance": 3786.6923130950595
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 3050.6711147422343,
+        "fps_variance": 61186.13582245775
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 3062.616191064308,
+        "fps_variance": 1548.6846791925173
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 8013.389921694885,
+        "fps_variance": 4763.136117398135
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 3007.741311395161,
+        "fps_variance": 206.53114483772165
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 4445.062441647558,
+        "fps_variance": 13445.264950664012
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 1307.0291138077125,
+        "fps_variance": 1755.656354435837
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 1594.5374961424268,
+        "fps_variance": 1202.5952119431788
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 1268.1054916133946,
+        "fps_variance": 5900.0449173915185
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 1692.524596334645,
+        "fps_variance": 222.30034376792716
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 575.5018660673586,
+        "fps_variance": 897.8436601465831
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 472.4874420306657,
+        "fps_variance": 848.181162763899
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 532.4212258167768,
+        "fps_variance": 286.2316062441372
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 873.695443856545,
+        "fps_variance": 317.9925594042444
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 224.1651205926179,
+        "fps_variance": 128.40047447759164
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 166.7086675691648,
+        "fps_variance": 236.12847983813415
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 220.0338144488587,
+        "fps_variance": 1090.331838788653
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 230.75362800656953,
+        "fps_variance": 190.54633844228067
+      }
+    ],
+    "mean_speedup_vs_baseline": 1.6634593079722606,
+    "median_speedup_vs_baseline": 0.9782616308575964
+  },
+  {
+    "threshold": 4096,
+    "score_all": 7237.1375271963825,
+    "scenarios": [
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 29628.826044232177,
+        "fps_variance": 4580623.913409854
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 35527.988960726645,
+        "fps_variance": 111852.72600672927
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 34733.36887449384,
+        "fps_variance": 446348.491914735
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 20926.14897720452,
+        "fps_variance": 2442742.041052177
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 9010.43729316599,
+        "fps_variance": 86566.8828692293
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 8763.04221462359,
+        "fps_variance": 22530.223309223373
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 9269.487507566137,
+        "fps_variance": 18009.295684642155
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 8442.780597889498,
+        "fps_variance": 139431.34881084054
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 6830.003034800299,
+        "fps_variance": 2177.056687764973
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 14328.06047371988,
+        "fps_variance": 252674.02961417552
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 6353.136532456483,
+        "fps_variance": 174222.85295326717
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 8697.752120086288,
+        "fps_variance": 27518.960563727174
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2818.7385754089373,
+        "fps_variance": 1534.6534495268315
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 3183.511178730201,
+        "fps_variance": 87.7288679996466
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 2676.3406120501572,
+        "fps_variance": 5175.028722943842
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 3042.147059347131,
+        "fps_variance": 27858.56296384448
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 3061.6716261248234,
+        "fps_variance": 11160.745351800455
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 7854.674948512299,
+        "fps_variance": 38117.9904873996
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 2741.296277792752,
+        "fps_variance": 26866.58900552991
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 4406.484719355976,
+        "fps_variance": 1753.1243156550886
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 1287.7089522747785,
+        "fps_variance": 52.11549149617205
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 1582.7232338517042,
+        "fps_variance": 3320.0912105699363
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 1187.0096403748432,
+        "fps_variance": 5052.717859993059
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 1857.4414568420627,
+        "fps_variance": 22999.57231486959
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 568.9075002143144,
+        "fps_variance": 794.401685417307
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 465.917337660948,
+        "fps_variance": 327.8965308239314
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 597.158920070992,
+        "fps_variance": 159.47694849964554
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 896.353578402453,
+        "fps_variance": 19287.620307276076
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 236.87523142207957,
+        "fps_variance": 65.33307137965085
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 148.25265568408787,
+        "fps_variance": 907.1366356384826
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 239.33303620470863,
+        "fps_variance": 371.23726267493646
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 224.82169899365144,
+        "fps_variance": 145.17338808123048
+      }
+    ],
+    "mean_speedup_vs_baseline": 1.4717177333721225,
+    "median_speedup_vs_baseline": 0.983265089578338
+  },
+  {
+    "threshold": 1024,
+    "score_all": 7078.522018081087,
+    "scenarios": [
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 28932.837804194536,
+        "fps_variance": 3572668.459145934
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 34423.7159050073,
+        "fps_variance": 1781571.2058629023
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 31504.279656278577,
+        "fps_variance": 1059451.48161822
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 20422.04259877664,
+        "fps_variance": 966893.2929842744
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 9336.330750161374,
+        "fps_variance": 23960.76467649752
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 8888.982479747334,
+        "fps_variance": 9771.184488105926
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 9442.235267709684,
+        "fps_variance": 14444.735807770388
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 9230.277391098063,
+        "fps_variance": 201298.77367245275
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 6836.0748453190545,
+        "fps_variance": 2832.3011329223705
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 14334.25134630771,
+        "fps_variance": 689474.7725629603
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 5450.026175967227,
+        "fps_variance": 1324632.4815782236
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 8551.031677845409,
+        "fps_variance": 15695.764229907254
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2637.2711579132465,
+        "fps_variance": 45209.942998169005
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 3065.0963561112017,
+        "fps_variance": 1474.9839740082116
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 2796.9565762843845,
+        "fps_variance": 991.2058908029726
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 3434.622070043791,
+        "fps_variance": 388.1904214522701
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 3088.4341532801104,
+        "fps_variance": 2420.0880718667236
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 7836.014041437779,
+        "fps_variance": 102327.56238490852
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 3035.1017465390846,
+        "fps_variance": 447.61246988925956
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 4048.709404002235,
+        "fps_variance": 131604.76110393504
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 1246.8161774536964,
+        "fps_variance": 798.9088997447831
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 1558.8882857727783,
+        "fps_variance": 1123.9695644316932
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 1250.7737934164427,
+        "fps_variance": 1194.4646834148077
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 1688.564501233218,
+        "fps_variance": 186.3500198748075
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 552.1592067842233,
+        "fps_variance": 3753.366269362123
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 515.8967102379539,
+        "fps_variance": 325.0842609122047
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 617.9505653235268,
+        "fps_variance": 207.9399141936231
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 931.2406916167716,
+        "fps_variance": 10476.013542431454
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 228.45219807398578,
+        "fps_variance": 102.54927538440323
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 163.73555669905147,
+        "fps_variance": 73.43105758745043
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 234.16068199700513,
+        "fps_variance": 7.597604026668273
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 229.7748059613833,
+        "fps_variance": 712.8117452574552
+      }
+    ],
+    "mean_speedup_vs_baseline": 1.440354787158338,
+    "median_speedup_vs_baseline": 0.9778798793956243
+  },
+  {
+    "threshold": 65536,
+    "score_all": 7242.207386239884,
+    "scenarios": [
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2917.5760727992906,
+        "fps_variance": 54412.95169915895
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 31028.598007769862,
+        "fps_variance": 2467317.247063059
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 33943.3444299369,
+        "fps_variance": 9157624.96067217
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 34442.14016171464,
+        "fps_variance": 33020925.7857031
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 10834.020573666297,
+        "fps_variance": 36240.357652640836
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 9264.065479981913,
+        "fps_variance": 9061.065445666483
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 10685.072533053126,
+        "fps_variance": 29639.68472526609
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 13249.40664226276,
+        "fps_variance": 1562280.7176528012
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 6903.6178203900445,
+        "fps_variance": 757.8121231791843
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 14218.764917766108,
+        "fps_variance": 388053.5927426019
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 6963.148338062206,
+        "fps_variance": 8245.98121226999
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 13092.715585061736,
+        "fps_variance": 353158.36390468373
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2805.0266005012577,
+        "fps_variance": 37449.12847096785
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 3196.3498911826778,
+        "fps_variance": 7538.342787786667
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 2820.8973130175486,
+        "fps_variance": 5773.833173403376
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 4899.223100466136,
+        "fps_variance": 6898.0048065820665
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 3099.4082197968105,
+        "fps_variance": 940.3975567370603
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 7904.876825253032,
+        "fps_variance": 88446.99495736249
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 3091.5912024498807,
+        "fps_variance": 944.8722295013432
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 6429.684447356555,
+        "fps_variance": 327051.0662142714
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 1252.9324728726272,
+        "fps_variance": 490.96754365174576
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 1626.5047828819636,
+        "fps_variance": 1043.7846153901999
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 1332.3670472098472,
+        "fps_variance": 2313.2027578723078
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 1899.023275871009,
+        "fps_variance": 88328.7434742728
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 589.5794197510139,
+        "fps_variance": 444.0596681120843
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 481.792220473564,
+        "fps_variance": 205.91022212626612
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 646.2724720386844,
+        "fps_variance": 174.96675112870906
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 1253.1145673815784,
+        "fps_variance": 6809.644805832132
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 237.64590420652198,
+        "fps_variance": 67.73527829947949
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 141.64872441016826,
+        "fps_variance": 381.2769787585419
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 244.24609105029813,
+        "fps_variance": 88.41353706257173
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 255.98121904021457,
+        "fps_variance": 273.7488191775459
+      }
+    ],
+    "mean_speedup_vs_baseline": 1.2943814974724552,
+    "median_speedup_vs_baseline": 1.022597272957206
+  },
+  {
+    "threshold": 32768,
+    "score_all": 6184.413341943926,
+    "scenarios": [
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 3635.574466705281,
+        "fps_variance": 471323.86590062286
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 32556.140600461193,
+        "fps_variance": 1746.3649856070585
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 4065.1098970220705,
+        "fps_variance": 4728.729431660197
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 32004.63576471739,
+        "fps_variance": 43485099.39795721
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 9731.241709863969,
+        "fps_variance": 1816675.8641046982
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 8511.479485401069,
+        "fps_variance": 33862.40923200511
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 10642.619719787634,
+        "fps_variance": 71912.6993789565
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 13698.110156465897,
+        "fps_variance": 264237.9874859817
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 6932.320640575701,
+        "fps_variance": 1118.4822154399158
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 14764.528760892053,
+        "fps_variance": 168330.26809424727
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 6765.254627445155,
+        "fps_variance": 5796.635613197822
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 10930.334471299111,
+        "fps_variance": 1941274.727303915
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2848.214643001417,
+        "fps_variance": 16554.19403736401
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 2916.9960777823903,
+        "fps_variance": 11599.741240082772
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 2740.2174918441556,
+        "fps_variance": 38877.38180560152
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 4780.355076605431,
+        "fps_variance": 46944.44659073559
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 3022.1868006309633,
+        "fps_variance": 30088.31728690319
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 7651.880608240891,
+        "fps_variance": 4284.321485085586
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 3055.697790605436,
+        "fps_variance": 12938.739774564414
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 6476.57051279258,
+        "fps_variance": 220971.32422542127
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 1417.2538226137056,
+        "fps_variance": 191.88807671913798
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 1528.3001748092513,
+        "fps_variance": 14867.539088299387
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 1334.5779196134763,
+        "fps_variance": 4017.597638856937
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 2369.559911690833,
+        "fps_variance": 6581.7209051082955
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 629.9623757849125,
+        "fps_variance": 210.6357359438353
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 486.9527971368516,
+        "fps_variance": 22.311118224169643
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 567.6651614711533,
+        "fps_variance": 794.373023533126
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 948.7314932428332,
+        "fps_variance": 1081.4352152786753
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 247.77714795243483,
+        "fps_variance": 46.94193706704829
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 173.83218414962457,
+        "fps_variance": 9.796337723731408
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 232.95773783508062,
+        "fps_variance": 41.67890079718037
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 234.18691376568646,
+        "fps_variance": 415.5749889511196
+      }
+    ],
+    "mean_speedup_vs_baseline": 1.0501884075882524,
+    "median_speedup_vs_baseline": 1.0161723212607647
+  },
+  {
+    "threshold": 8192,
+    "score_all": 5897.3100241865,
+    "scenarios": [
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 3311.8907865171936,
+        "fps_variance": 261728.43664564722
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 32325.904022674076,
+        "fps_variance": 130396.67195422082
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 4093.1553349218284,
+        "fps_variance": 8531.93871953344
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 32135.79041580087,
+        "fps_variance": 40861715.88271658
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 10498.306641849698,
+        "fps_variance": 40722.13041825156
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 8640.940436560668,
+        "fps_variance": 18401.551196674987
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 9823.754036610397,
+        "fps_variance": 785705.6019103549
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 9828.23419737252,
+        "fps_variance": 1264882.6852951117
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 6826.113869120319,
+        "fps_variance": 12347.101048370767
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 14256.114305062101,
+        "fps_variance": 151179.4433850861
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 6867.531295604279,
+        "fps_variance": 2047.3768655597437
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 9288.872670908428,
+        "fps_variance": 931424.9785122002
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2823.1706580679347,
+        "fps_variance": 1965.11449870997
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 3168.6456627063576,
+        "fps_variance": 5725.517161185229
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 2776.445945417021,
+        "fps_variance": 152.1712466023202
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 3220.1534894472466,
+        "fps_variance": 30574.503011790744
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 3120.7194651736677,
+        "fps_variance": 677.3167411497446
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 8089.051649145869,
+        "fps_variance": 49444.68572439527
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 3039.4654515682796,
+        "fps_variance": 894.1116554180609
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 4273.970001142978,
+        "fps_variance": 8573.76772314826
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 1330.9070778627752,
+        "fps_variance": 3812.9194814955163
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 1669.643403850832,
+        "fps_variance": 45147.722734792565
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 1284.1825565653942,
+        "fps_variance": 9735.98752380743
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 2312.7216408210006,
+        "fps_variance": 24924.855663649825
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 616.544671831918,
+        "fps_variance": 2864.0181019085417
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 506.95991612934927,
+        "fps_variance": 124.76193096744859
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 599.0897133714934,
+        "fps_variance": 333.0283522667711
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 1081.8356953132704,
+        "fps_variance": 89198.41139191722
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 239.85171644346386,
+        "fps_variance": 39.1700825562108
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 167.4839237976156,
+        "fps_variance": 36.97438534608421
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 235.6848313133078,
+        "fps_variance": 45.083093137353224
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 260.7852909958647,
+        "fps_variance": 8.7666962445743
+      }
+    ],
+    "mean_speedup_vs_baseline": 1.0147722061158833,
+    "median_speedup_vs_baseline": 1.001945906664926
+  },
+  {
+    "threshold": 16384,
+    "score_all": 5871.026782981498,
+    "scenarios": [
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2970.0182611264368,
+        "fps_variance": 142208.24371296074
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 33388.87326370701,
+        "fps_variance": 17013.86839084418
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 3984.9135718567363,
+        "fps_variance": 131488.3739520185
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 31933.25589392401,
+        "fps_variance": 24414067.56306191
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 9443.944213951168,
+        "fps_variance": 8755.736339219286
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 8367.27319970069,
+        "fps_variance": 90083.18930760352
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 9313.188038603888,
+        "fps_variance": 20372.211830848002
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 12261.466386425795,
+        "fps_variance": 3283949.113743995
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 6942.317915458458,
+        "fps_variance": 298.41538711663776
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 14365.481703106734,
+        "fps_variance": 295517.5721049259
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 5507.969654434859,
+        "fps_variance": 1290341.352678043
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 7856.187933728884,
+        "fps_variance": 172591.59650044836
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2712.6389882813796,
+        "fps_variance": 10075.834068804565
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 3176.233269017773,
+        "fps_variance": 2752.329221111138
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 3084.7369844695513,
+        "fps_variance": 5012.172334857799
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 4601.962506101543,
+        "fps_variance": 14359.297915955192
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 3115.544131968078,
+        "fps_variance": 6630.307748079141
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 7677.0431030647205,
+        "fps_variance": 77813.41188271438
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 2973.205288813804,
+        "fps_variance": 12954.683488027556
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 4424.144545664486,
+        "fps_variance": 3256.13361160238
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 1373.6732219707837,
+        "fps_variance": 589.9407519550689
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 1605.1793148391425,
+        "fps_variance": 502.8430436269616
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 1329.5490062197143,
+        "fps_variance": 3785.4034668761083
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 1716.8169379635754,
+        "fps_variance": 180.58064028179987
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 623.7430093982805,
+        "fps_variance": 484.2668205722585
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 505.8315676069563,
+        "fps_variance": 370.1829779557622
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 636.3973226092953,
+        "fps_variance": 142.67234350719932
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 1082.8056899673727,
+        "fps_variance": 10712.676720454825
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 242.57355422660737,
+        "fps_variance": 32.88142305406689
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 171.24466343422287,
+        "fps_variance": 41.3487112764647
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 230.71398663794216,
+        "fps_variance": 539.8700590813878
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 253.92992712804426,
+        "fps_variance": 13.798902102853084
+      }
+    ],
+    "mean_speedup_vs_baseline": 1.0,
+    "median_speedup_vs_baseline": 1.0
+  },
+  {
+    "threshold": 2048,
+    "score_all": 5332.836853283335,
+    "scenarios": [
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 3047.0691575758647,
+        "fps_variance": 132121.03341440583
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 30144.642542616824,
+        "fps_variance": 629647.5324642657
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 3085.5584894496774,
+        "fps_variance": 157770.23121955947
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 23038.461892323434,
+        "fps_variance": 1591368.7683210457
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 9423.479866006168,
+        "fps_variance": 7646.35851889601
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 8881.361264907953,
+        "fps_variance": 17212.538547498076
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 9354.444055697284,
+        "fps_variance": 2579.712005738546
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 9143.13241354122,
+        "fps_variance": 10463.322472862546
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 6723.1845144157005,
+        "fps_variance": 67.1019564455605
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 14445.077550754571,
+        "fps_variance": 117283.54567499542
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 6450.004337328351,
+        "fps_variance": 148702.90916866926
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 8175.497457041302,
+        "fps_variance": 44934.266685316696
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2657.9396263918134,
+        "fps_variance": 18320.82820892536
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 3244.626754215385,
+        "fps_variance": 2047.7224227051327
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 2742.287825983299,
+        "fps_variance": 3233.094283740235
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 3456.205902215046,
+        "fps_variance": 465.7860583170816
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 2962.8236314375154,
+        "fps_variance": 41487.19327393595
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 7642.97275126257,
+        "fps_variance": 1124.2816378317839
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 3068.888252211897,
+        "fps_variance": 1322.2085166053603
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 3770.600011536437,
+        "fps_variance": 69744.16561363995
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 1236.542384691889,
+        "fps_variance": 250.50381949716024
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 1544.1346899272237,
+        "fps_variance": 412.5041175026556
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 1290.7292514515818,
+        "fps_variance": 87.7596134460462
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 1630.07431534842,
+        "fps_variance": 977.4965024378249
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 566.8534145081827,
+        "fps_variance": 2611.729488538075
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 454.9419186091163,
+        "fps_variance": 286.1101648320726
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 595.6361871233204,
+        "fps_variance": 89.03952008744069
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 0,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 1015.430634968502,
+        "fps_variance": 1669.0636405848077
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "BGRA",
+        "avg_fps": 234.47203927330565,
+        "fps_variance": 29.49621287833669
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "cv2",
+        "mode": "RGB",
+        "avg_fps": 171.4003404395551,
+        "fps_variance": 8.161232764289764
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "BGRA",
+        "avg_fps": 213.22858565754936,
+        "fps_variance": 45.172878560014425
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "rotation": 180,
+        "backend": "numpy",
+        "mode": "RGB",
+        "avg_fps": 239.07724615575236,
+        "fps_variance": 200.34879668678096
+      }
+    ],
+    "mean_speedup_vs_baseline": 0.9434228352755353,
+    "median_speedup_vs_baseline": 0.9564756646249162
+  }
+]

@@ -1,0 +1,2207 @@
+{
+  "meta": {
+    "width": 3840,
+    "height": 2160,
+    "regions": {
+      "full": [
+        0,
+        0,
+        3840,
+        2160
+      ],
+      "crop": [
+        160,
+        120,
+        3680,
+        2040
+      ]
+    },
+    "rotations": [
+      0,
+      90,
+      180,
+      270
+    ],
+    "warmup": 3,
+    "iterations": 30,
+    "repeats": 4
+  },
+  "results": [
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        191.5122,
+        201.8442,
+        200.8797,
+        194.6192
+      ],
+      "avg_fps": 197.21381291652966,
+      "fps_variance": 18.529997043827954,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        574.5938,
+        602.4871,
+        585.3442,
+        618.2813
+      ],
+      "avg_fps": 595.1765811613611,
+      "fps_variance": 276.90057171213823,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        490.0319,
+        466.2881,
+        458.4737,
+        454.1684
+      ],
+      "avg_fps": 467.24054401694934,
+      "fps_variance": 192.02335331738848,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        406.8646,
+        398.5339,
+        438.328,
+        471.5995
+      ],
+      "avg_fps": 428.8315055774258,
+      "fps_variance": 829.9427930723594,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        176.3051,
+        191.9845,
+        194.7187,
+        200.2194
+      ],
+      "avg_fps": 190.80693427933787,
+      "fps_variance": 78.89701552309343,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        654.4703,
+        566.3273,
+        597.7024,
+        631.4354
+      ],
+      "avg_fps": 612.4838428740601,
+      "fps_variance": 1117.7336689996077,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        457.7832,
+        463.1459,
+        493.728,
+        458.5235
+      ],
+      "avg_fps": 468.2951666146237,
+      "fps_variance": 219.8326116867041,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        402.2645,
+        394.5686,
+        458.1524,
+        405.3917
+      ],
+      "avg_fps": 415.09429628785944,
+      "fps_variance": 633.5110992062562,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        205.2669,
+        207.7721,
+        194.7142,
+        209.5464
+      ],
+      "avg_fps": 204.32486702999716,
+      "fps_variance": 33.100087678782536,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        526.2705,
+        494.3675,
+        499.731,
+        465.7799
+      ],
+      "avg_fps": 496.53723951889486,
+      "fps_variance": 461.2474412804105,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        628.7384,
+        687.2616,
+        648.451,
+        800.1472
+      ],
+      "avg_fps": 691.1495414571996,
+      "fps_variance": 4403.483589890544,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        626.2512,
+        668.0696,
+        473.9786,
+        500.4345
+      ],
+      "avg_fps": 567.1834826577991,
+      "fps_variance": 6702.39541645346,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        196.4369,
+        204.968,
+        208.7534,
+        204.1698
+      ],
+      "avg_fps": 203.58204735951364,
+      "fps_variance": 20.015743263917994,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        485.8158,
+        492.1236,
+        505.3678,
+        504.4823
+      ],
+      "avg_fps": 496.9473836875054,
+      "fps_variance": 68.71525735618084,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        672.1273,
+        611.9577,
+        733.4963,
+        575.7251
+      ],
+      "avg_fps": 648.3266096397001,
+      "fps_variance": 3603.508091934786,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        762.666,
+        665.6002,
+        802.9119,
+        687.3214
+      ],
+      "avg_fps": 729.6248839422469,
+      "fps_variance": 3087.859397704087,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        159.4384,
+        159.008,
+        165.2255,
+        166.9877
+      ],
+      "avg_fps": 162.66489573655997,
+      "fps_variance": 12.256562638873598,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        30.5964,
+        31.1354,
+        31.2,
+        31.13
+      ],
+      "avg_fps": 31.01544742045845,
+      "fps_variance": 0.059299120612494254,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        24.7908,
+        23.3915,
+        24.464,
+        23.9154
+      ],
+      "avg_fps": 24.140421799233373,
+      "fps_variance": 0.28480558232852027,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        23.9326,
+        24.0615,
+        24.4129,
+        24.0556
+      ],
+      "avg_fps": 24.115643564134228,
+      "fps_variance": 0.03210477713125789,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        169.5824,
+        162.3185,
+        155.2608,
+        167.566
+      ],
+      "avg_fps": 163.68194304537016,
+      "fps_variance": 30.66926255662138,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        30.5322,
+        30.7909,
+        29.3831,
+        30.6833
+      ],
+      "avg_fps": 30.34735395437547,
+      "fps_variance": 0.3184035848661256,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        24.1522,
+        24.5106,
+        24.2261,
+        24.5661
+      ],
+      "avg_fps": 24.363760413500653,
+      "fps_variance": 0.03154858931575325,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        24.5391,
+        24.6673,
+        24.5874,
+        24.0357
+      ],
+      "avg_fps": 24.457356426943125,
+      "fps_variance": 0.06135746625758879,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        202.8256,
+        187.662,
+        194.9324,
+        193.6565
+      ],
+      "avg_fps": 194.76911857733708,
+      "fps_variance": 29.170887970504896,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        38.0036,
+        37.2721,
+        37.6267,
+        37.3523
+      ],
+      "avg_fps": 37.563692307759545,
+      "fps_variance": 0.0818080942532519,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        30.5068,
+        30.0244,
+        30.183,
+        30.4032
+      ],
+      "avg_fps": 30.279351761213583,
+      "fps_variance": 0.035331857470393566,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        30.7149,
+        29.6985,
+        29.5372,
+        29.9452
+      ],
+      "avg_fps": 29.973939436103812,
+      "fps_variance": 0.20411891127091086,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        206.7235,
+        201.2221,
+        198.8091,
+        181.454
+      ],
+      "avg_fps": 197.05216266144333,
+      "fps_variance": 89.32840104763666,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        37.3962,
+        37.4573,
+        38.6251,
+        38.8342
+      ],
+      "avg_fps": 38.07822201952239,
+      "fps_variance": 0.43033722469508356,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        30.6065,
+        30.4448,
+        30.5597,
+        29.7531
+      ],
+      "avg_fps": 30.34104711159284,
+      "fps_variance": 0.11867089208210771,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        29.6968,
+        30.2995,
+        30.2657,
+        30.1423
+      ],
+      "avg_fps": 30.101084930035288,
+      "fps_variance": 0.0579181563934625,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        33.6465,
+        32.9375,
+        33.3392,
+        33.8057
+      ],
+      "avg_fps": 33.43218938274052,
+      "fps_variance": 0.10970020127414185,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        41.1565,
+        40.0687,
+        40.9356,
+        40.2412
+      ],
+      "avg_fps": 40.60049198964005,
+      "fps_variance": 0.20834941454855224,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        29.1438,
+        29.1622,
+        29.7292,
+        29.7349
+      ],
+      "avg_fps": 29.44253136776854,
+      "fps_variance": 0.08387328977142411,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        30.1606,
+        29.4488,
+        29.8708,
+        29.6066
+      ],
+      "avg_fps": 29.77172732970936,
+      "fps_variance": 0.0731521634276586,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        33.1026,
+        33.1206,
+        33.0513,
+        32.8405
+      ],
+      "avg_fps": 33.02874073386682,
+      "fps_variance": 0.0124581751176865,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        39.3071,
+        40.884,
+        41.0432,
+        41.0548
+      ],
+      "avg_fps": 40.57228747269629,
+      "fps_variance": 0.5381302051417061,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        29.8553,
+        30.2942,
+        30.0255,
+        29.8131
+      ],
+      "avg_fps": 29.997025352105226,
+      "fps_variance": 0.035756885651757456,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        29.5604,
+        29.6273,
+        29.5502,
+        30.0452
+      ],
+      "avg_fps": 29.695788110806774,
+      "fps_variance": 0.041569363794374384,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        41.0829,
+        40.1569,
+        40.149,
+        38.3927
+      ],
+      "avg_fps": 39.945398417153726,
+      "fps_variance": 0.9477175897509169,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        49.9941,
+        49.6146,
+        49.403,
+        50.5731
+      ],
+      "avg_fps": 49.89621349988665,
+      "fps_variance": 0.19759369605273308,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        36.2177,
+        36.1948,
+        36.3543,
+        36.5613
+      ],
+      "avg_fps": 36.33204854620494,
+      "fps_variance": 0.021241502999756374,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        37.1114,
+        36.5377,
+        36.072,
+        37.1726
+      ],
+      "avg_fps": 36.723414492588155,
+      "fps_variance": 0.20279756902667959,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        40.6349,
+        41.1557,
+        39.756,
+        39.7479
+      ],
+      "avg_fps": 40.32360728435971,
+      "fps_variance": 0.3607285114169651,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        49.6528,
+        50.2628,
+        49.2403,
+        47.8159
+      ],
+      "avg_fps": 49.24292892530896,
+      "fps_variance": 0.8111536356514631,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        35.7596,
+        36.5953,
+        33.8788,
+        34.6546
+      ],
+      "avg_fps": 35.22209829240087,
+      "fps_variance": 1.0752863008306386,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        37.0155,
+        37.1753,
+        36.6383,
+        35.9044
+      ],
+      "avg_fps": 36.68338666342205,
+      "fps_variance": 0.24030056688002813,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        32.2835,
+        32.2207,
+        32.345,
+        32.684
+      ],
+      "avg_fps": 32.383288765703966,
+      "fps_variance": 0.03206538996880334,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        26.6681,
+        27.0403,
+        27.0581,
+        26.4896
+      ],
+      "avg_fps": 26.81404556075411,
+      "fps_variance": 0.05931690717990788,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        21.7886,
+        21.9921,
+        22.1596,
+        22.0175
+      ],
+      "avg_fps": 21.98945821543153,
+      "fps_variance": 0.017518097387187993,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        22.4628,
+        22.6553,
+        22.6199,
+        22.1588
+      ],
+      "avg_fps": 22.474217316653633,
+      "fps_variance": 0.038407643441310396,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        31.9905,
+        32.6449,
+        32.3937,
+        32.5044
+      ],
+      "avg_fps": 32.38339459573328,
+      "fps_variance": 0.05936947273498197,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        27.1458,
+        26.948,
+        27.3069,
+        26.9152
+      ],
+      "avg_fps": 27.078971226802455,
+      "fps_variance": 0.025105390599611168,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        22.1586,
+        22.2535,
+        22.6169,
+        22.1999
+      ],
+      "avg_fps": 22.307227151149696,
+      "fps_variance": 0.03309413410701832,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        22.6054,
+        22.6546,
+        22.7511,
+        22.3025
+      ],
+      "avg_fps": 22.5783932146877,
+      "fps_variance": 0.02811666094798303,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        38.1822,
+        38.6803,
+        38.8961,
+        39.7617
+      ],
+      "avg_fps": 38.88008717902538,
+      "fps_variance": 0.32610284804521555,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        34.9885,
+        33.4869,
+        34.8743,
+        34.6481
+      ],
+      "avg_fps": 34.49943917783914,
+      "fps_variance": 0.35677508631961935,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        28.7997,
+        28.9684,
+        28.071,
+        27.6784
+      ],
+      "avg_fps": 28.379358358797997,
+      "fps_variance": 0.2775389844284711,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        28.6174,
+        28.5983,
+        28.51,
+        28.8371
+      ],
+      "avg_fps": 28.640705610462124,
+      "fps_variance": 0.014492352376523666,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        40.0149,
+        39.6504,
+        40.3024,
+        39.7448
+      ],
+      "avg_fps": 39.92812189388275,
+      "fps_variance": 0.06457356936917968,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        34.4012,
+        33.7119,
+        32.7513,
+        34.8577
+      ],
+      "avg_fps": 33.93051531725041,
+      "fps_variance": 0.6299061061167346,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        28.299,
+        28.8373,
+        28.2909,
+        28.7535
+      ],
+      "avg_fps": 28.545193649648787,
+      "fps_variance": 0.0635007718034908,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "python",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        29.5869,
+        28.4349,
+        28.8324,
+        28.597
+      ],
+      "avg_fps": 28.862783840798897,
+      "fps_variance": 0.19474741642233268,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        198.0059,
+        188.3502,
+        202.7171,
+        201.044
+      ],
+      "avg_fps": 197.52928813437202,
+      "fps_variance": 30.937401636574723,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        643.5144,
+        603.3607,
+        619.6772,
+        606.2835
+      ],
+      "avg_fps": 618.2089798759678,
+      "fps_variance": 251.30244989898708,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        475.9684,
+        443.722,
+        475.0917,
+        463.7538
+      ],
+      "avg_fps": 464.6339667336096,
+      "fps_variance": 168.97959798386088,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        508.3651,
+        456.1648,
+        410.2884,
+        418.129
+      ],
+      "avg_fps": 448.23683415502023,
+      "fps_variance": 1506.2090125322318,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        199.5684,
+        199.5657,
+        200.4236,
+        196.0801
+      ],
+      "avg_fps": 198.9094510538497,
+      "fps_variance": 2.79067720040306,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        642.2415,
+        646.7064,
+        621.2338,
+        666.683
+      ],
+      "avg_fps": 644.2161684979302,
+      "fps_variance": 260.76204778315827,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        530.0737,
+        455.3133,
+        429.3572,
+        472.8162
+      ],
+      "avg_fps": 471.89009580319794,
+      "fps_variance": 1367.5088890663976,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        415.9261,
+        418.5852,
+        444.1964,
+        406.1354
+      ],
+      "avg_fps": 421.2107433064755,
+      "fps_variance": 197.6067090468123,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        104.4092,
+        96.4989,
+        82.3229,
+        86.7313
+      ],
+      "avg_fps": 92.49058693053716,
+      "fps_variance": 73.66754052061737,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        187.1051,
+        158.9122,
+        181.4225,
+        158.713
+      ],
+      "avg_fps": 171.53819327792706,
+      "fps_variance": 165.98195292828794,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        134.135,
+        129.2369,
+        129.2768,
+        109.9042
+      ],
+      "avg_fps": 125.63821703165826,
+      "fps_variance": 86.48639448410538,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        133.222,
+        133.1081,
+        132.2876,
+        141.2005
+      ],
+      "avg_fps": 134.95456807278296,
+      "fps_variance": 13.133932813760756,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        89.1315,
+        98.7777,
+        86.8507,
+        86.8619
+      ],
+      "avg_fps": 90.40545143131763,
+      "fps_variance": 24.227776712102536,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        139.386,
+        146.5384,
+        140.9664,
+        137.8265
+      ],
+      "avg_fps": 141.17930543631707,
+      "fps_variance": 10.80567968064046,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        120.5261,
+        132.2714,
+        124.2097,
+        131.5222
+      ],
+      "avg_fps": 127.1323447575932,
+      "fps_variance": 24.466497396730503,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 0,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        90.2916,
+        132.2312,
+        120.8503,
+        129.6466
+      ],
+      "avg_fps": 118.25493157942401,
+      "fps_variance": 278.44757293257953,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        62.6792,
+        63.6998,
+        66.0602,
+        65.4373
+      ],
+      "avg_fps": 64.46914608172378,
+      "fps_variance": 1.8161067383063416,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        121.3238,
+        118.0331,
+        115.9285,
+        108.499
+      ],
+      "avg_fps": 115.94612355308657,
+      "fps_variance": 22.18373991699614,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        93.4391,
+        98.7982,
+        95.857,
+        89.169
+      ],
+      "avg_fps": 94.31581713807752,
+      "fps_variance": 12.43145929323484,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        98.3329,
+        93.395,
+        100.4863,
+        90.5931
+      ],
+      "avg_fps": 95.70179720667187,
+      "fps_variance": 15.308541017111091,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        71.7323,
+        67.0325,
+        66.3111,
+        67.4941
+      ],
+      "avg_fps": 68.14247609481268,
+      "fps_variance": 4.473304250172787,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        114.4349,
+        114.4119,
+        97.1781,
+        121.7616
+      ],
+      "avg_fps": 111.94660517595933,
+      "fps_variance": 81.67812280702017,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        76.6466,
+        95.7958,
+        96.5412,
+        76.0128
+      ],
+      "avg_fps": 86.24911478848452,
+      "fps_variance": 98.51412961322956,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        94.5234,
+        89.7765,
+        94.2153,
+        95.5774
+      ],
+      "avg_fps": 93.52316903003843,
+      "fps_variance": 4.934281175720182,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        85.2993,
+        84.4003,
+        84.1226,
+        85.829
+      ],
+      "avg_fps": 84.91281276466233,
+      "fps_variance": 0.46898095783277527,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        124.1821,
+        139.3265,
+        163.6309,
+        128.1382
+      ],
+      "avg_fps": 138.819416851891,
+      "fps_variance": 236.05135051453993,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        111.7085,
+        116.4225,
+        104.9839,
+        134.5812
+      ],
+      "avg_fps": 116.92403792875866,
+      "fps_variance": 120.44904875726705,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        125.9417,
+        108.4727,
+        127.0303,
+        122.5897
+      ],
+      "avg_fps": 121.00861397271781,
+      "fps_variance": 55.06102825243279,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        85.6948,
+        89.7757,
+        86.3369,
+        88.0734
+      ],
+      "avg_fps": 87.47019960535668,
+      "fps_variance": 2.5288332252811467,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        144.7194,
+        169.3141,
+        137.3054,
+        149.2895
+      ],
+      "avg_fps": 150.1571110705935,
+      "fps_variance": 140.61914925557076,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        120.2189,
+        126.1185,
+        117.6858,
+        122.8491
+      ],
+      "avg_fps": 121.71807614775199,
+      "fps_variance": 9.787515466226315,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 90,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        117.6815,
+        115.3534,
+        118.1019,
+        137.6627
+      ],
+      "avg_fps": 122.19988571788032,
+      "fps_variance": 80.7951624938503,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        77.2719,
+        72.5687,
+        76.7516,
+        75.1298
+      ],
+      "avg_fps": 75.43048914393862,
+      "fps_variance": 3.354059658922593,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        135.3372,
+        122.8597,
+        138.8314,
+        123.5017
+      ],
+      "avg_fps": 130.13248240159547,
+      "fps_variance": 49.904980804838665,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        87.3783,
+        118.2669,
+        113.0085,
+        106.2628
+      ],
+      "avg_fps": 106.22915841206184,
+      "fps_variance": 136.5554419267838,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        114.9977,
+        104.6856,
+        117.4129,
+        105.69
+      ],
+      "avg_fps": 110.69654982712589,
+      "fps_variance": 31.201643229919625,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        77.3957,
+        76.0725,
+        80.4693,
+        77.0154
+      ],
+      "avg_fps": 77.73823839178068,
+      "fps_variance": 2.718384614247831,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        145.3043,
+        117.815,
+        149.5475,
+        118.2501
+      ],
+      "avg_fps": 132.72922022599533,
+      "fps_variance": 218.2658153994333,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        106.1569,
+        101.4466,
+        111.107,
+        110.7172
+      ],
+      "avg_fps": 107.35694860749537,
+      "fps_variance": 15.43159549525697,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        111.2351,
+        107.3945,
+        108.7097,
+        110.1653
+      ],
+      "avg_fps": 109.37615397976695,
+      "fps_variance": 2.112337923692285,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        85.7812,
+        92.9671,
+        92.0579,
+        85.6101
+      ],
+      "avg_fps": 89.10407385212285,
+      "fps_variance": 11.724313334437623,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        178.8877,
+        145.264,
+        158.7706,
+        166.159
+      ],
+      "avg_fps": 162.27030751722558,
+      "fps_variance": 148.18006140820373,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        137.1474,
+        135.0285,
+        129.419,
+        149.7955
+      ],
+      "avg_fps": 137.84759075777941,
+      "fps_variance": 55.55800671209874,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        137.293,
+        129.9049,
+        152.8279,
+        133.7681
+      ],
+      "avg_fps": 138.4484905864567,
+      "fps_variance": 75.7504097594989,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        90.9966,
+        91.3968,
+        96.0999,
+        93.6118
+      ],
+      "avg_fps": 93.02627382925067,
+      "fps_variance": 4.141271068248311,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        156.0448,
+        172.1524,
+        149.733,
+        174.0496
+      ],
+      "avg_fps": 162.99492337044902,
+      "fps_variance": 107.5621613989839,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        135.7664,
+        140.5808,
+        144.4331,
+        130.4424
+      ],
+      "avg_fps": 137.8056865153086,
+      "fps_variance": 27.500059238229223,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 180,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        149.4936,
+        141.143,
+        127.7498,
+        145.7353
+      ],
+      "avg_fps": 141.03042304311774,
+      "fps_variance": 67.53754542464122,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        63.4187,
+        67.7074,
+        67.7866,
+        69.9662
+      ],
+      "avg_fps": 67.21971055047982,
+      "fps_variance": 5.6374683059871025,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        95.9847,
+        110.9661,
+        116.395,
+        128.254
+      ],
+      "avg_fps": 112.89997045326812,
+      "fps_variance": 134.45677720294438,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        92.167,
+        87.2859,
+        93.286,
+        92.5239
+      ],
+      "avg_fps": 91.31571902320172,
+      "fps_variance": 5.5766335075756235,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "full",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        87.7442,
+        96.8871,
+        87.4687,
+        92.5346
+      ],
+      "avg_fps": 91.15862792352863,
+      "fps_variance": 14.995684484756067,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        65.4399,
+        68.1697,
+        61.8523,
+        68.9809
+      ],
+      "avg_fps": 66.11070956909457,
+      "fps_variance": 7.765409271337956,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        110.7308,
+        129.4602,
+        117.6262,
+        112.2937
+      ],
+      "avg_fps": 117.52774506540479,
+      "fps_variance": 53.99676514989373,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        90.5386,
+        86.9249,
+        90.7962,
+        93.0674
+      ],
+      "avg_fps": 90.33177691700625,
+      "fps_variance": 4.837249414777933,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "full",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        89.7081,
+        88.6411,
+        100.1052,
+        88.1434
+      ],
+      "avg_fps": 91.64943686149351,
+      "fps_variance": 24.152741677356754,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        89.2764,
+        82.9001,
+        80.2301,
+        78.2332
+      ],
+      "avg_fps": 82.65995318456467,
+      "fps_variance": 17.33356357860913,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        145.6264,
+        119.2783,
+        132.913,
+        129.1599
+      ],
+      "avg_fps": 131.74440399348737,
+      "fps_variance": 89.03967813933635,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        122.6995,
+        83.5205,
+        130.4151,
+        113.2782
+      ],
+      "avg_fps": 112.4783247744308,
+      "fps_variance": 316.3482678476869,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "cv2",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        134.106,
+        117.8431,
+        117.5084,
+        111.5722
+      ],
+      "avg_fps": 120.25742273977264,
+      "fps_variance": 70.15017053182899,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "process",
+      "fps_runs": [
+        82.8675,
+        82.8794,
+        78.4582,
+        80.9412
+      ],
+      "avg_fps": 81.28658420246312,
+      "fps_variance": 3.288782284804977,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "BGRA",
+      "variant": "into",
+      "fps_runs": [
+        143.029,
+        171.3559,
+        130.458,
+        132.6008
+      ],
+      "avg_fps": 144.36093107452479,
+      "fps_variance": 265.52368302667145,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "process",
+      "fps_runs": [
+        95.7458,
+        107.0912,
+        115.5199,
+        107.1844
+      ],
+      "avg_fps": 106.38531521767533,
+      "fps_variance": 49.44388809689325,
+      "checksum": 0
+    },
+    {
+      "prep_mode": "cython",
+      "rotation": 270,
+      "region": "crop",
+      "backend": "numpy",
+      "mode": "RGB",
+      "variant": "into",
+      "fps_runs": [
+        110.2943,
+        111.4454,
+        113.22,
+        106.2454
+      ],
+      "avg_fps": 110.30127246563177,
+      "fps_variance": 6.569437295339713,
+      "checksum": 0
+    }
+  ]
+}

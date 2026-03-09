@@ -7,8 +7,8 @@ import dxcam
 
 TOP = 0
 LEFT = 0
-RIGHT = 1920
-BOTTOM = 1080
+RIGHT = 3840
+BOTTOM = 2160
 REGION = (LEFT, TOP, RIGHT, BOTTOM)
 TITLE = "[DXcam] FPS benchmark"
 TARGET_FRAMES = 1000
@@ -34,18 +34,25 @@ def parse_args() -> argparse.Namespace:
         default=TARGET_FRAMES,
         help=f"Number of frames to capture (default: {TARGET_FRAMES}).",
     )
+    parser.add_argument(
+        "--processor-backend",
+        choices=("cv2", "numpy"),
+        default="cv2",
+        help="Post-processing backend (default: cv2).",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     fps = 0
-    cam = dxcam.create(backend=args.backend)
+    cam = dxcam.create(backend=args.backend, processor_backend=args.processor_backend, output_idx=0)
     start_time = time.perf_counter()
     logger.info(
-        "Starting %s. backend=%s region=%s target_frames=%d",
+        "Starting %s. backend=%s processor_backend=%s region=%s target_frames=%d",
         TITLE,
         args.backend,
+        args.processor_backend,
         REGION,
         args.target_frames,
     )
@@ -58,7 +65,13 @@ def main() -> None:
                 logger.debug("Captured %d/%d frames", fps, args.target_frames)
 
     elapsed_s = time.perf_counter() - start_time
-    logger.info("%s result (%s): %.3f fps", TITLE, args.backend, fps / elapsed_s)
+    logger.info(
+        "%s result (%s/%s): %.3f fps",
+        TITLE,
+        args.backend,
+        args.processor_backend,
+        fps / elapsed_s,
+    )
     cam.release()
 
 

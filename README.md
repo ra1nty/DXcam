@@ -40,6 +40,8 @@ pip install dxcam
 uv sync
 # include OpenCV
 uv sync --extra cv2
+# include optional Cython processor backend tooling
+uv sync --extra cython
 # include WinRT backend
 uv sync --extra winrt
 ```
@@ -73,6 +75,12 @@ Backend selection:
 ```python
 camera = dxcam.create(backend="dxgi")   # default Desktop Duplication path
 camera = dxcam.create(backend="winrt")  # Windows.Graphics.Capture backend
+```
+
+Processor selection:
+```python
+camera = dxcam.create(processor_backend="cv2")     # default (OpenCV conversion backend)
+camera = dxcam.create(processor_backend="numpy")
 ```
 
 ### Screenshot
@@ -146,6 +154,25 @@ Notes:
 - Data is returned as `numpy.ndarray`.
 - `BGRA` does not require OpenCV.
 - Other color modes conversion require OpenCV (`dxcam[cv2]`).
+
+### Optional NumPy processor backend
+The NumPy backend is opt-in and keeps cv2 as the default processor.
+
+1. Install extras:
+```bash
+pip install "dxcam[cython]"
+```
+2. Build optional Cython kernels:
+```bash
+set DXCAM_BUILD_CYTHON=1
+pip install -e . --no-build-isolation
+```
+3. Use it:
+```python
+camera = dxcam.create(processor_backend="numpy")
+```
+
+If compiled kernels are not available at runtime, DXcam logs a warning and transparently falls back to the cv2 processor backend.
 
 ### Frame Buffer
 DXcam uses a fixed-size ring buffer in-memory. New frames overwrite old frames when full.
@@ -221,6 +248,13 @@ The benchmark is across 5 runs, with a light-moderate usage on my PC (5900X + 30
 |-------------  |--------                 |------------|---------|
 | 60fps         | 61.71, 0.26 :checkered_flag: | N/A     | 47.11, 1.33  |
 | 30fps         | 30.08, 0.02 :checkered_flag:  | N/A     | 21.24, 0.17  |
+
+Processor backend comparison helper:
+```bash
+python benchmarks/dxcam_processor_compare.py --backend dxgi --target-fps 120 --target-frames 1000
+python benchmarks/dxcam_capture.py --backend dxgi --processor-backend numpy
+python benchmarks/numpy_processor_micro.py --width 3840 --height 2160 --modes RGB --variants process into --processor-backends cv2 numpy
+```
 
 
 ## Work Referenced
