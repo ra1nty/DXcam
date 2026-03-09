@@ -55,6 +55,7 @@ include = ["dxcam*"]
 [dependency-groups]
 dev = [
     "opencv-python>=4.13.0.92",
+    "pdoc>=15.0.4",
     "ruff>=0.15.5",
     "ty>=0.0.21",
 ]

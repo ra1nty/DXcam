@@ -1,3 +1,20 @@
+"""Public DXcam API.
+
+Quick start:
+    >>> import dxcam
+    >>> cam = dxcam.create()
+    >>> frame = cam.grab()
+    >>> cam.release()
+
+Threaded capture:
+    >>> import dxcam
+    >>> cam = dxcam.create(backend="dxgi")
+    >>> cam.start(target_fps=60)
+    >>> frame = cam.get_latest_frame()
+    >>> cam.stop()
+    >>> cam.release()
+"""
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +35,26 @@ from dxcam.util.io import (
 logger = logging.getLogger(__name__)
 _sigterm_handler_installed = False
 _previous_sigterm_handler: int | Callable[[int, FrameType | None], Any] | None = None
+
+__all__ = [
+    "DXCamera",
+    "CaptureBackend",
+    "ColorMode",
+    "Region",
+    "create",
+    "device_info",
+    "output_info",
+]
+
+# Hide internal factory/signal plumbing from pdoc output.
+__pdoc__: dict[str, bool] = {
+    "Singleton": False,
+    "DXFactory": False,
+    "_configure_comtypes_logging": False,
+    "_handle_sigterm": False,
+    "_install_sigterm_handler": False,
+    "__factory": False,
+}
 
 
 def _configure_comtypes_logging() -> None:
@@ -186,6 +223,26 @@ def create(
     max_buffer_len: int = 64,
     backend: CaptureBackend = "dxgi",
 ) -> DXCamera:
+    """Create or return a singleton camera for a device/output/backend tuple.
+
+    Args:
+        device_idx: DXGI adapter index.
+        output_idx: Output index on the selected adapter. ``None`` chooses
+            the primary output.
+        region: Optional capture region as ``(left, top, right, bottom)``.
+        output_color: Output pixel format.
+        max_buffer_len: Ring-buffer size used in threaded capture mode.
+        backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
+
+    Returns:
+        A :class:`dxcam.dxcam.DXCamera` instance.
+
+    Example:
+        >>> import dxcam
+        >>> cam = dxcam.create(output_color="BGR", backend="winrt")
+        >>> frame = cam.grab()
+        >>> cam.release()
+    """
     _install_sigterm_handler()
     return __factory.create(
         device_idx=device_idx,
@@ -198,8 +255,20 @@ def create(
 
 
 def device_info() -> str:
+    """Return a formatted list of detected DXGI adapters.
+
+    Example:
+        >>> import dxcam
+        >>> print(dxcam.device_info())
+    """
     return __factory.device_info()
 
 
 def output_info() -> str:
+    """Return a formatted list of detected outputs for each adapter.
+
+    Example:
+        >>> import dxcam
+        >>> print(dxcam.output_info())
+    """
     return __factory.output_info()

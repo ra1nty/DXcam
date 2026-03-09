@@ -1,3 +1,20 @@
+"""DXCamera public class API.
+
+Typical one-shot usage:
+    >>> import dxcam
+    >>> cam = dxcam.create()
+    >>> frame = cam.grab()
+    >>> cam.release()
+
+Threaded capture usage:
+    >>> import dxcam
+    >>> cam = dxcam.create(output_color="BGR")
+    >>> cam.start(target_fps=60, video_mode=True)
+    >>> frame, ts = cam.get_latest_frame(with_timestamp=True)
+    >>> cam.stop()
+    >>> cam.release()
+"""
+
 from __future__ import annotations
 from _thread import LockType
 
@@ -26,9 +43,18 @@ from dxcam.util.timer import (
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["DXCamera"]
+
 
 class DXCamera:
-    """High-level camera interface for one device/output pair."""
+    """High-level camera interface for one device/output pair.
+
+    Example:
+        >>> import dxcam
+        >>> cam = dxcam.create()
+        >>> frame = cam.grab()
+        >>> cam.release()
+    """
 
     def __init__(
         self,
@@ -39,6 +65,19 @@ class DXCamera:
         max_buffer_len: int = 8,
         backend: CaptureBackend = "dxgi",
     ) -> None:
+        """Initialize a camera bound to one output on one device.
+
+        Notes:
+            Prefer :func:`dxcam.create` over calling this constructor directly.
+
+        Args:
+            output: Internal DXGI output descriptor.
+            device: Internal DXGI device descriptor.
+            region: Initial capture region as ``(left, top, right, bottom)``.
+            output_color: Returned color format.
+            max_buffer_len: Ring-buffer size for threaded capture mode.
+            backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
+        """
         self._is_released = False
         self._output: Output = output
         self._device: Device = device
@@ -151,6 +190,9 @@ class DXCamera:
         When capture is running (``start()``), this reads from the ring buffer
         instead of touching DXGI objects directly. ``new_frame_only`` does not
         apply while capture is running.
+
+        Example:
+            >>> frame = cam.grab(region=(0, 0, 1280, 720), new_frame_only=False)
         """
         self._ensure_not_released()
         if self.is_capturing:
@@ -168,7 +210,15 @@ class DXCamera:
         return frame
 
     def grab_view(self, region: Region | None = None) -> Frame | None:
-        """Zero-copy variant of ``grab()``."""
+        """Zero-copy variant of :meth:`grab`.
+
+        Returns a view backed by internal buffers. Copy the array if you need
+        to keep frame data across future capture calls.
+
+        Example:
+            >>> frame_view = cam.grab_view()
+            >>> frame_owned = frame_view.copy() if frame_view is not None else None
+        """
         return self.grab(region=region, copy=False)
 
     def _peek_latest_buffered_frame(self, copy: bool = True) -> Frame | None:
@@ -374,6 +424,19 @@ class DXCamera:
         video_mode: bool = False,
         delay: int = 0,
     ) -> None:
+        """Start threaded capture into the internal ring buffer.
+
+        Args:
+            region: Optional region. Defaults to camera region.
+            target_fps: Target capture FPS. ``0`` disables timer pacing.
+            video_mode: Reuse previous frame when no new frame arrives.
+            delay: Optional startup delay in seconds.
+
+        Example:
+            >>> cam.start(target_fps=120)
+            >>> frame = cam.get_latest_frame()
+            >>> cam.stop()
+        """
         self._ensure_not_released()
         if delay != 0:
             time.sleep(delay)
@@ -398,6 +461,13 @@ class DXCamera:
         self.__thread.start()
 
     def stop(self) -> None:
+        """Stop threaded capture and clear buffered frames.
+
+        Example:
+            >>> cam.start(target_fps=60)
+            >>> _ = cam.get_latest_frame()
+            >>> cam.stop()
+        """
         if self.is_capturing:
             self.__stop_capture.set()
             self.__frame_available.set()
@@ -424,6 +494,14 @@ class DXCamera:
 
     @property
     def latest_frame_time(self) -> float | None:
+        """Timestamp (seconds) of the latest buffered frame, if available.
+
+        Example:
+            >>> cam.start(target_fps=60)
+            >>> _ = cam.get_latest_frame()
+            >>> ts = cam.latest_frame_time
+            >>> cam.stop()
+        """
         with self.__lock:
             if self.__latest_frame_ticks is None:
                 return None
@@ -431,6 +509,14 @@ class DXCamera:
 
     @property
     def latest_frame_ticks(self) -> int | None:
+        """Raw monotonic backend ticks for the latest buffered frame.
+
+        Example:
+            >>> cam.start(target_fps=60)
+            >>> _ = cam.get_latest_frame()
+            >>> ticks = cam.latest_frame_ticks
+            >>> cam.stop()
+        """
         with self.__lock:
             return self.__latest_frame_ticks
 
@@ -447,6 +533,22 @@ class DXCamera:
     def get_latest_frame(
         self, copy: bool = True, with_timestamp: bool = False
     ) -> Frame | tuple[Frame, float] | None:
+        """Block until a buffered frame is available and return the latest one.
+
+        Args:
+            copy: Return a copied array when ``True`` (default). Set to
+                ``False`` for a zero-copy view.
+            with_timestamp: Return ``(frame, timestamp_seconds)`` when ``True``.
+
+        Returns:
+            Frame data, optionally with timestamp, or ``None`` if capture is
+            stopped and the buffer is unavailable.
+
+        Example:
+            >>> cam.start(target_fps=60)
+            >>> frame, ts = cam.get_latest_frame(with_timestamp=True)
+            >>> cam.stop()
+        """
         while True:
             with self.__lock:
                 if self.__frame_buffer is None:
@@ -479,7 +581,13 @@ class DXCamera:
     def get_latest_frame_view(
         self, with_timestamp: bool = False
     ) -> Frame | tuple[Frame, float] | None:
-        """Return a zero-copy view into the ring buffer for the latest frame."""
+        """Zero-copy convenience wrapper for :meth:`get_latest_frame`.
+
+        Example:
+            >>> cam.start(target_fps=60)
+            >>> frame_view = cam.get_latest_frame_view()
+            >>> cam.stop()
+        """
         return self.get_latest_frame(copy=False, with_timestamp=with_timestamp)
 
     def __capture(
@@ -682,6 +790,13 @@ class DXCamera:
             )
 
     def release(self) -> None:
+        """Release resources and permanently invalidate this camera instance.
+
+        Example:
+            >>> cam.release()
+            >>> cam.is_released
+            True
+        """
         if self._is_released:
             return
         self._is_released = True
@@ -691,6 +806,7 @@ class DXCamera:
 
     @property
     def is_released(self) -> bool:
+        """Whether :meth:`release` has been called for this camera."""
         return self._is_released
 
     def _ensure_not_released(self) -> None:

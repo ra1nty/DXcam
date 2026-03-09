@@ -52,6 +52,15 @@ uv run ruff check dxcam
 uv run ty check dxcam
 ```
 
+### API docs (pdoc)
+Generate autodocs for the public API surface:
+```bash
+uv run pdoc -d google -o site dxcam dxcam.dxcam dxcam.types
+```
+
+Preview locally by opening `site/index.html`.
+CI builds docs on pull requests, and docs are deployed from `main` via GitHub Pages.
+
 ## Usage
 Each output (monitor) is associated with one `DXCamera` instance.
 
