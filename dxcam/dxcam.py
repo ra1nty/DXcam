@@ -4,6 +4,7 @@ from _thread import LockType
 import ctypes
 import logging
 import time
+from contextlib import contextmanager
 from threading import Event, Lock, Thread, current_thread
 from typing import Any, Literal, overload
 
@@ -12,9 +13,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 from dxcam._libs.d3d11 import D3D11_BOX
-from dxcam.core import Device, Output, StageSurface, Duplicator
+from dxcam.core import Device, Output, StageSurface
+from dxcam.core.backend import create_backend_duplicator
 from dxcam.processor import Processor
-from dxcam.types import ColorMode, Frame, Region
+from dxcam.types import CaptureBackend, ColorMode, Frame, Region
 from dxcam.util.timer import (
     create_high_resolution_timer,
     set_periodic_timer,
@@ -35,15 +37,20 @@ class DXCamera:
         region: Region | None,
         output_color: ColorMode = "RGB",
         max_buffer_len: int = 8,
+        backend: CaptureBackend = "dxgi",
     ) -> None:
+        self._is_released = False
         self._output: Output = output
         self._device: Device = device
         self._stagesurf: StageSurface = StageSurface(
             output=self._output, device=self._device
         )
-        self._duplicator: Duplicator = Duplicator(
-            output=self._output, device=self._device
-        )
+        self.backend: CaptureBackend = backend
+        try:
+            self._duplicator: Any = self._create_duplicator()
+        except Exception:
+            self._stagesurf.release()
+            raise
         self._processor: Processor = Processor(output_color=output_color)
         self._source_region: D3D11_BOX = D3D11_BOX()
         self._source_region.front = 0
@@ -68,7 +75,6 @@ class DXCamera:
         else:
             self.max_buffer_len = max_buffer_len
         self.is_capturing = False
-        self._is_released = False
 
         self.__thread: Thread | None = None
         self.__lock: LockType = Lock()
@@ -88,6 +94,43 @@ class DXCamera:
         self.__capture_start_time = 0
         self.__latest_frame_ticks: int | None = None
         self.__last_grab_entry: tuple[Region, Frame] | None = None
+
+    def _create_duplicator(self) -> Any:
+        return create_backend_duplicator(
+            self.backend,
+            output=self._output,
+            device=self._device,
+        )
+
+    def _uses_early_release(self) -> bool:
+        return bool(getattr(self._duplicator, "early_release_frame", True))
+
+    def _release_frame_if_early_release(self) -> None:
+        if self._uses_early_release():
+            self._duplicator.release_frame()
+
+    def _release_frame_if_late_release(self) -> None:
+        if not self._uses_early_release():
+            self._duplicator.release_frame()
+
+    def _acquire_new_frame(self, wait_for_frame: bool = False) -> bool:
+        if not self._duplicator.update_frame(wait_for_frame=wait_for_frame):
+            self._on_output_change()
+            return False
+        return bool(self._duplicator.updated)
+
+    @contextmanager
+    def _multithread_guard(self):
+        enter = getattr(self._duplicator, "enter_multithread", None)
+        leave = getattr(self._duplicator, "leave_multithread", None)
+        if callable(enter) and callable(leave):
+            enter()
+            try:
+                yield
+            finally:
+                leave()
+            return
+        yield
 
     def grab(
         self,
@@ -156,20 +199,19 @@ class DXCamera:
         copy: bool = True,
         new_frame_only: bool = True,
     ) -> Frame | None:
-        if not self._duplicator.update_frame():
-            self._on_output_change()
-            if new_frame_only:
-                return None
-            return self._get_cached_grab_frame(region=region, copy=copy)
-        if not self._duplicator.updated:
+        if not self._acquire_new_frame(wait_for_frame=new_frame_only):
             if new_frame_only:
                 return None
             return self._get_cached_grab_frame(region=region, copy=copy)
 
-        frame_width, frame_height = self._copy_region_to_stage(region)
-        frame = self._process_staging_frame(
-            frame_width=frame_width, frame_height=frame_height
-        )
+        try:
+            with self._multithread_guard():
+                frame_width, frame_height = self._copy_region_to_stage(region)
+                frame = self._process_staging_frame(
+                    frame_width=frame_width, frame_height=frame_height
+                )
+        finally:
+            self._release_frame_if_late_release()
         result = np.array(frame, copy=True) if copy else frame
         if not new_frame_only:
             self._set_cached_grab_frame(region=region, frame=result)
@@ -184,20 +226,26 @@ class DXCamera:
         - ``captured`` is False with non-zero ``width``/``height`` when a new frame exists
           but ``dst`` shape does not match, so caller should rebuild and retry.
         """
-        if not self._duplicator.update_frame():
-            self._on_output_change()
-            return False, 0, 0, 0
-        if not self._duplicator.updated:
+        if not self._acquire_new_frame(wait_for_frame=True):
             return False, 0, 0, 0
 
-        frame_width, frame_height = self._copy_region_to_stage(region)
-        if frame_height != dst.shape[0] or frame_width != dst.shape[1]:
-            return False, self._duplicator.latest_frame_ticks, frame_width, frame_height
-        self._process_staging_frame_into(
-            frame_width=frame_width,
-            frame_height=frame_height,
-            dst=dst,
-        )
+        try:
+            with self._multithread_guard():
+                frame_width, frame_height = self._copy_region_to_stage(region)
+                if frame_height != dst.shape[0] or frame_width != dst.shape[1]:
+                    return (
+                        False,
+                        self._duplicator.latest_frame_ticks,
+                        frame_width,
+                        frame_height,
+                    )
+                self._process_staging_frame_into(
+                    frame_width=frame_width,
+                    frame_height=frame_height,
+                    dst=dst,
+                )
+        finally:
+            self._release_frame_if_late_release()
         return True, self._duplicator.latest_frame_ticks, frame_width, frame_height
 
     def _copy_region_to_stage(self, region: Region) -> tuple[int, int]:
@@ -225,7 +273,7 @@ class DXCamera:
             0,
             ctypes.byref(self._source_region),
         )
-        self._duplicator.release_frame()  #  See remarks in release_frame
+        self._release_frame_if_early_release()  # See remarks in release_frame
         return region[2] - region[0], region[3] - region[1]
 
     def _process_staging_frame(self, frame_width: int, frame_height: int) -> Frame:
@@ -276,8 +324,8 @@ class DXCamera:
         while True:
             try:
                 self._stagesurf.rebuild(output=self._output, device=self._device)
-                self._duplicator = Duplicator(output=self._output, device=self._device)
-            except comtypes.COMError:
+                self._duplicator = self._create_duplicator()
+            except (comtypes.COMError, OSError):
                 continue
             break
 
@@ -653,7 +701,12 @@ class DXCamera:
             )
 
     def __del__(self) -> None:
-        self.release()
+        try:
+            if getattr(self, "_is_released", True):
+                return
+            self.release()
+        except Exception:
+            pass
 
     def __repr__(self) -> str:
         return "<{}:\n\t{},\n\t{},\n\t{},\n\t{}\n>".format(

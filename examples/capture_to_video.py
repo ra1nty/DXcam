@@ -28,7 +28,7 @@ def main() -> None:
     width = REGION[2] - REGION[0]
     height = REGION[3] - REGION[1]
 
-    camera = dxcam.create(output_idx=0, output_color="BGR")
+    camera = dxcam.create(output_idx=0, output_color="BGR", backend="winrt")
     writer = cv2.VideoWriter(
         "video.mp4",
         cv2.VideoWriter_fourcc(*"mp4v"),

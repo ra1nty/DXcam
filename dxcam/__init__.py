@@ -7,8 +7,9 @@ import weakref
 from types import FrameType
 from typing import Any, Callable, cast
 
+from dxcam.core.backend import normalize_backend_name
 from dxcam.dxcam import DXCamera, Output, Device
-from dxcam.types import ColorMode, Region
+from dxcam.types import CaptureBackend, ColorMode, Region
 from dxcam.util.io import (
     enum_dxgi_adapters,
     get_output_metadata,
@@ -42,7 +43,7 @@ class Singleton(type):
 class DXFactory(metaclass=Singleton):
     """Factory that owns device/output discovery and camera singletons."""
 
-    _camera_instances: weakref.WeakValueDictionary[tuple[int, int], DXCamera] = (
+    _camera_instances: weakref.WeakValueDictionary[tuple[int, int, CaptureBackend], DXCamera] = (
         weakref.WeakValueDictionary()
     )
 
@@ -65,7 +66,9 @@ class DXFactory(metaclass=Singleton):
         region: Region | None = None,
         output_color: ColorMode = "RGB",
         max_buffer_len: int = 64,
+        backend: CaptureBackend = "dxgi",
     ) -> DXCamera:
+        backend = normalize_backend_name(str(backend))
         device = self.devices[device_idx]
         if output_idx is None:
             # Select Primary Output
@@ -80,23 +83,25 @@ class DXFactory(metaclass=Singleton):
             if not primary_output_indices:
                 raise RuntimeError(f"No primary output found for device index {device_idx}")
             output_idx = primary_output_indices[0]
-        instance_key = (device_idx, output_idx)
+        instance_key = (device_idx, output_idx, backend)
         existing_camera = self._camera_instances.get(instance_key)
         if existing_camera is not None and existing_camera.is_released:
             logger.info(
-                "Dropping released DXCamera instance for device=%s output=%s.",
+                "Dropping released DXCamera instance for device=%s output=%s backend=%s.",
                 device_idx,
                 output_idx,
+                backend,
             )
             del self._camera_instances[instance_key]
             existing_camera = None
         if existing_camera is not None:
             logger.warning(
-                "DXCamera instance already exists for device=%s output=%s; "
+                "DXCamera instance already exists for device=%s output=%s backend=%s; "
                 "returning existing instance. Delete the old object with `del obj` "
                 "to recreate it with new parameters.",
                 device_idx,
                 output_idx,
+                backend,
             )
             return existing_camera
 
@@ -108,6 +113,7 @@ class DXFactory(metaclass=Singleton):
             region=region,
             output_color=output_color,
             max_buffer_len=max_buffer_len,
+            backend=backend,
         )
         self._camera_instances[instance_key] = camera
         time.sleep(0.1)  # Fix for https://github.com/ra1nty/DXcam/issues/31
@@ -178,6 +184,7 @@ def create(
     region: Region | None = None,
     output_color: ColorMode = "RGB",
     max_buffer_len: int = 64,
+    backend: CaptureBackend = "dxgi",
 ) -> DXCamera:
     _install_sigterm_handler()
     return __factory.create(
@@ -186,6 +193,7 @@ def create(
         region=region,
         output_color=output_color,
         max_buffer_len=max_buffer_len,
+        backend=backend,
     )
 
 

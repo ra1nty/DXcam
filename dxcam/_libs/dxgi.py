@@ -101,6 +101,17 @@ class IDXGISurface(IDXGIDeviceSubObject):
     ]
 
 
+class IDXGIDevice(IDXGIObject):
+    _iid_ = comtypes.GUID("{54ec77fa-1377-44e6-8c32-88fd5f44c84c}")
+    _methods_ = [
+        comtypes.STDMETHOD(comtypes.HRESULT, "GetAdapter"),
+        comtypes.STDMETHOD(comtypes.HRESULT, "CreateSurface"),
+        comtypes.STDMETHOD(comtypes.HRESULT, "QueryResourceResidency"),
+        comtypes.STDMETHOD(comtypes.HRESULT, "SetGPUThreadPriority"),
+        comtypes.STDMETHOD(comtypes.HRESULT, "GetGPUThreadPriority"),
+    ]
+
+
 class IDXGIOutputDuplication(IDXGIObject):
     _iid_ = comtypes.GUID("{191cfac3-a341-470d-b26e-a864f428319c}")
     _methods_ = [
