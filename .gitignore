@@ -31,6 +31,9 @@ ENV/
 htmlcov/
 .test/
 
+# Benchmark artifacts
+benchmarks/*.json
+
 # Type checking and linting caches
 .ruff_cache/
 .mypy_cache/
