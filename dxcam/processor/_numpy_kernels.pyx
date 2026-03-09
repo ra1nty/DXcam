@@ -341,6 +341,8 @@ def prepare_bgra_into(
     """Map/rotate/crop mapped BGRA ``src`` into caller-provided contiguous ``dst``."""
     cdef cnp.ndarray[uint8_t, ndim=3, mode="c"] src_c = _ensure_src_bgra_contiguous(src)
     cdef cnp.ndarray[uint8_t, ndim=3, mode="c"] dst_c = _ensure_dst_contiguous(dst)
+    cdef cnp.ndarray[uint32_t, ndim=2, mode="c"] src32_nd
+    cdef cnp.ndarray[uint32_t, ndim=2, mode="c"] dst32_nd
     cdef const uint32_t[:, :] src32_view
     cdef uint32_t[:, :] dst32_view
     cdef Py_ssize_t left
@@ -401,8 +403,10 @@ def prepare_bgra_into(
             f"dst=({dst_c.shape[0]}, {dst_c.shape[1]}, {dst_c.shape[2]})."
         )
 
-    src32_view = <const uint32_t[:src_c.shape[0], :src_c.shape[1]]>src_c.data
-    dst32_view = <uint32_t[:dst_c.shape[0], :dst_c.shape[1]]>dst_c.data
+    src32_nd = np.asarray(src_c).view(np.uint32).reshape(src_c.shape[0], src_c.shape[1])
+    dst32_nd = np.asarray(dst_c).view(np.uint32).reshape(dst_c.shape[0], dst_c.shape[1])
+    src32_view = src32_nd
+    dst32_view = dst32_nd
 
     n_pixels = out_w * out_h
     use_parallel = n_pixels >= _PARALLEL_PIXELS_THRESHOLD

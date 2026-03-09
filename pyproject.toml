@@ -35,7 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 cv2 = ["opencv-python"]
-cython = ["Cython>=3.1.1"]
+cython = ["Cython==3.1.1"]
 winrt = [
     "winrt-runtime>=3.2.1",
     "winrt-Windows.Foundation>=3.2.1",
@@ -84,5 +84,5 @@ build-frontend = "pip; args: --no-build-isolation"
 test-command = "python -c \"import dxcam; import dxcam.processor._numpy_kernels as kernels; assert kernels.get_parallel_pixels_threshold() >= 0\""
 
 [tool.cibuildwheel.windows]
-before-build = "python -m pip install --upgrade pip && python -m pip install \"Cython>=3.1.1\" \"numpy>=1.26\""
+before-build = "python -m pip install --upgrade pip && python -m pip install \"setuptools>=68\" wheel \"Cython==3.1.1\" \"numpy>=1.26\""
 environment = { DXCAM_BUILD_CYTHON = "1" }
