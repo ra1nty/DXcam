@@ -240,7 +240,8 @@ def create(
         max_buffer_len: Ring-buffer size used in threaded capture mode.
         backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
         processor_backend: Post-processing backend, ``"cv2"`` (default)
-            or ``"numpy"``.
+            or ``"numpy"``. The ``"numpy"`` backend uses compiled Cython
+            kernels when available and falls back to cv2 behavior otherwise.
 
     Returns:
         A :class:`dxcam.dxcam.DXCamera` instance.

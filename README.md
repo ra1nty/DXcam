@@ -20,30 +20,35 @@ Compared with common Python alternatives, DXcam focuses on:
 
 ## Installation
 ### From PyPI (pip)
-Recommended (with OpenCV):
-```bash
-pip install "dxcam[cv2]"
-```
-
-Enable WinRT backend support:
-```bash
-pip install "dxcam[winrt]"
-```
-
 Minimal install:
 ```bash
 pip install dxcam
 ```
 
+Full feature: (includes OpenCV-based color conversion, WinRT capture backend support:):
+```bash
+pip install "dxcam[cv2,winrt]"
+```
+
+Notes:
+- Official Windows wheels are built for CPython `3.10` to `3.14`.
+- Binary wheels include the Cython kernels used by processor backends.
+
 ### From source (uv)
 ```bash
 uv sync
-# include OpenCV
+# include OpenCV conversion backend
 uv sync --extra cv2
-# include optional Cython processor backend tooling
+# include optional Cython tooling
 uv sync --extra cython
 # include WinRT backend
 uv sync --extra winrt
+```
+
+Build local Cython kernels from source:
+```bash
+set DXCAM_BUILD_CYTHON=1
+uv pip install -e .[cython] --no-build-isolation
 ```
 
 ### Dev environment (uv + ruff + ty)
@@ -71,25 +76,21 @@ import dxcam
 camera = dxcam.create()  # primary output on device 0
 ```
 
-Backend selection:
+To specify backend:
 ```python
-camera = dxcam.create(backend="dxgi")   # default Desktop Duplication path
-camera = dxcam.create(backend="winrt")  # Windows.Graphics.Capture backend
-```
-
-Processor selection:
-```python
-camera = dxcam.create(processor_backend="cv2")     # default (OpenCV conversion backend)
-camera = dxcam.create(processor_backend="numpy")
+camera = dxcam.create(
+    backend="dxgi", # default Desktop Duplication backend
+    processor_backend="cv2" # default OpenCV processor
+)
 ```
 
 ### Screenshot
 ```python
 frame = camera.grab()
 ```
-`grab()` returns a `numpy.ndarray`. `None` if no new frame is available since the last capture, mainly for backward compatibility. You can use `new_frame_only=False` to change this behavior.
+`grab()` returns a `numpy.ndarray`. `None` if no new frame is available since the last capture (for backward compatibility); use `new_frame_only=False` to reuse the latest cached one-shot frame.
 
-Use `copy=False` (or `camera.grab_view()`) for a zero-copy view.
+Use `copy=False` (or `camera.grab_view()`) for a zero-copy view. This is faster, but the returned buffer can be overwritten by later captures.
 
 To capture a region:
 ```python
@@ -112,14 +113,14 @@ camera.is_capturing  # False
 for _ in range(1000):
     frame = camera.get_latest_frame()  # blocks until a frame is available
 ```
->The screen capture mode spins up a thread polling the rendered new frames and store in an in-memory frame buffer. The blocking / video_mode behavior is designed with downstream video recording / machine learning applications in mind. 
+>The screen capture mode spins up a thread that polls newly rendered frames and stores them in an in-memory ring buffer. The blocking and `video_mode` behavior is designed for downstream video recording and machine learning workloads.
 
 Useful variants:
 - `camera.get_latest_frame(with_timestamp=True)` -> `(frame, frame_timestamp)` -> return frame timestamp
 - `camera.get_latest_frame_view()` -> zero-copy view into the frame buffer
 - `camera.grab(copy=False)` / `camera.grab_view()` -> zero-copy latest-frame snapshot
 
-** When `start()` capture is running, calling `grab()` reads from the in-memory ring buffer instead of directly polling DXGI.
+> When `start()` capture is running, calling `grab()` reads from the in-memory ring buffer instead of directly polling DXGI.
 
 ## Advanced Usage and Remarks
 ### Multiple monitors / GPUs
@@ -152,27 +153,8 @@ Supported modes: `"RGB"`, `"RGBA"`, `"BGR"`, `"BGRA"`, `"GRAY"`.
 
 Notes:
 - Data is returned as `numpy.ndarray`.
-- `BGRA` does not require OpenCV.
-- Other color modes conversion require OpenCV (`dxcam[cv2]`).
-
-### Optional NumPy processor backend
-The NumPy backend is opt-in and keeps cv2 as the default processor.
-
-1. Install extras:
-```bash
-pip install "dxcam[cython]"
-```
-2. Build optional Cython kernels:
-```bash
-set DXCAM_BUILD_CYTHON=1
-pip install -e . --no-build-isolation
-```
-3. Use it:
-```python
-camera = dxcam.create(processor_backend="numpy")
-```
-
-If compiled kernels are not available at runtime, DXcam logs a warning and transparently falls back to the cv2 processor backend.
+- `BGRA` does not require OpenCV and is the leanest dependency path.
+- `RGB`, `BGR`, `RGBA`, `GRAY` require conversion (`cv2` or compiled `numpy` backend).
 
 ### Frame Buffer
 DXcam uses a fixed-size ring buffer in-memory. New frames overwrite old frames when full.
@@ -222,6 +204,49 @@ for _ in range(600):
 camera.stop()
 writer.release()
 ```
+
+### Capture Backend
+DXcam supports two capture backends:
+- `dxgi` (default): Desktop Duplication API path with broad compatibility.
+- `winrt`: Windows Graphics Capture path.
+
+Use it like this:
+```python
+camera = dxcam.create(backend="dxgi")   # default
+camera = dxcam.create(backend="winrt")
+```
+
+Guideline:
+- Start with `dxgi` for most workloads.
+- Try `winrt` if it performs better on your machine or fits your app constraints.
+
+### Processor Backend
+DXcam capture backends (`dxgi`/`winrt`) first acquire a BGRA frame.  
+The processor backend then handles post-processing:
+- optional rotation/cropping preparation
+- color conversion to your `output_color`
+
+Recommended backend choice:
+- OpenCV installed: use `cv2` (default)
+- No OpenCV installed: use `numpy` (Cython kernels)
+
+Use it like this:
+```python
+camera = dxcam.create(processor_backend="cv2")
+camera = dxcam.create(processor_backend="numpy")
+```
+
+Official Windows wheels already include the compiled NumPy kernels.
+
+Only for source installs:
+```bash
+set DXCAM_BUILD_CYTHON=1
+pip install -e .[cython] --no-build-isolation
+```
+
+If `processor_backend="numpy"` is selected but compiled kernels are unavailable,
+DXcam logs a warning and falls back to `cv2` behavior. In that fallback path,
+install OpenCV for non-`BGRA` output modes.
 
 ### Safely Releasing Resources
 `release()` stops capture, frees buffers, and releases capture resources.

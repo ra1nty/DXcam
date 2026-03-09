@@ -28,7 +28,12 @@ def normalize_processor_backend_name(backend: str) -> ProcessorBackend:
 
 
 class Processor:
-    """Color conversion and post-processing backend selector."""
+    """Color conversion and post-processing backend selector.
+
+    This wrapper dispatches to one concrete backend:
+    - ``cv2``: OpenCV-based conversion path (default).
+    - ``numpy``: Cython-accelerated conversion path with cv2 fallback.
+    """
 
     def __init__(
         self,
@@ -54,6 +59,11 @@ class Processor:
         region: Region,
         rotation_angle: int,
     ) -> NDArray[np.uint8]:
+        """Return a processed frame.
+
+        The returned array may be backed by an internal reusable buffer.
+        Use :meth:`process_into` when the caller must own destination memory.
+        """
         return self.backend.process(rect, width, height, region, rotation_angle)
 
     def process_into(
@@ -65,6 +75,7 @@ class Processor:
         rotation_angle: int,
         dst: NDArray[np.uint8],
     ) -> None:
+        """Process into caller-provided destination array ``dst``."""
         self.backend.process_into(rect, width, height, region, rotation_angle, dst)
 
     def _initialize_backend(self, backend: ProcessorBackends) -> Any:

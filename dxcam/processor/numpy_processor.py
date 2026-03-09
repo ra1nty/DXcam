@@ -22,6 +22,7 @@ class NumpyProcessor(Cv2Processor):
 
     The Cython extension module is optional. If it is unavailable at runtime,
     this processor transparently falls back to :class:`Cv2Processor`.
+    Official Windows wheels include the compiled extension by default.
     """
 
     _missing_extension_warned = False

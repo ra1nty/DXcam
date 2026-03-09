@@ -7,8 +7,8 @@ import dxcam
 
 TOP = 0
 LEFT = 0
-RIGHT = 3840
-BOTTOM = 2160
+RIGHT = 1920
+BOTTOM = 1080
 REGION = (LEFT, TOP, RIGHT, BOTTOM)
 TITLE = "[DXcam] FPS benchmark"
 TARGET_FRAMES = 1000
@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     fps = 0
-    cam = dxcam.create(backend=args.backend, processor_backend=args.processor_backend, output_idx=0)
+    cam = dxcam.create(backend=args.backend, processor_backend=args.processor_backend, output_idx=0, output_color="BGRA")
     start_time = time.perf_counter()
     logger.info(
         "Starting %s. backend=%s processor_backend=%s region=%s target_frames=%d",

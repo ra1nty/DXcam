@@ -21,7 +21,11 @@ except Exception as exc:  # pragma: no cover - depends on local build env
 
 
 class Cv2Processor(Processor):
-    """OpenCV-backed frame processor."""
+    """cv2-first frame processor with shared BGRA preparation helpers.
+
+    ``process()`` may return an internal reusable buffer for some modes.
+    Use ``process_into()`` when caller-owned output memory is required.
+    """
 
     def __init__(self, color_mode: ColorMode) -> None:
         self._cv2: Any | None = None
@@ -208,7 +212,9 @@ class Cv2Processor(Processor):
         dst: NDArray[np.uint8],
     ) -> None:
         image = self._map_rect_as_image(rect, width, height, rotation_angle)
-        full_region = self._region_is_full_frame(region=region, width=width, height=height)
+        full_region = self._region_is_full_frame(
+            region=region, width=width, height=height
+        )
 
         if rotation_angle == 0:
             image = self._trim_pitch_for_rotation(
@@ -221,7 +227,11 @@ class Cv2Processor(Processor):
             np.copyto(dst, view, casting="no")
             return
 
-        if _NUMPY_KERNELS_AVAILABLE and dst.flags.c_contiguous and dst.dtype == np.uint8:
+        if (
+            _NUMPY_KERNELS_AVAILABLE
+            and dst.flags.c_contiguous
+            and dst.dtype == np.uint8
+        ):
             assert _numpy_kernels is not None
             _numpy_kernels.prepare_bgra_into(
                 image,
@@ -299,7 +309,10 @@ class Cv2Processor(Processor):
         if self.color_mode is None:
             out_h = region[3] - region[1]
             out_w = region[2] - region[0]
-            dst = np.empty((out_h, out_w, 4), dtype=np.uint8)
+            # Reuse a stable BGRA destination buffer on process() calls.
+            # This mirrors RGB/BGR/RGBA process() behavior, which already
+            # returns an internal reusable buffer.
+            dst = self._ensure_prepared_bgra_dst(height=out_h, width=out_w)
             self._prepare_bgra_into(
                 rect=rect,
                 width=width,
