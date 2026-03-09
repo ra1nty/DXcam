@@ -212,6 +212,16 @@ class ID3D11DeviceContext(ID3D11DeviceChild):
     ]
 
 
+class ID3D11Multithread(comtypes.IUnknown):
+    _iid_ = comtypes.GUID("{9b7e4e00-342c-4106-a19f-4f2704f689f0}")
+    _methods_ = [
+        comtypes.STDMETHOD(None, "Enter"),
+        comtypes.STDMETHOD(None, "Leave"),
+        comtypes.STDMETHOD(wintypes.BOOL, "SetMultithreadProtected", [wintypes.BOOL]),
+        comtypes.STDMETHOD(wintypes.BOOL, "GetMultithreadProtected"),
+    ]
+
+
 class ID3D11Device(comtypes.IUnknown):
     _iid_ = comtypes.GUID("{db6f6ddb-ac77-4e88-8253-819df9bbf140}")
     _methods_ = [

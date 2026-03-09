@@ -33,6 +33,17 @@ dependencies = [
 
 [project.optional-dependencies]
 cv2 = ["opencv-python"]
+winrt = [
+    "winrt-runtime>=3.2.1",
+    "winrt-Windows.Foundation>=3.2.1",
+    "winrt-Windows.Foundation.Collections>=3.2.1",
+    "winrt-Windows.Graphics>=3.2.1",
+    "winrt-Windows.Graphics.Capture>=3.2.1",
+    "winrt-Windows.Graphics.Capture.Interop>=3.2.1",
+    "winrt-Windows.Graphics.DirectX>=3.2.1",
+    "winrt-Windows.Graphics.DirectX.Direct3D11>=3.2.1",
+    "winrt-Windows.Graphics.DirectX.Direct3D11.Interop>=3.2.1",
+]
 
 [project.urls]
 Source = "https://github.com/ra1nty/DXcam"
@@ -44,6 +55,7 @@ include = ["dxcam*"]
 [dependency-groups]
 dev = [
     "opencv-python>=4.13.0.92",
+    "pdoc>=15.0.4",
     "ruff>=0.15.5",
     "ty>=0.0.21",
 ]

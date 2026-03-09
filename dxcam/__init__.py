@@ -1,3 +1,20 @@
+"""Public DXcam API.
+
+Quick start:
+    >>> import dxcam
+    >>> cam = dxcam.create()
+    >>> frame = cam.grab()
+    >>> cam.release()
+
+Threaded capture:
+    >>> import dxcam
+    >>> cam = dxcam.create(backend="dxgi")
+    >>> cam.start(target_fps=60)
+    >>> frame = cam.get_latest_frame()
+    >>> cam.stop()
+    >>> cam.release()
+"""
+
 from __future__ import annotations
 
 import logging
@@ -7,8 +24,9 @@ import weakref
 from types import FrameType
 from typing import Any, Callable, cast
 
+from dxcam.core.backend import normalize_backend_name
 from dxcam.dxcam import DXCamera, Output, Device
-from dxcam.types import ColorMode, Region
+from dxcam.types import CaptureBackend, ColorMode, Region
 from dxcam.util.io import (
     enum_dxgi_adapters,
     get_output_metadata,
@@ -17,6 +35,26 @@ from dxcam.util.io import (
 logger = logging.getLogger(__name__)
 _sigterm_handler_installed = False
 _previous_sigterm_handler: int | Callable[[int, FrameType | None], Any] | None = None
+
+__all__ = [
+    "DXCamera",
+    "CaptureBackend",
+    "ColorMode",
+    "Region",
+    "create",
+    "device_info",
+    "output_info",
+]
+
+# Hide internal factory/signal plumbing from pdoc output.
+__pdoc__: dict[str, bool] = {
+    "Singleton": False,
+    "DXFactory": False,
+    "_configure_comtypes_logging": False,
+    "_handle_sigterm": False,
+    "_install_sigterm_handler": False,
+    "__factory": False,
+}
 
 
 def _configure_comtypes_logging() -> None:
@@ -42,7 +80,7 @@ class Singleton(type):
 class DXFactory(metaclass=Singleton):
     """Factory that owns device/output discovery and camera singletons."""
 
-    _camera_instances: weakref.WeakValueDictionary[tuple[int, int], DXCamera] = (
+    _camera_instances: weakref.WeakValueDictionary[tuple[int, int, CaptureBackend], DXCamera] = (
         weakref.WeakValueDictionary()
     )
 
@@ -65,7 +103,9 @@ class DXFactory(metaclass=Singleton):
         region: Region | None = None,
         output_color: ColorMode = "RGB",
         max_buffer_len: int = 64,
+        backend: CaptureBackend = "dxgi",
     ) -> DXCamera:
+        backend = normalize_backend_name(str(backend))
         device = self.devices[device_idx]
         if output_idx is None:
             # Select Primary Output
@@ -80,23 +120,25 @@ class DXFactory(metaclass=Singleton):
             if not primary_output_indices:
                 raise RuntimeError(f"No primary output found for device index {device_idx}")
             output_idx = primary_output_indices[0]
-        instance_key = (device_idx, output_idx)
+        instance_key = (device_idx, output_idx, backend)
         existing_camera = self._camera_instances.get(instance_key)
         if existing_camera is not None and existing_camera.is_released:
             logger.info(
-                "Dropping released DXCamera instance for device=%s output=%s.",
+                "Dropping released DXCamera instance for device=%s output=%s backend=%s.",
                 device_idx,
                 output_idx,
+                backend,
             )
             del self._camera_instances[instance_key]
             existing_camera = None
         if existing_camera is not None:
             logger.warning(
-                "DXCamera instance already exists for device=%s output=%s; "
+                "DXCamera instance already exists for device=%s output=%s backend=%s; "
                 "returning existing instance. Delete the old object with `del obj` "
                 "to recreate it with new parameters.",
                 device_idx,
                 output_idx,
+                backend,
             )
             return existing_camera
 
@@ -108,6 +150,7 @@ class DXFactory(metaclass=Singleton):
             region=region,
             output_color=output_color,
             max_buffer_len=max_buffer_len,
+            backend=backend,
         )
         self._camera_instances[instance_key] = camera
         time.sleep(0.1)  # Fix for https://github.com/ra1nty/DXcam/issues/31
@@ -178,7 +221,28 @@ def create(
     region: Region | None = None,
     output_color: ColorMode = "RGB",
     max_buffer_len: int = 64,
+    backend: CaptureBackend = "dxgi",
 ) -> DXCamera:
+    """Create or return a singleton camera for a device/output/backend tuple.
+
+    Args:
+        device_idx: DXGI adapter index.
+        output_idx: Output index on the selected adapter. ``None`` chooses
+            the primary output.
+        region: Optional capture region as ``(left, top, right, bottom)``.
+        output_color: Output pixel format.
+        max_buffer_len: Ring-buffer size used in threaded capture mode.
+        backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
+
+    Returns:
+        A :class:`dxcam.dxcam.DXCamera` instance.
+
+    Example:
+        >>> import dxcam
+        >>> cam = dxcam.create(output_color="BGR", backend="winrt")
+        >>> frame = cam.grab()
+        >>> cam.release()
+    """
     _install_sigterm_handler()
     return __factory.create(
         device_idx=device_idx,
@@ -186,12 +250,25 @@ def create(
         region=region,
         output_color=output_color,
         max_buffer_len=max_buffer_len,
+        backend=backend,
     )
 
 
 def device_info() -> str:
+    """Return a formatted list of detected DXGI adapters.
+
+    Example:
+        >>> import dxcam
+        >>> print(dxcam.device_info())
+    """
     return __factory.device_info()
 
 
 def output_info() -> str:
+    """Return a formatted list of detected outputs for each adapter.
+
+    Example:
+        >>> import dxcam
+        >>> print(dxcam.output_info())
+    """
     return __factory.output_info()

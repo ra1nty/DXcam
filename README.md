@@ -25,6 +25,11 @@ Recommended (with OpenCV):
 pip install "dxcam[cv2]"
 ```
 
+Enable WinRT backend support:
+```bash
+pip install "dxcam[winrt]"
+```
+
 Minimal install:
 ```bash
 pip install dxcam
@@ -35,6 +40,8 @@ pip install dxcam
 uv sync
 # include OpenCV
 uv sync --extra cv2
+# include WinRT backend
+uv sync --extra winrt
 ```
 
 ### Dev environment (uv + ruff + ty)
@@ -45,12 +52,27 @@ uv run ruff check dxcam
 uv run ty check dxcam
 ```
 
+### API docs (pdoc)
+Generate autodocs for the public API surface:
+```bash
+uv run pdoc -d google -o site dxcam dxcam.dxcam dxcam.types
+```
+
+Preview locally by opening `site/index.html`.
+CI builds docs on pull requests, and docs are deployed from `main` via GitHub Pages.
+
 ## Usage
 Each output (monitor) is associated with one `DXCamera` instance.
 
 ```python
 import dxcam
 camera = dxcam.create()  # primary output on device 0
+```
+
+Backend selection:
+```python
+camera = dxcam.create(backend="dxgi")   # default Desktop Duplication path
+camera = dxcam.create(backend="winrt")  # Windows.Graphics.Capture backend
 ```
 
 ### Screenshot
@@ -150,7 +172,8 @@ frame, ts = camera.get_latest_frame(with_timestamp=True)
 camera.stop()
 ```
 
-This value is directly from `DXGI_OUTDUPL_FRAME_INFO.LastPresentTime`, which can be used to calculate PTS / achieve VFR in video capture.
+For `backend="dxgi"`, this value comes from `DXGI_OUTDUPL_FRAME_INFO.LastPresentTime`.
+For `backend="winrt"`, this value is derived from WinRT `SystemRelativeTime`.
 
 ### Video Mode
 With `video_mode=True`, DXcam fills the buffer at target FPS, reusing the previous frame if needed, even if no new frame is rendered.
@@ -174,7 +197,7 @@ writer.release()
 ```
 
 ### Safely Releasing Resources
-`release()` stops capture, frees buffers, and releases DXGI resources.
+`release()` stops capture, frees buffers, and releases capture resources.
 After `release()`, the same instance cannot be reused.
 
 ```python
