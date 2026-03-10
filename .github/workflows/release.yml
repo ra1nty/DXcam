@@ -26,6 +26,9 @@ jobs:
           python-version: "3.13"
           cache: pip
 
+      - name: Ensure pip cache directory exists
+        run: mkdir -p ~/.cache/pip
+
       - name: Verify tag and package version are in sync
         run: python scripts/check_version_tag.py "${GITHUB_REF_NAME}"
 
