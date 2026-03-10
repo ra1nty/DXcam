@@ -185,6 +185,17 @@ class DXCamera:
     ) -> Frame | None:
         """Grab one frame.
 
+        Args:
+            region: Optional capture region. Defaults to current camera region.
+            copy: Return caller-owned memory when ``True``. Set ``False`` for
+                a reusable internal view.
+            new_frame_only: In one-shot mode, return ``None`` when no new frame
+                is available. Set ``False`` to reuse the last cached frame for
+                the same region.
+
+        Returns:
+            Captured frame data or ``None`` when no new frame is available.
+
         Ownership contract:
         - ``copy=True`` returns caller-owned memory.
         - ``copy=False`` may return internal memory reused by future grabs.
@@ -217,6 +228,12 @@ class DXCamera:
 
     def grab_view(self, region: Region | None = None) -> Frame | None:
         """Zero-copy variant of :meth:`grab`.
+
+        Args:
+            region: Optional capture region. Defaults to current camera region.
+
+        Returns:
+            A non-owning view of frame memory, or ``None`` when unavailable.
 
         Returns a view backed by internal buffers. Copy the array if you need
         to keep frame data across future capture calls.
@@ -602,6 +619,12 @@ class DXCamera:
         self, with_timestamp: bool = False
     ) -> Frame | tuple[Frame, float] | None:
         """Zero-copy convenience wrapper for :meth:`get_latest_frame`.
+
+        Args:
+            with_timestamp: Return ``(frame, timestamp_seconds)`` when ``True``.
+
+        Returns:
+            A non-owning frame view, optionally with timestamp.
 
         Example:
             >>> cam.start(target_fps=60)

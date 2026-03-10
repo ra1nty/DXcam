@@ -29,6 +29,17 @@ _BACKEND_CREATORS: dict[
 
 
 def normalize_backend_name(backend: str) -> CaptureBackend:
+    """Normalize and validate a capture backend name.
+
+    Args:
+        backend: Backend name provided by user input.
+
+    Returns:
+        Lower-cased validated backend literal (``"dxgi"`` or ``"winrt"``).
+
+    Raises:
+        ValueError: If ``backend`` is not a supported capture backend.
+    """
     normalized = backend.lower()
     if normalized not in _SUPPORTED_BACKENDS:
         supported = ", ".join(_SUPPORTED_BACKENDS)
@@ -42,6 +53,19 @@ def create_backend_duplicator(
     output: Output,
     device: Device,
 ) -> Any:
+    """Create a backend-specific duplicator instance.
+
+    Args:
+        backend: Selected capture backend.
+        output: Output descriptor to capture from.
+        device: Device descriptor associated with ``output``.
+
+    Returns:
+        A duplicator instance that implements the capture backend contract.
+
+    Raises:
+        ValueError: If ``backend`` has no registered factory.
+    """
     creator = _BACKEND_CREATORS.get(backend)
     if creator is None:
         # Defensive fallback in case literals are expanded without wiring.

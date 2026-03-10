@@ -8,15 +8,18 @@ camera = dxcam.create()
 frame = camera.grab()
 ```
 
+> **Live API Docs:** [https://ra1nty.github.io/DXcam/](https://ra1nty.github.io/DXcam/)
+
 ## Introduction
 DXcam is a high-performance python screenshot and capture library for Windows based on the Desktop Duplication API.
 It is designed for low-latency, high-FPS capture pipelines (including full-screen Direct3D applications).
 
 Compared with common Python alternatives, DXcam focuses on:
-- Higher capture throughput
+- Higher capture throughput (240+fps on 1080p)
 - Stable capture for full-screen exclusive Direct3D apps
-- Correct handling of scaled/stretched outputs
-- Better FPS pacing for continuous/video capture
+- Better FPS pacing for continuous video capture
+- Support DXGI / Windows Graphics Capture dual backend
+- Seamless integration for AI Agent / Computer Vision use cases.
 
 ## Installation
 ### From PyPI (pip)
@@ -34,39 +37,12 @@ Notes:
 - Official Windows wheels are built for CPython `3.10` to `3.14`.
 - Binary wheels include the Cython kernels used by processor backends.
 
-### From source (uv)
-```bash
-uv sync
-# include OpenCV conversion backend
-uv sync --extra cv2
-# include optional Cython tooling
-uv sync --extra cython
-# include WinRT backend
-uv sync --extra winrt
-```
+### From source
+Please refer to [CONTRIBUTING](CONTRIBUTING.md).
 
-Build local Cython kernels from source:
-```bash
-set DXCAM_BUILD_CYTHON=1
-uv pip install -e .[cython] --no-build-isolation
-```
-
-### Dev environment (uv + ruff + ty)
-```bash
-uv venv --python 3.11 .venv
-uv sync --dev
-uv run ruff check dxcam
-uv run ty check dxcam
-```
-
-### API docs (pdoc)
-Generate autodocs for the public API surface:
-```bash
-uv run pdoc -d google -o site dxcam dxcam.dxcam dxcam.types
-```
-
-Preview locally by opening `site/index.html`.
-CI builds docs on pull requests, and docs are deployed from `main` via GitHub Pages.
+### Contributing / Dev
+Contributions are welcome!
+Development setup and contributor workflow are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Usage
 Each output (monitor) is associated with one `DXCamera` instance.
@@ -88,7 +64,7 @@ camera = dxcam.create(
 ```python
 frame = camera.grab()
 ```
-`grab()` returns a `numpy.ndarray`. `None` if no new frame is available since the last capture (for backward compatibility); use `new_frame_only=False` to reuse the latest cached one-shot frame.
+`grab()` returns a `numpy.ndarray`. `None` if no new frame is available since the last capture (for backward compatibility); use `camera.grab(new_frame_only=False)` to make dxcam always return the latest frame.
 
 Use `copy=False` (or `camera.grab_view()`) for a zero-copy view. This is faster, but the returned buffer can be overwritten by later captures.
 
@@ -121,6 +97,8 @@ Useful variants:
 - `camera.grab(copy=False)` / `camera.grab_view()` -> zero-copy latest-frame snapshot
 
 > When `start()` capture is running, calling `grab()` reads from the in-memory ring buffer instead of directly polling DXGI.
+
+**Full API Docs:** [https://ra1nty.github.io/DXcam/](https://ra1nty.github.io/DXcam/)
 
 ## Advanced Usage and Remarks
 ### Multiple monitors / GPUs
@@ -212,12 +190,13 @@ DXcam supports two capture backends:
 
 Use it like this:
 ```python
-camera = dxcam.create(backend="dxgi")   # default
+camera = dxcam.create(backend="dxgi")
 camera = dxcam.create(backend="winrt")
 ```
 
 Guideline:
-- Start with `dxgi` for most workloads.
+- If you need cursor rendering, use `winrt`.
+- Start with `dxgi` for most workloads, especially one-shot grab.
 - Try `winrt` if it performs better on your machine or fits your app constraints.
 
 ### Processor Backend
