@@ -1,3 +1,9 @@
+### 0.2.0
+- Added a new processor split: cv2 backend / numpy (Cython-kernel) backend
+- Added Cython kernels (_numpy_kernels.pyx) for BGRA map/rotate/crop + color conversion, including OpenMP/tuning knobs.
+- WinRT backend support， cursor rendering, etc
+- Official Doc
+- Enhanced examples
 ### 0.1.0
 - Switched frame transfer from full-surface CopyResource to region-aware CopySubresourceRegion
 - Made IDXGIOutput5.DuplicateOutput1 the default capture path, with env-var fallback to legacy DuplicateOutput.

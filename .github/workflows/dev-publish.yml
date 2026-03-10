@@ -11,16 +11,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  publish-dev:
-    name: Publish Dev Version to PyPI
+  build-dev-artifacts:
+    name: Build Dev Binary Wheels and sdist
     if: github.ref == 'refs/heads/dev'
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi-dev
-      url: https://pypi.org/p/dxcam
+    runs-on: windows-latest
     permissions:
-      id-token: write
       contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_dev: ${{ steps.version.outputs.is_dev }}
 
     steps:
       - name: Checkout
@@ -35,7 +34,7 @@ jobs:
       - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build twine
+          python -m pip install build twine cibuildwheel
 
       - name: Detect package version
         id: version
@@ -68,16 +67,49 @@ jobs:
         if: steps.version.outputs.is_dev == 'true'
         run: python scripts/check_dev_version.py
 
-      - name: Build sdist and wheel
+      - name: Build binary wheels
         if: steps.version.outputs.is_dev == 'true'
-        run: python -m build
+        run: python -m cibuildwheel --platform windows --output-dir dist
+
+      - name: Build sdist
+        if: steps.version.outputs.is_dev == 'true'
+        run: python -m build --sdist --outdir dist
 
       - name: Check distributions
         if: steps.version.outputs.is_dev == 'true'
         run: python -m twine check --strict dist/*
 
-      - name: Publish package to PyPI
+      - name: Upload build artifacts
         if: steps.version.outputs.is_dev == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-dist
+          path: dist/*
+          if-no-files-found: error
+
+  publish-dev:
+    name: Publish Dev Version to PyPI
+    if: github.ref == 'refs/heads/dev' && needs.build-dev-artifacts.outputs.is_dev == 'true'
+    needs: build-dev-artifacts
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi-dev
+      url: https://pypi.org/p/dxcam
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-dist
+          path: dist/
+
+      - name: Show release artifacts
+        run: ls -al dist
+
+      - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/

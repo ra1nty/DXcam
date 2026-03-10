@@ -31,6 +31,12 @@ ENV/
 htmlcov/
 .test/
 
+# Benchmark artifacts
+benchmarks/*.json
+
+# Generated Cython C source
+dxcam/processor/_numpy_kernels.c
+
 # Type checking and linting caches
 .ruff_cache/
 .mypy_cache/

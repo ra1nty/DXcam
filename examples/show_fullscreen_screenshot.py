@@ -11,7 +11,9 @@ def main() -> None:
     # Install OpenCV using: `pip install "dxcam[cv2]"`
     cv2 = cast(Any, import_module("cv2"))
 
-    camera = dxcam.create(output_color="BGR")  # primary output on device 0
+    camera = dxcam.create(
+        output_color="BGR", output_idx=0
+    )  # primary output on device 0
     try:
         frame = camera.grab()
 
