@@ -69,6 +69,43 @@ jobs:
       - name: Run BGRA conversion parity tests
         run: python -m pytest -q tests/test_bgra_conversion_parity.py
 
+  micro-benchmarks:
+    name: Processor Micro Benchmarks (pytest-benchmark)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install build and benchmark tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "setuptools>=68" wheel "Cython==3.1.1" "numpy>=1.26" "opencv-python>=4.13.0.92" pytest "pytest-benchmark>=5.2.3"
+
+      - name: Install project with Cython extension
+        env:
+          DXCAM_BUILD_CYTHON: "1"
+        run: python -m pip install -e . --no-build-isolation
+
+      - name: Run processor micro benchmarks
+        run: |
+          Remove-Item Env:PYTEST_DISABLE_PLUGIN_AUTOLOAD -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path benchmarks/results -Force | Out-Null
+          python -m pytest -q tests/benchmarks/test_processor_microbenchmark.py --benchmark-only --benchmark-sort=mean --benchmark-json benchmarks/results/processor_microbenchmark.json
+
+      - name: Upload benchmark result artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: processor-micro-benchmark-results
+          path: benchmarks/results/*.json
+          if-no-files-found: error
+
   build-binaries:
     name: Build Binary Wheels and sdist
     runs-on: windows-latest

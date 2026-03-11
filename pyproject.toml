@@ -63,6 +63,7 @@ dev = [
     "opencv-python>=4.13.0.92",
     "pdoc>=15.0.4",
     "pytest>=8.4.0",
+    "pytest-benchmark>=5.2.3",
     "ruff>=0.15.5",
     "ty>=0.0.21",
 ]
