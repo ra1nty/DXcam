@@ -1,3 +1,7 @@
+### 0.3.0
+- add proper handling of the DXGI mode switch (exclusively <-> normal)
+- add microbenchmark for processors
+- refactors
 ### 0.2.0
 - Added a new processor split: cv2 backend / numpy (Cython-kernel) backend
 - Added Cython kernels (_numpy_kernels.pyx) for BGRA map/rotate/crop + color conversion, including OpenMP/tuning knobs.
