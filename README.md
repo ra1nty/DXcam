@@ -4,8 +4,8 @@
 ```python
 import dxcam
 
-camera = dxcam.create()
-frame = camera.grab()
+with dxcam.create() as camera:
+    frame = camera.grab()
 ```
 
 > **Live API Docs:** [https://ra1nty.github.io/DXcam/](https://ra1nty.github.io/DXcam/)
@@ -52,7 +52,7 @@ import dxcam
 camera = dxcam.create()  # primary output on device 0
 ```
 
-To specify backend:
+To specify backends:
 ```python
 camera = dxcam.create(
     backend="dxgi", # default Desktop Duplication backend
@@ -97,6 +97,22 @@ Useful variants:
 - `camera.grab(copy=False)` / `camera.grab_view()` -> zero-copy latest-frame snapshot
 
 > When `start()` capture is running, calling `grab()` reads from the in-memory ring buffer instead of directly polling DXGI.
+
+### Safely Releasing Resources
+`release()` stops capture, frees buffers, and releases capture resources.
+After `release()`, the same instance cannot be reused.
+
+```python
+camera = dxcam.create(output_idx=0, output_color="BGR")
+camera.release()
+# camera.start()  # raises RuntimeError
+```
+Equivalently you can use context manager:
+```python
+with dxcam.create() as camera:
+    frame = camera.grab()
+# resource released automatically
+```
 
 **Full API Docs:** [https://ra1nty.github.io/DXcam/](https://ra1nty.github.io/DXcam/)
 
@@ -227,16 +243,6 @@ If `processor_backend="numpy"` is selected but compiled kernels are unavailable,
 DXcam logs a warning and falls back to `cv2` behavior. In that fallback path,
 install OpenCV for non-`BGRA` output modes.
 
-### Safely Releasing Resources
-`release()` stops capture, frees buffers, and releases capture resources.
-After `release()`, the same instance cannot be reused.
-
-```python
-camera = dxcam.create(output_idx=0, output_color="BGR")
-camera.release()
-# camera.start()  # raises RuntimeError
-```
-
 ## Benchmarks
 When using a similar logic (only capture newly rendered frames) running on a 240fps output, ```DXCam, python-mss, D3DShot``` benchmarked as follow:
 
@@ -253,16 +259,9 @@ The benchmark is across 5 runs, with a light-moderate usage on my PC (5900X + 30
 | 60fps         | 61.71, 0.26 :checkered_flag: | N/A     | 47.11, 1.33  |
 | 30fps         | 30.08, 0.02 :checkered_flag:  | N/A     | 21.24, 0.17  |
 
-Processor backend comparison helper:
-```bash
-python benchmarks/dxcam_processor_compare.py --backend dxgi --target-fps 120 --target-frames 1000
-python benchmarks/dxcam_capture.py --backend dxgi --processor-backend numpy
-python benchmarks/numpy_processor_micro.py --width 3840 --height 2160 --modes RGB --variants process into --processor-backends cv2 numpy
-```
-
 
 ## Work Referenced
 
 [OBS Studio](https://github.com/obsproject/obs-studio) - implementation ideas and references.
 
-[D3DShot](https://github.com/SerpentAI/D3DShot/) : DXcam borrows the ctypes header directly from the no-longer maintained D3DShot.
+[D3DShot](https://github.com/SerpentAI/D3DShot/) : DXcam borrowed some ctypes header from the no-longer maintained D3DShot.

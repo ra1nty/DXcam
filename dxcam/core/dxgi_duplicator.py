@@ -11,8 +11,6 @@ import comtypes
 from dxcam._libs.d3d11 import DXGI_FORMAT_B8G8R8A8_UNORM, ID3D11Texture2D
 from dxcam._libs.dxgi import (
     DXGI_OUTDUPL_FLAG_NONE,
-    DXGI_ERROR_ACCESS_LOST,
-    DXGI_ERROR_SESSION_DISCONNECTED,
     DXGI_ERROR_WAIT_TIMEOUT,
     DXGI_OUTDUPL_FRAME_INFO,
     IDXGIOutputDuplication,
@@ -20,6 +18,12 @@ from dxcam._libs.dxgi import (
     IDXGIResource,
 )
 from dxcam.core.device import Device
+from dxcam.core.dxgi_errors import (
+    DXGITransientContext,
+    com_error_hresult_u32,
+    hresult_u32,
+    is_transient_hresult,
+)
 from dxcam.core.output import Output
 
 logger = logging.getLogger(__name__)
@@ -28,27 +32,7 @@ ENABLE_DUPLICATE_OUTPUT1 = os.getenv("DXCAM_USE_DUPLICATE_OUTPUT1", "1").lower()
     "true",
     "yes",
 }
-DXGI_ERROR_ACCESS_LOST_U32 = ctypes.c_uint32(DXGI_ERROR_ACCESS_LOST).value
-DXGI_ERROR_SESSION_DISCONNECTED_U32 = ctypes.c_uint32(
-    DXGI_ERROR_SESSION_DISCONNECTED
-).value
-DXGI_ERROR_WAIT_TIMEOUT_U32 = ctypes.c_uint32(DXGI_ERROR_WAIT_TIMEOUT).value
-
-
-def _com_error_hresult_u32(error: comtypes.COMError) -> int:
-    hresult = getattr(error, "hresult", None)
-    if hresult is None and len(error.args) > 0:
-        hresult = error.args[0]
-    if hresult is None:
-        return 0
-    return ctypes.c_uint32(int(hresult)).value
-
-
-def _is_access_lost_style_hresult_u32(hresult_u32: int) -> bool:
-    return hresult_u32 in (
-        DXGI_ERROR_ACCESS_LOST_U32,
-        DXGI_ERROR_SESSION_DISCONNECTED_U32,
-    )
+DXGI_ERROR_WAIT_TIMEOUT_U32 = hresult_u32(DXGI_ERROR_WAIT_TIMEOUT)
 
 
 @dataclass
@@ -90,7 +74,20 @@ class DXGIDuplicator:
                 "Using legacy IDXGIOutput1.DuplicateOutput. "
                 "Set DXCAM_USE_DUPLICATE_OUTPUT1=1 to enable DuplicateOutput1."
             )
-        output_ptr.DuplicateOutput(device.device, ctypes.byref(self.duplicator))
+        try:
+            output_ptr.DuplicateOutput(device.device, ctypes.byref(self.duplicator))
+        except comtypes.COMError as ce:
+            err = com_error_hresult_u32(ce)
+            if is_transient_hresult(
+                err,
+                DXGITransientContext.CREATE_DUPLICATION,
+                DXGITransientContext.SYSTEM_TRANSITION,
+            ):
+                logger.info(
+                    "DuplicateOutput transient failure (HRESULT=0x%08X).",
+                    err,
+                )
+            raise
 
     def _try_duplicate_output1(self, output_ptr: Any, device: Device) -> bool:
         try:
@@ -109,11 +106,23 @@ class DXGIDuplicator:
             )
             logger.debug("Using IDXGIOutput5.DuplicateOutput1 for capture.")
             return True
-        except comtypes.COMError:
-            logger.debug(
-                "DuplicateOutput1 failed; falling back to IDXGIOutput1.DuplicateOutput.",
-                exc_info=True,
-            )
+        except comtypes.COMError as ce:
+            err = com_error_hresult_u32(ce)
+            if is_transient_hresult(
+                err,
+                DXGITransientContext.CREATE_DUPLICATION,
+                DXGITransientContext.SYSTEM_TRANSITION,
+            ):
+                logger.info(
+                    "DuplicateOutput1 transient failure (HRESULT=0x%08X); "
+                    "falling back to DuplicateOutput.",
+                    err,
+                )
+            else:
+                logger.debug(
+                    "DuplicateOutput1 failed; falling back to DuplicateOutput.",
+                    exc_info=True,
+                )
             self.duplicator = ctypes.POINTER(IDXGIOutputDuplication)()
             return False
 
@@ -133,20 +142,24 @@ class DXGIDuplicator:
                 ctypes.byref(res),
             )
         except comtypes.COMError as ce:
-            hresult_u32 = _com_error_hresult_u32(ce)
-            if _is_access_lost_style_hresult_u32(hresult_u32):
+            hresult = com_error_hresult_u32(ce)
+            if hresult == DXGI_ERROR_WAIT_TIMEOUT_U32:
+                self.updated = False
+                self.accumulated_frames = 0
+                return True
+            if is_transient_hresult(
+                hresult,
+                DXGITransientContext.FRAME_INFO,
+                DXGITransientContext.SYSTEM_TRANSITION,
+            ):
                 logger.warning(
-                    "Desktop duplication lost (HRESULT=0x%08X). "
-                    "Triggering output-change recovery.",
-                    hresult_u32,
+                    "Desktop duplication access loss/system transition detected "
+                    "(HRESULT=0x%08X). Triggering output-change recovery.",
+                    hresult,
                 )
                 self.updated = False
                 self._frame_held = False
                 return False
-            if hresult_u32 == DXGI_ERROR_WAIT_TIMEOUT_U32:
-                self.updated = False
-                self.accumulated_frames = 0
-                return True
             raise
         self._frame_held = True
         try:
@@ -193,12 +206,17 @@ class DXGIDuplicator:
         try:
             self.duplicator.ReleaseFrame()
         except comtypes.COMError as ce:
-            hresult_u32 = _com_error_hresult_u32(ce)
+            hresult = com_error_hresult_u32(ce)
             self._frame_held = False
-            if _is_access_lost_style_hresult_u32(hresult_u32):
+            if is_transient_hresult(
+                hresult,
+                DXGITransientContext.FRAME_INFO,
+                DXGITransientContext.SYSTEM_TRANSITION,
+            ):
                 logger.warning(
-                    "ReleaseFrame hit recoverable duplication loss (HRESULT=0x%08X).",
-                    hresult_u32,
+                    "ReleaseFrame access loss/system transition detected "
+                    "(HRESULT=0x%08X).",
+                    hresult,
                 )
                 return False
             raise
