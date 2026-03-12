@@ -33,6 +33,8 @@ htmlcov/
 
 # Benchmark artifacts
 benchmarks/*.json
+benchmarks/results/
+.benchmarks/
 
 # Generated Cython C source
 dxcam/processor/_numpy_kernels.c

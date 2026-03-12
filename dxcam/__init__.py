@@ -82,9 +82,9 @@ class Singleton(type):
 class DXFactory(metaclass=Singleton):
     """Factory that owns device/output discovery and camera singletons."""
 
-    _camera_instances: weakref.WeakValueDictionary[tuple[int, int, CaptureBackend], DXCamera] = (
-        weakref.WeakValueDictionary()
-    )
+    _camera_instances: weakref.WeakValueDictionary[
+        tuple[int, int, CaptureBackend], DXCamera
+    ] = weakref.WeakValueDictionary()
 
     def __init__(self) -> None:
         p_adapters = enum_dxgi_adapters()
@@ -104,7 +104,7 @@ class DXFactory(metaclass=Singleton):
         output_idx: int | None = None,
         region: Region | None = None,
         output_color: ColorMode = "RGB",
-        max_buffer_len: int = 64,
+        max_buffer_len: int = 8,
         backend: CaptureBackend = "dxgi",
         processor_backend: ProcessorBackend = "cv2",
     ) -> DXCamera:
@@ -122,7 +122,9 @@ class DXFactory(metaclass=Singleton):
                 if metadata and metadata[1]
             ]
             if not primary_output_indices:
-                raise RuntimeError(f"No primary output found for device index {device_idx}")
+                raise RuntimeError(
+                    f"No primary output found for device index {device_idx}"
+                )
             output_idx = primary_output_indices[0]
         instance_key = (device_idx, output_idx, backend)
         existing_camera = self._camera_instances.get(instance_key)
@@ -225,7 +227,7 @@ def create(
     output_idx: int | None = None,
     region: Region | None = None,
     output_color: ColorMode = "RGB",
-    max_buffer_len: int = 64,
+    max_buffer_len: int = 8,
     backend: CaptureBackend = "dxgi",
     processor_backend: ProcessorBackend = "cv2",
 ) -> DXCamera:

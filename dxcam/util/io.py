@@ -6,10 +6,14 @@ from typing import Any, cast
 
 import comtypes
 from dxcam._libs.dxgi import (
-    DXGI_ERROR_NOT_FOUND,
     IDXGIAdapter1,
     IDXGIFactory1,
     IDXGIOutput1,
+)
+from dxcam.core.dxgi_errors import (
+    DXGITransientContext,
+    com_error_hresult_u32,
+    is_transient_hresult,
 )
 from dxcam._libs.user32 import (
     DISPLAY_DEVICE,
@@ -36,7 +40,11 @@ def enum_dxgi_adapters() -> list[Any]:
             p_adapters.append(p_adapter)
             i += 1
         except comtypes.COMError as ce:
-            if ctypes.c_int32(DXGI_ERROR_NOT_FOUND).value == ce.args[0]:
+            hresult_u32 = com_error_hresult_u32(ce)
+            if is_transient_hresult(
+                hresult_u32,
+                DXGITransientContext.ENUM_OUTPUTS,
+            ):
                 break
             raise
     return p_adapters
@@ -54,7 +62,11 @@ def enum_dxgi_outputs(
             p_outputs.append(p_output)
             i += 1
         except comtypes.COMError as ce:
-            if ctypes.c_int32(DXGI_ERROR_NOT_FOUND).value == ce.args[0]:
+            hresult_u32 = com_error_hresult_u32(ce)
+            if is_transient_hresult(
+                hresult_u32,
+                DXGITransientContext.ENUM_OUTPUTS,
+            ):
                 break
             raise
     return p_outputs

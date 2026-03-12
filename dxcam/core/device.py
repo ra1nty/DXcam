@@ -14,8 +14,12 @@ from dxcam._libs.d3d11 import (
 )
 from dxcam._libs.dxgi import (
     DXGI_ADAPTER_DESC1,
-    DXGI_ERROR_NOT_FOUND,
     IDXGIOutput1,
+)
+from dxcam.core.dxgi_errors import (
+    DXGITransientContext,
+    com_error_hresult_u32,
+    is_transient_hresult,
 )
 
 
@@ -70,7 +74,11 @@ class Device:
                 p_outputs.append(p_output)
                 i += 1
             except comtypes.COMError as ce:
-                if ctypes.c_int32(DXGI_ERROR_NOT_FOUND).value == ce.args[0]:
+                hresult_u32 = com_error_hresult_u32(ce)
+                if is_transient_hresult(
+                    hresult_u32,
+                    DXGITransientContext.ENUM_OUTPUTS,
+                ):
                     break
                 raise
         return p_outputs
