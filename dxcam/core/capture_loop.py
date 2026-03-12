@@ -42,8 +42,8 @@ class CaptureLoopRunner:
             write_idx, write_dst = write_slot
 
         captured, frame_ticks, frame_width, frame_height = self._grab_into(
-            region=region,
-            dst=write_dst,
+            region,
+            write_dst,
         )
         if captured:
             with self._lock:
@@ -52,20 +52,14 @@ class CaptureLoopRunner:
             return
 
         if frame_width > 0 and frame_height > 0:
-            frame = self._process_staging_frame(
-                frame_width=frame_width,
-                frame_height=frame_height,
-            )
+            frame = self._process_staging_frame(frame_width, frame_height)
             with self._lock:
                 current_shape = self._runtime.current_frame_shape()
                 if current_shape is None:
                     return
                 current_height, current_width = current_shape
                 if frame.shape[0] != current_height or frame.shape[1] != current_width:
-                    self._handle_frame_size_change(
-                        frame_height=frame.shape[0],
-                        frame_width=frame.shape[1],
-                    )
+                    self._handle_frame_size_change(frame.shape[0], frame.shape[1])
 
                 write_slot = self._runtime.reserve_write_slot()
                 if write_slot is None:
