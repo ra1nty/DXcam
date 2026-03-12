@@ -210,6 +210,7 @@ class DXCamera:
         region: Region | None = None,
         copy: bool = True,
         new_frame_only: bool = True,
+        as_pil: bool = False,
     ) -> Frame | None:
         """Grab one frame.
 
@@ -220,6 +221,7 @@ class DXCamera:
             new_frame_only: In one-shot mode, return ``None`` when no new frame
                 is available. Set ``False`` to reuse the last cached frame for
                 the same region.
+            as_pil: Return a Pillow image when ``True``.
 
         Returns:
             Captured frame data or ``None`` when no new frame is available.
@@ -246,12 +248,24 @@ class DXCamera:
                     "grab(region=...) is not supported while capture is running. "
                     "Use start(region=...) to configure capture region."
                 )
-            return self._peek_latest_buffered_frame(copy=copy)
-        if region is None:
-            region = self.region
+            frame = self._peek_latest_buffered_frame(copy=copy)
         else:
-            self._validate_region(region)
-        frame = self._grab(region, copy=copy, new_frame_only=new_frame_only)
+            if region is None:
+                region = self.region
+            else:
+                self._validate_region(region)
+            frame = self._grab(region, copy=copy, new_frame_only=new_frame_only)
+
+        if frame is None:
+            return None
+
+        if as_pil:
+            try:
+                from PIL import Image
+            except ImportError as e:
+                raise ImportError("Pillow is required when as_pil=True") from e
+            return Image.fromarray(frame)
+
         return frame
 
     def grab_view(self, region: Region | None = None) -> Frame | None:
