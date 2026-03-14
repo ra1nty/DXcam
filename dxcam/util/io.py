@@ -10,6 +10,7 @@ from dxcam._libs.dxgi import (
     IDXGIFactory1,
     IDXGIOutput1,
 )
+from dxcam.core.com_ptr import release_com_pointer
 from dxcam.core.dxgi_errors import (
     DXGITransientContext,
     com_error_hresult_u32,
@@ -33,20 +34,23 @@ def enum_dxgi_adapters() -> list[Any]:
     factory = cast(Any, dxgi_factory)
     i = 0
     p_adapters: list[Any] = []
-    while True:
-        try:
-            p_adapter = ctypes.POINTER(IDXGIAdapter1)()
-            factory.EnumAdapters1(i, ctypes.byref(p_adapter))
-            p_adapters.append(p_adapter)
-            i += 1
-        except comtypes.COMError as ce:
-            hresult_u32 = com_error_hresult_u32(ce)
-            if is_transient_hresult(
-                hresult_u32,
-                DXGITransientContext.ENUM_OUTPUTS,
-            ):
-                break
-            raise
+    try:
+        while True:
+            try:
+                p_adapter = ctypes.POINTER(IDXGIAdapter1)()
+                factory.EnumAdapters1(i, ctypes.byref(p_adapter))
+                p_adapters.append(p_adapter)
+                i += 1
+            except comtypes.COMError as ce:
+                hresult_u32 = com_error_hresult_u32(ce)
+                if is_transient_hresult(
+                    hresult_u32,
+                    DXGITransientContext.ENUM_OUTPUTS,
+                ):
+                    break
+                raise
+    finally:
+        release_com_pointer(dxgi_factory)
     return p_adapters
 
 

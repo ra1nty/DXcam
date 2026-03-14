@@ -7,6 +7,7 @@ from typing import Any
 import comtypes
 
 from dxcam._libs.dxgi import DXGI_OUTPUT_DESC
+from dxcam.core.com_ptr import release_com_pointer
 from dxcam.core.device import Device
 from dxcam.core.dxgi_errors import DXGITransientContext, is_transient_com_error
 from dxcam.core.output import Output
@@ -70,36 +71,46 @@ class OutputRecoveryHandler:
         fallback_output = None
         selected_output = None
 
-        for output_ptr in self._device.enum_outputs():
-            desc = DXGI_OUTPUT_DESC()
-            try:
-                output_ptr.GetDesc(ctypes.byref(desc))
-            except comtypes.COMError as exc:
-                if is_transient_com_error(
-                    exc,
-                    DXGITransientContext.SYSTEM_TRANSITION,
-                    DXGITransientContext.ENUM_OUTPUTS,
-                ):
+        output_ptrs = self._device.enum_outputs()
+        try:
+            for output_ptr in output_ptrs:
+                desc = DXGI_OUTPUT_DESC()
+                try:
+                    output_ptr.GetDesc(ctypes.byref(desc))
+                except comtypes.COMError as exc:
+                    if is_transient_com_error(
+                        exc,
+                        DXGITransientContext.SYSTEM_TRANSITION,
+                        DXGITransientContext.ENUM_OUTPUTS,
+                    ):
+                        continue
+                    raise
+
+                if fallback_output is None:
+                    fallback_output = output_ptr
+
+                monitor = _monitor_handle_to_int(desc.Monitor)
+                device_name = str(desc.DeviceName)
+                if previous_monitor != 0 and monitor == previous_monitor:
+                    selected_output = output_ptr
+                    break
+                if previous_name and device_name == previous_name:
+                    selected_output = output_ptr
+        finally:
+            for output_ptr in output_ptrs:
+                if output_ptr is selected_output:
                     continue
-                raise
-
-            if fallback_output is None:
-                fallback_output = output_ptr
-
-            monitor = _monitor_handle_to_int(desc.Monitor)
-            device_name = str(desc.DeviceName)
-            if previous_monitor != 0 and monitor == previous_monitor:
-                selected_output = output_ptr
-                break
-            if previous_name and device_name == previous_name:
-                selected_output = output_ptr
+                release_com_pointer(output_ptr)
 
         if selected_output is None:
             selected_output = fallback_output
         if selected_output is None:
             raise RuntimeError("No DXGI outputs available during recovery.")
 
+        previous_output = self._output.output
         self._output.output = selected_output
+        if previous_output is not selected_output:
+            release_com_pointer(previous_output)
         self._output.update_desc()
 
     def handle(

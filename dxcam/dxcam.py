@@ -23,6 +23,7 @@ from _thread import LockType
 
 import ctypes
 import logging
+import os
 import time
 from contextlib import contextmanager
 from threading import Event, Lock, Thread, current_thread
@@ -80,7 +81,8 @@ class DXCamera:
             device: Internal DXGI device descriptor.
             region: Initial capture region as ``(left, top, right, bottom)``.
             output_color: Returned color format.
-            max_buffer_len: Ring-buffer size for threaded capture mode.
+            max_buffer_len: Kept for API compatibility. Threaded mode uses
+                fixed triple staging slots for latest-only capture.
             backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
             processor_backend: Post-processing backend, ``"cv2"`` or
                 ``"numpy"``.
@@ -128,14 +130,12 @@ class DXCamera:
             logger=logger,
         )
 
-        if max_buffer_len <= 1:
-            logger.warning(
-                "max_buffer_len=%d is not supported for concurrent capture; clamping to 2.",
+        if max_buffer_len != 3:
+            logger.info(
+                "latest-only triple staging is enabled; ignoring max_buffer_len=%d.",
                 max_buffer_len,
             )
-            self.max_buffer_len = 2
-        else:
-            self.max_buffer_len = max_buffer_len
+        self.max_buffer_len = 3
         self.is_capturing = False
 
         self.__thread: Thread | None = None
@@ -144,14 +144,17 @@ class DXCamera:
 
         self.__frame_available = Event()
         self.__capture_runtime = CaptureRuntime(
-            max_buffer_len=self.max_buffer_len,
             channel_size=self.channel_size,
+            slot_count=3,
         )
+        self.__latest_read_view: Frame | None = None
+        self.__latest_read_view_shape: tuple[int, int, int] | None = None
 
         self.__timer_handle: Any | None = None
 
         self.__capture_start_time = 0
         self.__last_grab_entry: tuple[Region, Frame] | None = None
+        self.__stage_fresh_ns = self._resolve_stage_fresh_ns()
 
     def _assert_runtime_mutation_allowed(self) -> None:
         """Allow runtime buffer mutation only on producer thread or when stopped."""
@@ -171,6 +174,22 @@ class DXCamera:
 
     def _uses_early_release(self) -> bool:
         return bool(getattr(self._duplicator, "early_release_frame", True))
+
+    def _resolve_stage_fresh_ns(self) -> int:
+        raw = os.getenv("DXCAM_STAGE_FRESH_US")
+        if raw is None:
+            return 1000 * 1000
+        try:
+            parsed_us = int(raw)
+        except ValueError:
+            logger.warning(
+                "Invalid DXCAM_STAGE_FRESH_US=%r; using default 1000.",
+                raw,
+            )
+            return 1000 * 1000
+        if parsed_us <= 0:
+            return 0
+        return parsed_us * 1000
 
     def _release_frame_if_early_release(self) -> None:
         if self._uses_early_release():
@@ -232,9 +251,9 @@ class DXCamera:
         - ``new_frame_only=False`` falls back to the last successfully grabbed
           frame for the same region in one-shot mode.
 
-        When capture is running (``start()``), this reads from the ring buffer
-        instead of touching DXGI objects directly. ``new_frame_only`` does not
-        apply while capture is running.
+        When capture is running (``start()``), this reads from the latest staged
+        slot and processes on readout. ``new_frame_only`` does not apply while
+        capture is running.
 
         Example:
             >>> frame = cam.grab(region=(0, 0, 1280, 720), new_frame_only=False)
@@ -274,7 +293,80 @@ class DXCamera:
 
     def _peek_latest_buffered_frame(self, copy: bool = True) -> Frame | None:
         with self.__lock:
-            return self.__capture_runtime.peek_latest(copy=copy)
+            leased = self.__capture_runtime.lease_preferred_slot(
+                min_latest_age_ns=self.__stage_fresh_ns
+            )
+        if leased is None:
+            return None
+        slot_idx, stage, frame_width, frame_height, rotation_angle, _frame_ticks, _ = leased
+        try:
+            return self._process_stage_surface(
+                stage=stage,
+                frame_width=frame_width,
+                frame_height=frame_height,
+                rotation_angle=rotation_angle,
+                copy=copy,
+            )
+        finally:
+            with self.__lock:
+                self.__capture_runtime.release_latest_slot(slot_idx)
+
+    def _ensure_latest_read_view(self, frame_width: int, frame_height: int) -> Frame:
+        shape = (frame_height, frame_width, self.channel_size)
+        if self.__latest_read_view is None or self.__latest_read_view_shape != shape:
+            self.__latest_read_view = np.empty(shape, dtype=np.uint8)
+            self.__latest_read_view_shape = shape
+        return self.__latest_read_view
+
+    def _process_stage_surface_into(
+        self,
+        *,
+        stage: StageSurface,
+        frame_width: int,
+        frame_height: int,
+        rotation_angle: int,
+        dst: Frame,
+    ) -> None:
+        rect = stage.map()
+        try:
+            self._processor.process_into(
+                rect,
+                frame_width,
+                frame_height,
+                (0, 0, frame_width, frame_height),
+                rotation_angle,
+                dst,
+            )
+        finally:
+            stage.unmap()
+
+    def _process_stage_surface(
+        self,
+        *,
+        stage: StageSurface,
+        frame_width: int,
+        frame_height: int,
+        rotation_angle: int,
+        copy: bool,
+    ) -> Frame:
+        if copy:
+            dst = self._allocate_output_frame(
+                frame_width=frame_width,
+                frame_height=frame_height,
+            )
+        else:
+            dst = self._ensure_latest_read_view(
+                frame_width=frame_width,
+                frame_height=frame_height,
+            )
+        self._process_stage_surface_into(
+            stage=stage,
+            frame_width=frame_width,
+            frame_height=frame_height,
+            rotation_angle=rotation_angle,
+            dst=dst,
+        )
+        return dst
 
     def _set_cached_grab_frame(self, region: Region, frame: Frame) -> None:
         self.__last_grab_entry = (region, frame)
@@ -323,54 +415,49 @@ class DXCamera:
             self._set_cached_grab_frame(region=region, frame=result)
         return result
 
-    def _grab_into(self, region: Region, dst: Frame) -> tuple[bool, int, int, int]:
-        """Capture into ``dst`` and return ``(captured, frame_ticks, width, height)``.
-
-        Contract:
-        - ``captured`` is True only when ``dst`` has been fully written with a new frame.
-        - ``captured`` is False with ``width == height == 0`` when no new frame is available.
-        - ``captured`` is False with non-zero ``width``/``height`` when a new frame exists
-          but ``dst`` shape does not match, so caller should rebuild and retry.
-        """
+    def _capture_to_stage_slot(
+        self,
+        region: Region,
+        slot_idx: int,
+    ) -> tuple[bool, int, int, int, int]:
         if not self._acquire_new_frame(wait_for_frame=True):
-            return False, 0, 0, 0
+            return False, 0, 0, 0, self.rotation_angle
 
         try:
             with self._multithread_guard():
-                frame_width, frame_height = self._copy_region_to_stage(region)
-                if frame_height != dst.shape[0] or frame_width != dst.shape[1]:
-                    return (
-                        False,
-                        self._duplicator.latest_frame_ticks,
-                        frame_width,
-                        frame_height,
-                    )
-                self._process_staging_frame_into(
-                    frame_width=frame_width,
-                    frame_height=frame_height,
-                    dst=dst,
-                )
+                slot = self.__capture_runtime.slots[slot_idx]
+                frame_width, frame_height = self._copy_region_to_surface(region, slot)
         finally:
             self._release_frame_if_late_release()
-        return True, self._duplicator.latest_frame_ticks, frame_width, frame_height
+        return (
+            True,
+            self._duplicator.latest_frame_ticks,
+            frame_width,
+            frame_height,
+            self.rotation_angle,
+        )
 
     def _copy_region_to_stage(self, region: Region) -> tuple[int, int]:
+        return self._copy_region_to_surface(region, self._stagesurf)
+
+    def _copy_region_to_surface(
+        self,
+        region: Region,
+        stage: StageSurface,
+    ) -> tuple[int, int]:
         memory_region = self._region_to_memory_region(region)
         memory_width = memory_region[2] - memory_region[0]
         memory_height = memory_region[3] - memory_region[1]
-        if (
-            self._stagesurf.width != memory_width
-            or self._stagesurf.height != memory_height
-        ):
-            self._stagesurf.release()
-            self._stagesurf.rebuild(
+        if stage.width != memory_width or stage.height != memory_height:
+            stage.release()
+            stage.rebuild(
                 output=self._output,
                 device=self._device,
                 dim=(memory_width, memory_height),
             )
         self._update_source_region(memory_region)
         self._device.im_context.CopySubresourceRegion(
-            self._stagesurf.texture,
+            stage.texture,
             0,
             0,
             0,
@@ -445,54 +532,47 @@ class DXCamera:
     def _release_recovery_resources(self) -> None:
         self._duplicator.release()
         self._stagesurf.release()
+        with self.__lock:
+            self.__capture_runtime.release_stage_slots()
+            self.__latest_read_view = None
+            self.__latest_read_view_shape = None
 
     def _rebuild_recovery_stage_surface(self) -> None:
         self._stagesurf.rebuild(output=self._output, device=self._device)
 
-    def _allocate_frame_buffer_for_shape(
+    def _allocate_capture_slots_for_region(
         self,
-        frame_height: int,
-        frame_width: int,
+        region: Region,
         *,
         reason: str,
     ) -> None:
         self._assert_runtime_mutation_allowed()
+        frame_width = region[2] - region[0]
+        frame_height = region[3] - region[1]
+        memory_region = self._region_to_memory_region(region)
+        memory_width = memory_region[2] - memory_region[0]
+        memory_height = memory_region[3] - memory_region[1]
         logger.info(
-            "Frame buffer %s: %dx%d c=%d n=%d.",
+            "Capture slots %s: frame=%dx%d memory=%dx%d c=%d n=%d.",
             reason,
             frame_width,
             frame_height,
+            memory_width,
+            memory_height,
             self.channel_size,
-            self.max_buffer_len,
+            self.__capture_runtime.slot_count,
         )
-        self.__capture_runtime.allocate_for_shape(
+        self.__capture_runtime.allocate_stage_slots(
+            output=self._output,
+            device=self._device,
+            memory_width=memory_width,
+            memory_height=memory_height,
             frame_height=frame_height,
             frame_width=frame_width,
+            rotation_angle=self.rotation_angle,
         )
-
-    def _handle_frame_size_change(self, frame_height: int, frame_width: int) -> None:
-        """Rebuild frame buffers after a source size change.
-
-        Caller must hold ``self.__lock``.
-        """
-        current_shape = self.__capture_runtime.current_frame_shape()
-        assert current_shape is not None
-        current_height, current_width = current_shape
-        logger.debug(
-            "Frame size changed from %dx%d to %dx%d; rebuilding frame buffer.",
-            current_width,
-            current_height,
-            frame_width,
-            frame_height,
-        )
-        self.width, self.height = frame_width, frame_height
-        if not self._region_set_by_user:
-            self.region = (0, 0, self.width, self.height)
-        self._allocate_frame_buffer_for_shape(
-            frame_height=frame_height,
-            frame_width=frame_width,
-            reason="rebuild(frame-size-change)",
-        )
+        self.__latest_read_view = None
+        self.__latest_read_view_shape = None
 
     def start(
         self,
@@ -501,7 +581,7 @@ class DXCamera:
         video_mode: bool = False,
         delay: int = 0,
     ) -> None:
-        """Start threaded capture into the internal ring buffer.
+        """Start threaded capture into triple staged latest-only slots.
 
         Args:
             region: Optional region. Defaults to camera region.
@@ -532,13 +612,7 @@ class DXCamera:
             self.region = region
         self._validate_region(region)
         self.is_capturing = True
-        frame_height = region[3] - region[1]
-        frame_width = region[2] - region[0]
-        self._allocate_frame_buffer_for_shape(
-            frame_height=frame_height,
-            frame_width=frame_width,
-            reason="build(start)",
-        )
+        self._allocate_capture_slots_for_region(region, reason="build(start)")
         self.__frame_available.clear()
         self.__thread = Thread(
             target=self._capture_loop,
@@ -639,20 +713,97 @@ class DXCamera:
         """
         while True:
             with self.__lock:
-                if self.__capture_runtime.frame_buffer is None:
+                if not self.__capture_runtime.slots:
                     return None
             if not self.__frame_available.wait(timeout=0.1):
                 continue
             with self.__lock:
-                latest = self.__capture_runtime.peek_latest_with_ticks(copy=copy)
-                if latest is None:
+                leased = self.__capture_runtime.lease_preferred_slot(
+                    min_latest_age_ns=self.__stage_fresh_ns
+                )
+                if leased is None:
                     self.__frame_available.clear()
-                    return None
-                frame, frame_ticks = latest
+                    if not self.__capture_runtime.slots:
+                        return None
+                    continue
                 self.__frame_available.clear()
-            if with_timestamp:
-                return frame, self._duplicator.ticks_to_seconds(frame_ticks)
-            return frame
+                break
+        slot_idx, stage, frame_width, frame_height, rotation_angle, frame_ticks, _ = leased
+        try:
+            frame = self._process_stage_surface(
+                stage=stage,
+                frame_width=frame_width,
+                frame_height=frame_height,
+                rotation_angle=rotation_angle,
+                copy=copy,
+            )
+        finally:
+            with self.__lock:
+                self.__capture_runtime.release_latest_slot(slot_idx)
+        if with_timestamp:
+            return frame, self._duplicator.ticks_to_seconds(frame_ticks)
+        return frame
+
+    @overload
+    def get_latest_frame_into(
+        self, dst: Frame, with_timestamp: Literal[False] = False
+    ) -> bool | None: ...
+
+    @overload
+    def get_latest_frame_into(
+        self, dst: Frame, with_timestamp: Literal[True] = True
+    ) -> tuple[bool, float] | None: ...
+
+    def get_latest_frame_into(
+        self,
+        dst: Frame,
+        with_timestamp: bool = False,
+    ) -> bool | tuple[bool, float] | None:
+        """Block until a buffered frame is available and write into ``dst``.
+
+        ``dst`` must match the active output shape and channel count.
+        """
+        while True:
+            with self.__lock:
+                if not self.__capture_runtime.slots:
+                    return None
+            if not self.__frame_available.wait(timeout=0.1):
+                continue
+            with self.__lock:
+                leased = self.__capture_runtime.lease_preferred_slot(
+                    min_latest_age_ns=self.__stage_fresh_ns
+                )
+                if leased is None:
+                    self.__frame_available.clear()
+                    if not self.__capture_runtime.slots:
+                        return None
+                    continue
+                self.__frame_available.clear()
+                break
+        slot_idx, stage, frame_width, frame_height, rotation_angle, frame_ticks, _ = leased
+        try:
+            expected_shape = (frame_height, frame_width, self.channel_size)
+            if dst.shape != expected_shape:
+                raise ValueError(
+                    f"Destination frame shape mismatch: expected {expected_shape}, got {dst.shape}."
+                )
+            if dst.dtype != np.uint8:
+                raise ValueError(
+                    f"Destination frame dtype mismatch: expected uint8, got {dst.dtype}."
+                )
+            self._process_stage_surface_into(
+                stage=stage,
+                frame_width=frame_width,
+                frame_height=frame_height,
+                rotation_angle=rotation_angle,
+                dst=dst,
+            )
+        finally:
+            with self.__lock:
+                self.__capture_runtime.release_latest_slot(slot_idx)
+        if with_timestamp:
+            return True, self._duplicator.ticks_to_seconds(frame_ticks)
+        return True
 
     @overload
     def get_latest_frame_view(
@@ -698,9 +849,7 @@ class DXCamera:
             lock=self.__lock,
             frame_available_event=self.__frame_available,
             runtime=self.__capture_runtime,
-            grab_into=self._grab_into,
-            process_staging_frame=self._process_staging_frame,
-            handle_frame_size_change=self._handle_frame_size_change,
+            capture_to_stage=self._capture_to_stage_slot,
         )
 
         while not self.__stop_capture.is_set():
@@ -738,12 +887,9 @@ class DXCamera:
     def _rebuild_frame_buffer(self, region: Region | None) -> None:
         if region is None:
             region = self.region
-        frame_height = region[3] - region[1]
-        frame_width = region[2] - region[0]
         with self.__lock:
-            self._allocate_frame_buffer_for_shape(
-                frame_height=frame_height,
-                frame_width=frame_width,
+            self._allocate_capture_slots_for_region(
+                region,
                 reason="rebuild(output-recovery)",
             )
 

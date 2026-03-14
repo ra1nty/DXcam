@@ -12,6 +12,7 @@ from dxcam._libs.d3d11 import (
     ID3D11Texture2D,
 )
 from dxcam._libs.dxgi import DXGI_MAPPED_RECT, IDXGISurface
+from dxcam.core.com_ptr import release_com_pointer
 from dxcam.core.device import Device
 from dxcam.core.output import Output
 
@@ -35,10 +36,11 @@ class StageSurface:
         self.rebuild(output, device)
 
     def release(self) -> None:
-        if self.texture is not None:
+        if self.texture is not None or self.interface is not None:
             self.width = 0
             self.height = 0
-            self.texture.Release()
+            release_com_pointer(self.interface)
+            release_com_pointer(self.texture)
             self.texture = None
             self.interface = None
 

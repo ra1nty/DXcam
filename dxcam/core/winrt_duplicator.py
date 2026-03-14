@@ -13,6 +13,7 @@ import comtypes
 
 from dxcam._libs.d3d11 import ID3D11Multithread, ID3D11Texture2D
 from dxcam._libs.dxgi import IDXGIDevice, IDXGISurface
+from dxcam.core.com_ptr import clear_com_pointer
 from dxcam.core.device import Device
 from dxcam.core.output import Output
 
@@ -376,7 +377,13 @@ class WinRTDuplicator:
     def _release_dxgi_surface(self) -> None:
         # The pointer returned by winrt interop behaves like a borrowed pointer in
         # practice. Explicit Release() causes native aborts in stress loops.
+        clear_com_pointer(self._dxgi_surface)
         self._dxgi_surface = ctypes.POINTER(IDXGISurface)()
+
+    def _drop_texture_reference(self) -> None:
+        # WinRT interop ownership is nuanced; avoid explicit Release() here.
+        clear_com_pointer(self.texture)
+        self.texture = ctypes.POINTER(ID3D11Texture2D)()
 
     def _timedelta_to_ticks(self, value: timedelta) -> int:
         if self.performance_frequency <= 0:
@@ -498,10 +505,10 @@ class WinRTDuplicator:
 
         self._dxgi_surface = ctypes.cast(surface_ptr, ctypes.POINTER(IDXGISurface))
         try:
+            self._drop_texture_reference()
             self.texture = cast(Any, self._dxgi_surface).QueryInterface(ID3D11Texture2D)
         except comtypes.COMError:
             self.release_frame()
-            self.texture = ctypes.POINTER(ID3D11Texture2D)()
             self.updated = False
             self.accumulated_frames = 0
             return True
@@ -526,7 +533,7 @@ class WinRTDuplicator:
         if self._frame is not None:
             self._close_winrt_object(self._frame, "frame")
             self._frame = None
-        self.texture = ctypes.POINTER(ID3D11Texture2D)()
+        self._drop_texture_reference()
         self._release_dxgi_surface()
         return True
 

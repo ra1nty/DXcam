@@ -254,10 +254,10 @@ When using a similar logic (only capture newly rendered frames) running on a 240
 The benchmark is across 5 runs, with a light-moderate usage on my PC (5900X + 3090; Chrome ~30tabs, VS Code opened, etc.), I used the [Blur Buster UFO test](https://www.testufo.com/framerates#count=5&background=stars&pps=960) to constantly render 240 fps on my monitor. DXcam captured almost every frame rendered. You will see some benchmarks online claiming 1000+fps capture while most of them is busy-spinning a for loop on a staled frame (no new frame rendered on screen in test scenario).
 
 ### For Targeting FPS:
-|   (Target)\\(mean,std)          | DXcam  | python-mss | D3DShot |
+|   (Target)\\(mean,std)          | DXcam (4k)  | python-mss | D3DShot (1080p) |
 |-------------  |--------                 |------------|---------|
-| 60fps         | 61.71, 0.26 :checkered_flag: | N/A     | 47.11, 1.33  |
-| 30fps         | 30.08, 0.02 :checkered_flag:  | N/A     | 21.24, 0.17  |
+| 60fps         | 59.99, 0.04 :checkered_flag: | N/A     | 47.11, 1.33  |
+| 30fps         | 30.00, 0.00 :checkered_flag:  | N/A     | 21.24, 0.17  |
 
 
 ## Work Referenced
