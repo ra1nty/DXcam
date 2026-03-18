@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--processor-backend",
-        choices=("cv2", "numpy"),
+        choices=("cv2", "cython", "numpy"),
         default="cv2",
         help="Processor backend (default: cv2).",
     )
@@ -216,7 +216,7 @@ def main() -> None:
             f"queue={queue_size} output={args.output}"
         )
         while captured_frames < args.frames:
-            frame = camera.get_latest_frame(copy=True)
+            frame = camera.get_latest_frame()
             if frame is None:
                 continue
             dropped_frames += _enqueue_latest(frame_queue=frame_queue, frame=frame)

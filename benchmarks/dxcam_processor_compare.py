@@ -53,7 +53,7 @@ def run_capture_pass(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Compare DXcam cv2 vs numpy processor backends."
+        description="Compare DXcam processor backends."
     )
     parser.add_argument(
         "--backend",
@@ -82,7 +82,7 @@ def main() -> None:
         f"Running capture backend={args.backend}, target_fps={args.target_fps}, "
         f"target_frames={args.target_frames}"
     )
-    for processor_backend in ("cv2", "numpy"):
+    for processor_backend in ("cv2", "cython", "numpy"):
         metrics = run_capture_pass(
             capture_backend=args.backend,
             processor_backend=processor_backend,

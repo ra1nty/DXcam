@@ -29,7 +29,7 @@ CaptureBackend: TypeAlias = Literal["dxgi", "winrt"]
 #:
 #: Example:
 #:     >>> p_backend: ProcessorBackend = "cv2"
-ProcessorBackend: TypeAlias = Literal["cv2", "numpy"]
+ProcessorBackend: TypeAlias = Literal["cv2", "numpy", "cython"]
 
 #: Rectangle tuple ``(left, top, right, bottom)`` in output coordinates.
 #:

@@ -1,22 +1,12 @@
 from __future__ import annotations
 
-import enum
 from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
 from dxcam.types import ColorMode, ProcessorBackend, Region
 
-
-class ProcessorBackends(enum.Enum):
-    """Concrete processor backend implementations used by :class:`Processor`."""
-
-    PIL = 0
-    CV2 = 1
-    NUMPY = 2
-
-
-_SUPPORTED_PROCESSOR_BACKENDS: tuple[ProcessorBackend, ...] = ("cv2", "numpy")
+_SUPPORTED_PROCESSOR_BACKENDS: tuple[ProcessorBackend, ...] = ("cv2", "numpy", "cython")
 
 
 def normalize_processor_backend_name(backend: str) -> ProcessorBackend:
@@ -26,7 +16,7 @@ def normalize_processor_backend_name(backend: str) -> ProcessorBackend:
         backend: Backend name provided by user input.
 
     Returns:
-        Lower-cased validated backend literal (``"cv2"`` or ``"numpy"``).
+        Lower-cased validated backend literal.
 
     Raises:
         ValueError: If ``backend`` is not a supported processor backend.
@@ -46,29 +36,18 @@ class Processor:
     This wrapper dispatches to one concrete backend:
     - ``cv2``: OpenCV-based conversion path (default).
     - ``numpy``: Cython-accelerated conversion path with cv2 fallback.
+    - ``cython``: Direct Cython rotate/crop/convert path without cv2.
     """
 
     def __init__(
         self,
-        backend: ProcessorBackends | ProcessorBackend = ProcessorBackends.CV2,
+        backend: ProcessorBackend = "cv2",
         output_color: ColorMode = "RGB",
     ) -> None:
-        """Create a processor dispatcher.
-
-        Args:
-            backend: Processor backend enum or backend name.
-            output_color: Desired output color mode.
-        """
-        if isinstance(backend, str):
-            backend_name = normalize_processor_backend_name(backend)
-            if backend_name == "cv2":
-                backend = ProcessorBackends.CV2
-            elif backend_name == "numpy":
-                backend = ProcessorBackends.NUMPY
-            else:
-                raise ValueError(f"Unsupported processor backend: {backend_name}")
-        self.color_mode = output_color
-        self.backend = self._initialize_backend(backend)
+        self._impl = self._create_impl(
+            normalize_processor_backend_name(backend),
+            output_color,
+        )
 
     def process(
         self,
@@ -78,19 +57,7 @@ class Processor:
         region: Region,
         rotation_angle: int,
     ) -> NDArray[np.uint8]:
-        """Return a processed frame.
-
-        Args:
-            rect: Backend-specific mapped frame object.
-            width: Active frame width in pixels.
-            height: Active frame height in pixels.
-            region: Capture region as ``(left, top, right, bottom)``.
-            rotation_angle: Output rotation in degrees.
-
-        The returned array may be backed by an internal reusable buffer.
-        Use :meth:`process_into` when the caller must own destination memory.
-        """
-        return self.backend.process(rect, width, height, region, rotation_angle)
+        return self._impl.process(rect, width, height, region, rotation_angle)
 
     def process_into(
         self,
@@ -101,25 +68,23 @@ class Processor:
         rotation_angle: int,
         dst: NDArray[np.uint8],
     ) -> None:
-        """Process into caller-provided destination array ``dst``.
+        self._impl.process_into(rect, width, height, region, rotation_angle, dst)
 
-        Args:
-            rect: Backend-specific mapped frame object.
-            width: Active frame width in pixels.
-            height: Active frame height in pixels.
-            region: Capture region as ``(left, top, right, bottom)``.
-            rotation_angle: Output rotation in degrees.
-            dst: Destination array to write into.
-        """
-        self.backend.process_into(rect, width, height, region, rotation_angle, dst)
+    @staticmethod
+    def _create_impl(
+        backend: ProcessorBackend,
+        output_color: ColorMode,
+    ) -> Any:
+        if backend == "cython":
+            from dxcam.processor.cython_processor import CythonProcessor
 
-    def _initialize_backend(self, backend: ProcessorBackends) -> Any:
-        if backend == ProcessorBackends.CV2:
+            return CythonProcessor(output_color)
+        if backend == "cv2":
             from dxcam.processor.cv2_processor import Cv2Processor
 
-            return Cv2Processor(self.color_mode)
-        if backend == ProcessorBackends.NUMPY:
+            return Cv2Processor(output_color)
+        if backend == "numpy":
             from dxcam.processor.numpy_processor import NumpyProcessor
 
-            return NumpyProcessor(self.color_mode)
+            return NumpyProcessor(output_color)
         raise ValueError(f"Unsupported processor backend: {backend}")

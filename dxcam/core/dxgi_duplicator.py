@@ -3,8 +3,9 @@ from __future__ import annotations
 import ctypes
 import logging
 import os
+from contextlib import contextmanager
 from dataclasses import InitVar, dataclass, field
-from typing import Any, cast
+from typing import Any, Iterator, cast
 
 import comtypes
 
@@ -17,6 +18,7 @@ from dxcam._libs.dxgi import (
     IDXGIOutput5,
     IDXGIResource,
 )
+from dxcam.core.com_ptr import release_com_pointer
 from dxcam.core.device import Device
 from dxcam.core.dxgi_errors import (
     DXGITransientContext,
@@ -40,7 +42,6 @@ class DXGIDuplicator:
     """Desktop Duplication API wrapper for acquiring frame textures."""
 
     texture: Any = field(default_factory=lambda: ctypes.POINTER(ID3D11Texture2D)())
-    early_release_frame: bool = True
     duplicator: Any = None
     updated: bool = False
     output: InitVar[Output | None] = None
@@ -50,6 +51,10 @@ class DXGIDuplicator:
     # ticks per second of the system
     performance_frequency: int = 0
     _frame_held: bool = False
+
+    def _drop_texture_reference(self) -> None:
+        release_com_pointer(self.texture)
+        self.texture = ctypes.POINTER(ID3D11Texture2D)()
 
     def __post_init__(self, output: Output | None, device: Device | None) -> None:
         if output is None or device is None:
@@ -126,60 +131,77 @@ class DXGIDuplicator:
             self.duplicator = ctypes.POINTER(IDXGIOutputDuplication)()
             return False
 
-    def update_frame(self, wait_for_frame: bool = False) -> bool:
+    def _update_frame(self, wait_for_frame: bool = False) -> bool:
         del wait_for_frame  # DXGI path does not use extra wait logic.
         if self._frame_held:
-            if not self.release_frame():
+            if not self._release_frame():
                 self.updated = False
                 return False
 
         info = DXGI_OUTDUPL_FRAME_INFO()
         res = ctypes.POINTER(IDXGIResource)()
         try:
-            self.duplicator.AcquireNextFrame(
-                0,
-                ctypes.byref(info),
-                ctypes.byref(res),
-            )
-        except comtypes.COMError as ce:
-            hresult = com_error_hresult_u32(ce)
-            if hresult == DXGI_ERROR_WAIT_TIMEOUT_U32:
-                self.updated = False
-                self.accumulated_frames = 0
-                return True
-            if is_transient_hresult(
-                hresult,
-                DXGITransientContext.FRAME_INFO,
-                DXGITransientContext.SYSTEM_TRANSITION,
-            ):
-                logger.warning(
-                    "Desktop duplication access loss/system transition detected "
-                    "(HRESULT=0x%08X). Triggering output-change recovery.",
-                    hresult,
+            try:
+                self.duplicator.AcquireNextFrame(
+                    0,
+                    ctypes.byref(info),
+                    ctypes.byref(res),
                 )
+            except comtypes.COMError as ce:
+                hresult = com_error_hresult_u32(ce)
+                if hresult == DXGI_ERROR_WAIT_TIMEOUT_U32:
+                    self.updated = False
+                    self.accumulated_frames = 0
+                    return True
+                if is_transient_hresult(
+                    hresult,
+                    DXGITransientContext.FRAME_INFO,
+                    DXGITransientContext.SYSTEM_TRANSITION,
+                ):
+                    logger.warning(
+                        "Desktop duplication access loss/system transition detected "
+                        "(HRESULT=0x%08X). Triggering output-change recovery.",
+                        hresult,
+                    )
+                    self.updated = False
+                    self._frame_held = False
+                    return False
+                raise
+            self._frame_held = True
+            try:
+                resource = cast(Any, res)
+                self._drop_texture_reference()
+                self.texture = resource.QueryInterface(ID3D11Texture2D)
+            except comtypes.COMError:
+                self._release_frame()
+                self.texture = ctypes.POINTER(ID3D11Texture2D)()
                 self.updated = False
-                self._frame_held = False
-                return False
-            raise
-        self._frame_held = True
-        try:
-            resource = cast(Any, res)
-            self.texture = resource.QueryInterface(ID3D11Texture2D)
-        except comtypes.COMError:
-            self.release_frame()
-            self.texture = ctypes.POINTER(ID3D11Texture2D)()
-            self.updated = False
+                return True
+            present_ticks = int(info.LastPresentTime)
+            self.accumulated_frames = int(info.AccumulatedFrames)
+            if present_ticks > 0:
+                self.latest_frame_ticks = present_ticks
+            else:
+                mouse_ticks = int(info.LastMouseUpdateTime)
+                if mouse_ticks > 0:
+                    self.latest_frame_ticks = mouse_ticks
+            self.updated = True
             return True
-        present_ticks = int(info.LastPresentTime)
-        self.accumulated_frames = int(info.AccumulatedFrames)
-        if present_ticks > 0:
-            self.latest_frame_ticks = present_ticks
-        else:
-            mouse_ticks = int(info.LastMouseUpdateTime)
-            if mouse_ticks > 0:
-                self.latest_frame_ticks = mouse_ticks
-        self.updated = True
-        return True
+        finally:
+            release_com_pointer(res)
+
+    @contextmanager
+    def acquire_frame(
+        self, wait_for_frame: bool = False
+    ) -> Iterator[tuple[bool, bool, int]]:
+        ok = self._update_frame(wait_for_frame=wait_for_frame)
+        updated = ok and self.updated
+        frame_ticks = self.latest_frame_ticks
+        try:
+            yield ok, updated, frame_ticks
+        finally:
+            if ok and updated:
+                self._finish_frame()
 
     @property
     def latest_frame_time(self) -> float:
@@ -190,7 +212,7 @@ class DXGIDuplicator:
             return 0.0
         return ticks / self.performance_frequency
 
-    def release_frame(self) -> bool:
+    def _release_frame(self) -> bool:
         """Per Microsoft Doc
         https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_2/nf-dxgi1_2-idxgioutputduplication-releaseframe#remarks
         This should be called just before AquireNextFrame, but we found audio artifacts
@@ -203,6 +225,7 @@ class DXGIDuplicator:
         """
         if self.duplicator is None or not self._frame_held:
             return True
+        self._drop_texture_reference()
         try:
             self.duplicator.ReleaseFrame()
         except comtypes.COMError as ce:
@@ -223,11 +246,16 @@ class DXGIDuplicator:
         self._frame_held = False
         return True
 
+    def _finish_frame(self) -> bool:
+        # DXGI path releases immediately after staging copy for better pacing.
+        return self._release_frame()
+
     def release(self) -> None:
+        self._drop_texture_reference()
         if self.duplicator is not None:
-            self.release_frame()
+            self._release_frame()
             try:
-                self.duplicator.Release()
+                release_com_pointer(self.duplicator)
             except comtypes.COMError:
                 logger.debug(
                     "Ignoring COMError while releasing duplicator.", exc_info=True

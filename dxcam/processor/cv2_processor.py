@@ -8,7 +8,6 @@ import numpy as np
 from numpy.typing import NDArray
 
 from dxcam.types import ColorMode, Region
-from .base import Processor
 
 try:
     _numpy_kernels = import_module("dxcam.processor._numpy_kernels")
@@ -20,7 +19,7 @@ except Exception as exc:  # pragma: no cover - depends on local build env
     _NUMPY_IMPORT_ERROR = exc
 
 
-class Cv2Processor(Processor):
+class Cv2Processor:
     """cv2-first frame processor with shared BGRA preparation helpers.
 
     ``process()`` may return an internal reusable buffer for some modes.

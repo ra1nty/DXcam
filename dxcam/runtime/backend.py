@@ -1,27 +1,28 @@
 from __future__ import annotations
 
-from typing import Any, Callable, cast
+from typing import Callable, cast
 
 from dxcam.core.device import Device
 from dxcam.core.dxgi_duplicator import DXGIDuplicator
+from dxcam.core.duplicator_protocol import FrameDuplicator
 from dxcam.core.output import Output
 from dxcam.types import CaptureBackend
 
 _SUPPORTED_BACKENDS: tuple[CaptureBackend, ...] = ("dxgi", "winrt")
 
 
-def _create_dxgi_duplicator(*, output: Output, device: Device) -> Any:
+def _create_dxgi_duplicator(*, output: Output, device: Device) -> FrameDuplicator:
     return DXGIDuplicator(output=output, device=device)
 
 
-def _create_winrt_duplicator(*, output: Output, device: Device) -> Any:
+def _create_winrt_duplicator(*, output: Output, device: Device) -> FrameDuplicator:
     from dxcam.core.winrt_duplicator import WinRTDuplicator
 
     return WinRTDuplicator(output=output, device=device)
 
 
 _BACKEND_CREATORS: dict[
-    CaptureBackend, Callable[..., Any]
+    CaptureBackend, Callable[..., FrameDuplicator]
 ] = {
     "dxgi": _create_dxgi_duplicator,
     "winrt": _create_winrt_duplicator,
@@ -52,7 +53,7 @@ def create_backend_duplicator(
     *,
     output: Output,
     device: Device,
-) -> Any:
+) -> FrameDuplicator:
     """Create a backend-specific duplicator instance.
 
     Args:

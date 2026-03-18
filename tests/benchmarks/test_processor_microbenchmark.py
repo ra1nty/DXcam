@@ -11,6 +11,7 @@ pytest.importorskip("pytest_benchmark")
 pytest.importorskip("cv2")
 
 from dxcam.processor import Processor
+from dxcam.processor.cython_processor import _CYTHON_KERNELS_AVAILABLE
 from dxcam.processor.cv2_processor import _NUMPY_KERNELS_AVAILABLE
 
 
@@ -80,7 +81,7 @@ def cases_by_rotation() -> dict[int, _Case]:
     }
 
 
-@pytest.mark.parametrize("processor_backend", ("cv2", "numpy"))
+@pytest.mark.parametrize("processor_backend", ("cv2", "cython", "numpy"))
 @pytest.mark.parametrize("output_color", _COLOR_MODES)
 @pytest.mark.parametrize("rotation", _ROTATIONS)
 def test_process_into_microbenchmark_matrix(
@@ -90,6 +91,8 @@ def test_process_into_microbenchmark_matrix(
     rotation: int,
     cases_by_rotation: dict[int, _Case],
 ) -> None:
+    if processor_backend == "cython" and not _CYTHON_KERNELS_AVAILABLE:
+        pytest.skip("Cython kernels are unavailable in this environment.")
     if processor_backend == "numpy" and not _NUMPY_KERNELS_AVAILABLE:
         pytest.skip("NumPy/Cython kernels are unavailable in this environment.")
 

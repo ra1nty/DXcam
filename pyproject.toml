@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dxcam"
-version = "0.3.0"
+version = "0.4.0.dev1"
 description = "A Python high-performance screenshot library for Windows using Desktop Duplication API"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -83,7 +83,8 @@ allowed-unresolved-imports = ["cv2"]
 [tool.cibuildwheel]
 build = "cp310-win_amd64 cp311-win_amd64 cp312-win_amd64 cp313-win_amd64 cp314-win_amd64"
 build-frontend = "pip; args: --no-build-isolation"
-test-command = "python -c \"import dxcam; import dxcam.processor._numpy_kernels as kernels; assert kernels.get_parallel_pixels_threshold() >= 0\""
+test-requires = ["pytest", "opencv-python>=4.13.0.92"]
+test-command = "python -m pytest -q {project}/tests/test_processor_parity.py {project}/tests/test_dxgi_transient_policy.py"
 
 [tool.cibuildwheel.windows]
 before-build = "python -m pip install --upgrade pip && python -m pip install \"setuptools>=68\" wheel \"Cython==3.1.1\" \"numpy>=1.26\""

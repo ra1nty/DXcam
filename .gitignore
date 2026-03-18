@@ -38,6 +38,7 @@ benchmarks/results/
 
 # Generated Cython C source
 dxcam/processor/_numpy_kernels.c
+dxcam/processor/_cython_kernels.c
 
 # Type checking and linting caches
 .ruff_cache/

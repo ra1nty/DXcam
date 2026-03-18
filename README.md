@@ -59,14 +59,16 @@ camera = dxcam.create(
     processor_backend="cv2" # default OpenCV processor
 )
 ```
+Note:
+- From 0.4.0 the `dxcam.create(max_buffer_len=...)` is deprecated, screen capture now always uses a tripple buffer.
 
 ### Screenshot
 ```python
 frame = camera.grab()
 ```
-`grab()` returns a `numpy.ndarray`. `None` if no new frame is available since the last capture (for backward compatibility); use `camera.grab(new_frame_only=False)` to make dxcam always return the latest frame.
+`grab()` returns a `numpy.ndarray`. `None` if no new frame is available since the last capture; use `camera.grab(new_frame_only=False)` to make dxcam always return the latest frame.
 
-Use `copy=False` (or `camera.grab_view()`) for a zero-copy view. This is faster, but the returned buffer can be overwritten by later captures.
+Use `camera.grab_into(dst)` to reuse caller-managed memory.
 
 To capture a region:
 ```python
@@ -89,14 +91,13 @@ camera.is_capturing  # False
 for _ in range(1000):
     frame = camera.get_latest_frame()  # blocks until a frame is available
 ```
->The screen capture mode spins up a thread that polls newly rendered frames and stores them in an in-memory ring buffer. The blocking and `video_mode` behavior is designed for downstream video recording and machine learning workloads.
+>The screen capture mode spins up a thread that polls newly rendered frames and publishes them into a latest-only in-memory frame buffer. The blocking and `video_mode` behavior is designed for downstream video recording and machine learning workloads.
 
 Useful variants:
 - `camera.get_latest_frame(with_timestamp=True)` -> `(frame, frame_timestamp)` -> return frame timestamp
-- `camera.get_latest_frame_view()` -> zero-copy view into the frame buffer
-- `camera.grab(copy=False)` / `camera.grab_view()` -> zero-copy latest-frame snapshot
+- `camera.get_latest_frame_into(dst)` -> write latest frame into caller-provided array
 
-> When `start()` capture is running, calling `grab()` reads from the in-memory ring buffer instead of directly polling DXGI.
+> When `start()` capture is running, calling `grab()` reads from the in-memory frame buffer instead of directly polling the capture backend.
 
 ### Safely Releasing Resources
 `release()` stops capture, frees buffers, and releases capture resources.
@@ -148,13 +149,13 @@ Supported modes: `"RGB"`, `"RGBA"`, `"BGR"`, `"BGRA"`, `"GRAY"`.
 Notes:
 - Data is returned as `numpy.ndarray`.
 - `BGRA` does not require OpenCV and is the leanest dependency path.
-- `RGB`, `BGR`, `RGBA`, `GRAY` require conversion (`cv2` or compiled `numpy` backend).
+- `RGB`, `BGR`, `RGBA`, `GRAY` require conversion (`cv2`, `cython`, or compiled `numpy` backend).
 
 ### Frame Buffer
-DXcam uses a fixed-size ring buffer in-memory. New frames overwrite old frames when full.
+DXcam uses a fixed three-slot latest-only frame buffer in-memory. Readers always consume the newest published frame, and older staged frames may be overwritten once they are no longer leased.
 
 ```python
-camera = dxcam.create(max_buffer_len=120)  # default is 8
+camera = dxcam.create()  # max_buffer_len is accepted but ignored
 ```
 
 ### Target FPS
@@ -179,7 +180,7 @@ For `backend="dxgi"`, this value comes from `DXGI_OUTDUPL_FRAME_INFO.LastPresent
 For `backend="winrt"`, this value is derived from WinRT `SystemRelativeTime`.
 
 ### Video Mode
-With `video_mode=True`, DXcam fills the buffer at target FPS, reusing the previous frame if needed, even if no new frame is rendered.
+With `video_mode=True`, DXcam continues publishing at target FPS, reusing the previous frame when no new frame is rendered.
 
 ```python
 import cv2
@@ -216,22 +217,22 @@ Guideline:
 - Try `winrt` if it performs better on your machine or fits your app constraints.
 
 ### Processor Backend
-DXcam capture backends (`dxgi`/`winrt`) first acquire a BGRA frame.  
-The processor backend then handles post-processing:
+DXcam capture backends (`dxgi`/`winrt`) acquire raw BGRA frame. The processor backend then handles post-processing:
 - optional rotation/cropping preparation
 - color conversion to your `output_color`
 
 Recommended backend choice:
 - OpenCV installed: use `cv2` (default)
-- No OpenCV installed: use `numpy` (Cython kernels)
+- No OpenCV installed: use `numpy`/`cython`
 
 Use it like this:
 ```python
 camera = dxcam.create(processor_backend="cv2")
+camera = dxcam.create(processor_backend="cython")
 camera = dxcam.create(processor_backend="numpy")
 ```
 
-Official Windows wheels already include the compiled NumPy kernels.
+Official Windows wheels already include the compiled Cython processor kernels.
 
 Only for source installs:
 ```bash
@@ -242,6 +243,10 @@ pip install -e .[cython] --no-build-isolation
 If `processor_backend="numpy"` is selected but compiled kernels are unavailable,
 DXcam logs a warning and falls back to `cv2` behavior. In that fallback path,
 install OpenCV for non-`BGRA` output modes.
+
+If `processor_backend="cython"` is selected but compiled kernels are unavailable,
+DXcam raises a runtime error because that backend is explicitly the direct
+Cython path.
 
 ## Benchmarks
 When using a similar logic (only capture newly rendered frames) running on a 240fps output, ```DXCam, python-mss, D3DShot``` benchmarked as follow:
@@ -254,10 +259,10 @@ When using a similar logic (only capture newly rendered frames) running on a 240
 The benchmark is across 5 runs, with a light-moderate usage on my PC (5900X + 3090; Chrome ~30tabs, VS Code opened, etc.), I used the [Blur Buster UFO test](https://www.testufo.com/framerates#count=5&background=stars&pps=960) to constantly render 240 fps on my monitor. DXcam captured almost every frame rendered. You will see some benchmarks online claiming 1000+fps capture while most of them is busy-spinning a for loop on a staled frame (no new frame rendered on screen in test scenario).
 
 ### For Targeting FPS:
-|   (Target)\\(mean,std)          | DXcam  | python-mss | D3DShot |
+|   (Target)\\(mean,std)          | DXcam (4k)  | python-mss | D3DShot (1080p) |
 |-------------  |--------                 |------------|---------|
-| 60fps         | 61.71, 0.26 :checkered_flag: | N/A     | 47.11, 1.33  |
-| 30fps         | 30.08, 0.02 :checkered_flag:  | N/A     | 21.24, 0.17  |
+| 60fps         | 59.99, 0.04 :checkered_flag: | N/A     | 47.11, 1.33  |
+| 30fps         | 30.00, 0.00 :checkered_flag:  | N/A     | 21.24, 0.17  |
 
 
 ## Work Referenced
