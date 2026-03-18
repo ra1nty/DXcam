@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--processor-backend",
-        choices=("cv2", "numpy"),
+        choices=("cv2", "cython", "numpy"),
         default="cv2",
         help="Post-processing backend (default: cv2).",
     )

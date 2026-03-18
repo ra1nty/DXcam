@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable
+from typing import Callable
 
 import comtypes
 
+from dxcam.core.duplicator_protocol import FrameDuplicator
 from dxcam.core.dxgi_errors import (
     DXGITransientContext,
     ProgressiveWait,
@@ -14,7 +15,7 @@ from dxcam.core.dxgi_errors import (
     is_transient_os_error,
     os_error_hresult_u32,
 )
-from dxcam.core.output_recovery import OutputRecoveryHandler, OutputState
+from dxcam.runtime.output_recovery import OutputRecoveryHandler, OutputState
 from dxcam.types import CaptureBackend, Region
 
 _TRANSIENT_RECOVERY_CONTEXTS = (
@@ -35,7 +36,7 @@ class DisplayRecoveryHandler:
         output_recovery: OutputRecoveryHandler,
         release_resources: Callable[[], None],
         rebuild_stage_surface: Callable[[], None],
-        create_duplicator: Callable[[], Any],
+        create_duplicator: Callable[[], FrameDuplicator],
         rebuild_frame_buffer: Callable[[Region], None],
         logger: logging.Logger | None = None,
     ) -> None:
@@ -78,7 +79,7 @@ class DisplayRecoveryHandler:
         region: Region,
         region_set_by_user: bool,
         is_capturing: bool,
-    ) -> tuple[Any, OutputState]:
+    ) -> tuple[FrameDuplicator, OutputState]:
         is_dxgi_backend = self._backend == "dxgi"
         attempt = 0
 

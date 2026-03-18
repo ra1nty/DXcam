@@ -4,10 +4,11 @@ import ctypes
 import importlib
 import logging
 import os
+from contextlib import contextmanager
 from dataclasses import InitVar, dataclass, field
 from datetime import timedelta
 from threading import Event
-from typing import Any, Callable, Literal, cast
+from typing import Any, Callable, Iterator, Literal, cast
 
 import comtypes
 
@@ -88,7 +89,6 @@ class WinRTDuplicator:
     """Windows.Graphics.Capture wrapper for acquiring frame textures."""
 
     texture: Any = field(default_factory=lambda: ctypes.POINTER(ID3D11Texture2D)())
-    early_release_frame: bool = False
     updated: bool = False
     output: InitVar[Output | None] = None
     device: InitVar[Device | None] = None
@@ -467,9 +467,9 @@ class WinRTDuplicator:
         self.accumulated_frames = 0
         return True
 
-    def update_frame(self, wait_for_frame: bool = False) -> bool:
+    def _update_frame(self, wait_for_frame: bool = False) -> bool:
         if self._frame is not None or self._dxgi_surface:
-            if not self.release_frame():
+            if not self._release_frame():
                 self.updated = False
                 return False
 
@@ -498,7 +498,7 @@ class WinRTDuplicator:
         assert self._get_dxgi_surface_from_object is not None
         surface_ptr = self._get_dxgi_surface_from_object(frame.surface)
         if not surface_ptr:
-            self.release_frame()
+            self._release_frame()
             self.updated = False
             self.accumulated_frames = 0
             return True
@@ -508,7 +508,7 @@ class WinRTDuplicator:
             self._drop_texture_reference()
             self.texture = cast(Any, self._dxgi_surface).QueryInterface(ID3D11Texture2D)
         except comtypes.COMError:
-            self.release_frame()
+            self._release_frame()
             self.updated = False
             self.accumulated_frames = 0
             return True
@@ -520,6 +520,19 @@ class WinRTDuplicator:
         self.updated = True
         return True
 
+    @contextmanager
+    def acquire_frame(
+        self, wait_for_frame: bool = False
+    ) -> Iterator[tuple[bool, bool, int]]:
+        ok = self._update_frame(wait_for_frame=wait_for_frame)
+        updated = ok and self.updated
+        frame_ticks = self.latest_frame_ticks
+        try:
+            yield ok, updated, frame_ticks
+        finally:
+            if ok and updated:
+                self._finish_frame()
+
     @property
     def latest_frame_time(self) -> float:
         return self.ticks_to_seconds(self.latest_frame_ticks)
@@ -529,7 +542,7 @@ class WinRTDuplicator:
             return 0.0
         return ticks / self.performance_frequency
 
-    def release_frame(self) -> bool:
+    def _release_frame(self) -> bool:
         if self._frame is not None:
             self._close_winrt_object(self._frame, "frame")
             self._frame = None
@@ -537,8 +550,12 @@ class WinRTDuplicator:
         self._release_dxgi_surface()
         return True
 
+    def _finish_frame(self) -> bool:
+        # Late-release policy: release on the next acquire cycle.
+        return True
+
     def release(self) -> None:
-        self.release_frame()
+        self._release_frame()
         self._unregister_frame_arrived_event()
         self._close_winrt_object(self._session, "capture session")
         self._close_winrt_object(self._frame_pool, "frame pool")

@@ -323,7 +323,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--switch-period", type=float, default=4.0)
     parser.add_argument("--switch-hold", type=float, default=0.8)
     parser.add_argument("--backend", choices=("dxgi", "winrt"), default="dxgi")
-    parser.add_argument("--processor-backend", choices=("cv2", "numpy"), default="cv2")
+    parser.add_argument(
+        "--processor-backend",
+        choices=("cv2", "cython", "numpy"),
+        default="cv2",
+    )
     parser.add_argument(
         "--outage-threshold-ms",
         type=float,

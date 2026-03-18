@@ -24,7 +24,7 @@ import weakref
 from types import FrameType
 from typing import Any, Callable, cast
 
-from dxcam.core.backend import normalize_backend_name
+from dxcam.runtime.backend import normalize_backend_name
 from dxcam.dxcam import DXCamera, Output, Device
 from dxcam.processor import normalize_processor_backend_name
 from dxcam.types import CaptureBackend, ColorMode, ProcessorBackend, Region
@@ -140,8 +140,8 @@ class DXFactory(metaclass=Singleton):
         if existing_camera is not None:
             logger.warning(
                 "DXCamera instance already exists for device=%s output=%s backend=%s; "
-                "returning existing instance. Delete the old object with `del obj` "
-                "to recreate it with new parameters.",
+                "returning the existing instance. Call release() before "
+                "recreating it with new parameters.",
                 device_idx,
                 output_idx,
                 backend,
@@ -239,11 +239,14 @@ def create(
             the primary output.
         region: Optional capture region as ``(left, top, right, bottom)``.
         output_color: Output pixel format.
-        max_buffer_len: Ring-buffer size used in threaded capture mode.
+        max_buffer_len: Kept for API compatibility. Threaded capture uses a
+            fixed three-slot latest-only frame buffer.
         backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
-        processor_backend: Post-processing backend, ``"cv2"`` (default)
-            or ``"numpy"``. The ``"numpy"`` backend uses compiled Cython
-            kernels when available and falls back to cv2 behavior otherwise.
+        processor_backend: Post-processing backend, ``"cv2"`` (default),
+            ``"cython"``, or ``"numpy"``. The ``"cython"`` backend uses the
+            direct compiled Cython processor, while ``"numpy"`` uses compiled
+            conversion kernels when available and falls back to cv2 behavior
+            otherwise.
 
     Returns:
         A :class:`dxcam.dxcam.DXCamera` instance.

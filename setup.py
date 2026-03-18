@@ -33,6 +33,12 @@ def _build_optional_cython_extensions() -> list[Extension]:
 
     extensions = [
         Extension(
+            "dxcam.processor._cython_kernels",
+            sources=["dxcam/processor/_cython_kernels.pyx"],
+            extra_compile_args=_cython_compile_args(),
+            extra_link_args=_cython_link_args(),
+        ),
+        Extension(
             "dxcam.processor._numpy_kernels",
             sources=["dxcam/processor/_numpy_kernels.pyx"],
             include_dirs=[np.get_include()],

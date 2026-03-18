@@ -19,6 +19,9 @@ D3D11_USAGE_IMMUTABLE = 1
 D3D11_USAGE_DYNAMIC = 2
 D3D11_USAGE_STAGING = 3
 
+D3D11_MAP_READ = 1
+D3D11_MAP_FLAG_DO_NOT_WAIT = 0x100000
+
 DXGI_FORMAT_B8G8R8A8_UNORM = 87
 
 
@@ -52,6 +55,14 @@ class D3D11_TEXTURE2D_DESC(ctypes.Structure):
         ("BindFlags", wintypes.UINT),
         ("CPUAccessFlags", wintypes.UINT),
         ("MiscFlags", wintypes.UINT),
+    ]
+
+
+class D3D11_MAPPED_SUBRESOURCE(ctypes.Structure):
+    _fields_ = [
+        ("pData", ctypes.c_void_p),
+        ("RowPitch", wintypes.UINT),
+        ("DepthPitch", wintypes.UINT),
     ]
 
 

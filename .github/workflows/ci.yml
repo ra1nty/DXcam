@@ -66,8 +66,8 @@ jobs:
           DXCAM_BUILD_CYTHON: "1"
         run: python -m pip install -e . --no-build-isolation
 
-      - name: Run BGRA conversion parity tests
-        run: python -m pytest -q tests/test_bgra_conversion_parity.py
+      - name: Run unit and parity tests
+        run: python -m pytest -q tests/test_processor_parity.py tests/test_dxgi_transient_policy.py
 
   micro-benchmarks:
     name: Processor Micro Benchmarks (pytest-benchmark)
