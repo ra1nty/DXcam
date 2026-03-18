@@ -543,7 +543,7 @@ class WinRTDuplicator:
         self._winrt_device = None
 
     def __repr__(self) -> str:
-        return "<{} Initalized:{}>".format(
+        return "<{} Initialized:{}>".format(
             self.__class__.__name__,
             self._session is not None,
         )
