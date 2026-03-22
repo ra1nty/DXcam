@@ -39,6 +39,7 @@ from dxcam.core.capture_runtime import CaptureRuntime
 from dxcam.core.output_recovery import OutputRecoveryHandler
 from dxcam.processor import Processor
 from dxcam.types import CaptureBackend, ColorMode, Frame, ProcessorBackend, Region
+from dxcam.util.hwnd import is_window_valid
 from dxcam.util.timer import (
     create_high_resolution_timer,
     set_periodic_timer,
@@ -69,6 +70,7 @@ class DXCamera:
         max_buffer_len: int = 8,
         backend: CaptureBackend = "dxgi",
         processor_backend: ProcessorBackend = "cv2",
+        target_hwnd: int | None = None,
     ) -> None:
         """Initialize a camera bound to one output on one device.
 
@@ -84,10 +86,18 @@ class DXCamera:
             backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
             processor_backend: Post-processing backend, ``"cv2"`` or
                 ``"numpy"``.
+            target_hwnd: Window handle for WinRT window capture. Requires
+                ``backend="winrt"``.
         """
+        if target_hwnd is not None and backend != "winrt":
+            raise ValueError(
+                "target_hwnd requires backend='winrt'. "
+                "Desktop Duplication (DXGI) captures monitors only."
+            )
         self._is_released = False
         self._output: Output = output
         self._device: Device = device
+        self._target_hwnd: int | None = int(target_hwnd) if target_hwnd else None
         self._stagesurf: StageSurface = StageSurface(
             output=self._output, device=self._device
         )
@@ -108,6 +118,13 @@ class DXCamera:
         self.width, self.height = self._output.resolution
         self.channel_size = len(output_color) if output_color != "GRAY" else 1
         self.rotation_angle: int = self._output.rotation_angle
+        self._window_capture_mode = False
+        if self.backend == "winrt" and self._target_hwnd is not None:
+            sz = getattr(self._duplicator, "capture_content_size", None)
+            if sz is not None:
+                self.width, self.height = sz
+            self.rotation_angle = 0
+            self._window_capture_mode = True
 
         self._region_set_by_user = region is not None
         self.region: Region = (
@@ -149,6 +166,7 @@ class DXCamera:
         )
 
         self.__timer_handle: Any | None = None
+        self.__capture_error: BaseException | None = None
 
         self.__capture_start_time = 0
         self.__last_grab_entry: tuple[Region, Frame] | None = None
@@ -167,6 +185,7 @@ class DXCamera:
             self.backend,
             output=self._output,
             device=self._device,
+            target_hwnd=self._target_hwnd,
         )
 
     def _uses_early_release(self) -> bool:
@@ -179,6 +198,31 @@ class DXCamera:
     def _release_frame_if_late_release(self) -> None:
         if not self._uses_early_release():
             self._duplicator.release_frame()
+
+    def _sync_winrt_window_content_size(self) -> None:
+        """Align width/height/region with WinRT client-area size (full-window only).
+
+        When the target window is resized, the duplicator texture and
+        ``capture_content_size`` update but ``self.region`` was fixed at init.
+        Without this, :meth:`_copy_region_to_stage` keeps copying a stale
+        sub-rectangle and threaded capture never rebuilds the ring buffer.
+        """
+        if not getattr(self, "_window_capture_mode", False):
+            return
+        if self._region_set_by_user:
+            return
+        duplicator = self._duplicator
+        sz = getattr(duplicator, "capture_content_size", None)
+        if sz is None:
+            return
+        w, h = int(sz[0]), int(sz[1])
+        if w <= 0 or h <= 0:
+            return
+        if self.width == w and self.height == h:
+            return
+        self.width, self.height = w, h
+        self.region = (0, 0, w, h)
+        logger.debug("WinRT window content size synced to %dx%d.", w, h)
 
     def _acquire_new_frame(self, wait_for_frame: bool = False) -> bool:
         if not self._duplicator.update_frame(wait_for_frame=wait_for_frame):
@@ -248,10 +292,17 @@ class DXCamera:
                 )
             return self._peek_latest_buffered_frame(copy=copy)
         if region is None:
+            region_is_camera_default = True
             region = self.region
         else:
+            region_is_camera_default = False
             self._validate_region(region)
-        frame = self._grab(region, copy=copy, new_frame_only=new_frame_only)
+        frame = self._grab(
+            region,
+            copy=copy,
+            new_frame_only=new_frame_only,
+            region_is_camera_default=region_is_camera_default,
+        )
         return frame
 
     def grab_view(self, region: Region | None = None) -> Frame | None:
@@ -293,11 +344,21 @@ class DXCamera:
         region: Region,
         copy: bool = True,
         new_frame_only: bool = True,
+        *,
+        region_is_camera_default: bool = False,
     ) -> Frame | None:
         if not self._acquire_new_frame(wait_for_frame=new_frame_only):
             if new_frame_only:
                 return None
             return self._get_cached_grab_frame(region=region, copy=copy)
+
+        self._sync_winrt_window_content_size()
+        if (
+            region_is_camera_default
+            and getattr(self, "_window_capture_mode", False)
+            and not self._region_set_by_user
+        ):
+            region = self.region
 
         try:
             with self._multithread_guard():
@@ -334,6 +395,10 @@ class DXCamera:
         """
         if not self._acquire_new_frame(wait_for_frame=True):
             return False, 0, 0, 0
+
+        self._sync_winrt_window_content_size()
+        if getattr(self, "_window_capture_mode", False) and not self._region_set_by_user:
+            region = self.region
 
         try:
             with self._multithread_guard():
@@ -419,6 +484,11 @@ class DXCamera:
 
     def _recover_output(self) -> None:
         self.__last_grab_entry = None
+        if self._target_hwnd is not None and not is_window_valid(self._target_hwnd):
+            raise RuntimeError(
+                "Target window was closed or is no longer valid. Stop capture and "
+                "create a new camera with a valid window handle."
+            )
         old_width, old_height = self.width, self.height
         old_rotation = self.rotation_angle
         duplicator, output_state = self._display_recovery.handle(
@@ -515,6 +585,7 @@ class DXCamera:
             >>> cam.stop()
         """
         self._ensure_not_released()
+        self.__capture_error = None
         if self.is_capturing:
             raise RuntimeError("Capture is already running. Call stop() first.")
         if self.__thread is not None and self.__thread.is_alive():
@@ -578,6 +649,10 @@ class DXCamera:
         self.__frame_available.clear()
         self.__stop_capture.clear()
         self.__thread = None
+        if self.__capture_error is not None:
+            err = self.__capture_error
+            self.__capture_error = None
+            raise err
 
     @property
     def latest_frame_time(self) -> float | None:
@@ -720,6 +795,7 @@ class DXCamera:
             cancel_timer(self.__timer_handle)
             self.__timer_handle = None
         if capture_error is not None:
+            self.__capture_error = capture_error
             with self.__lock:
                 self._assert_runtime_mutation_allowed()
                 self.is_capturing = False
@@ -748,6 +824,8 @@ class DXCamera:
             )
 
     def _region_to_memory_region(self, region: Region) -> Region:
+        if getattr(self, "_window_capture_mode", False):
+            return region
         if self.rotation_angle == 0:
             return region
         if self.rotation_angle == 90:

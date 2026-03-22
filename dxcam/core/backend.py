@@ -14,10 +14,12 @@ def _create_dxgi_duplicator(*, output: Output, device: Device) -> Any:
     return DXGIDuplicator(output=output, device=device)
 
 
-def _create_winrt_duplicator(*, output: Output, device: Device) -> Any:
+def _create_winrt_duplicator(
+    *, output: Output, device: Device, target_hwnd: int | None = None
+) -> Any:
     from dxcam.core.winrt_duplicator import WinRTDuplicator
 
-    return WinRTDuplicator(output=output, device=device)
+    return WinRTDuplicator(output=output, device=device, target_hwnd=target_hwnd)
 
 
 _BACKEND_CREATORS: dict[
@@ -52,6 +54,7 @@ def create_backend_duplicator(
     *,
     output: Output,
     device: Device,
+    target_hwnd: int | None = None,
 ) -> Any:
     """Create a backend-specific duplicator instance.
 
@@ -59,6 +62,7 @@ def create_backend_duplicator(
         backend: Selected capture backend.
         output: Output descriptor to capture from.
         device: Device descriptor associated with ``output``.
+        target_hwnd: Optional window handle for WinRT window capture. Ignored for DXGI.
 
     Returns:
         A duplicator instance that implements the capture backend contract.
@@ -70,4 +74,6 @@ def create_backend_duplicator(
     if creator is None:
         # Defensive fallback in case literals are expanded without wiring.
         raise ValueError(f"Unsupported backend '{backend}'.")
+    if backend == "winrt" and target_hwnd is not None:
+        return creator(output=output, device=device, target_hwnd=target_hwnd)
     return creator(output=output, device=device)

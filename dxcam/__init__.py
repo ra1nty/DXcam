@@ -83,7 +83,7 @@ class DXFactory(metaclass=Singleton):
     """Factory that owns device/output discovery and camera singletons."""
 
     _camera_instances: weakref.WeakValueDictionary[
-        tuple[int, int, CaptureBackend], DXCamera
+        tuple[int, int, CaptureBackend, int], DXCamera
     ] = weakref.WeakValueDictionary()
 
     def __init__(self) -> None:
@@ -107,6 +107,7 @@ class DXFactory(metaclass=Singleton):
         max_buffer_len: int = 8,
         backend: CaptureBackend = "dxgi",
         processor_backend: ProcessorBackend = "cv2",
+        target_hwnd: int | None = None,
     ) -> DXCamera:
         backend = normalize_backend_name(str(backend))
         processor_backend = normalize_processor_backend_name(str(processor_backend))
@@ -126,25 +127,28 @@ class DXFactory(metaclass=Singleton):
                     f"No primary output found for device index {device_idx}"
                 )
             output_idx = primary_output_indices[0]
-        instance_key = (device_idx, output_idx, backend)
+        hwnd_key = int(target_hwnd or 0)
+        instance_key = (device_idx, output_idx, backend, hwnd_key)
         existing_camera = self._camera_instances.get(instance_key)
         if existing_camera is not None and existing_camera.is_released:
             logger.info(
-                "Dropping released DXCamera instance for device=%s output=%s backend=%s.",
+                "Dropping released DXCamera instance for device=%s output=%s backend=%s hwnd=%s.",
                 device_idx,
                 output_idx,
                 backend,
+                hwnd_key,
             )
             del self._camera_instances[instance_key]
             existing_camera = None
         if existing_camera is not None:
             logger.warning(
-                "DXCamera instance already exists for device=%s output=%s backend=%s; "
+                "DXCamera instance already exists for device=%s output=%s backend=%s hwnd=%s; "
                 "returning existing instance. Delete the old object with `del obj` "
                 "to recreate it with new parameters.",
                 device_idx,
                 output_idx,
                 backend,
+                hwnd_key,
             )
             return existing_camera
 
@@ -158,6 +162,7 @@ class DXFactory(metaclass=Singleton):
             max_buffer_len=max_buffer_len,
             backend=backend,
             processor_backend=processor_backend,
+            target_hwnd=target_hwnd,
         )
         self._camera_instances[instance_key] = camera
         time.sleep(0.1)  # Fix for https://github.com/ra1nty/DXcam/issues/31
@@ -230,6 +235,7 @@ def create(
     max_buffer_len: int = 8,
     backend: CaptureBackend = "dxgi",
     processor_backend: ProcessorBackend = "cv2",
+    target_hwnd: int | None = None,
 ) -> DXCamera:
     """Create or return a singleton camera for a device/output/backend tuple.
 
@@ -244,6 +250,11 @@ def create(
         processor_backend: Post-processing backend, ``"cv2"`` (default)
             or ``"numpy"``. The ``"numpy"`` backend uses compiled Cython
             kernels when available and falls back to cv2 behavior otherwise.
+        target_hwnd: Window handle (HWND) for WinRT window capture. Requires
+            ``backend="winrt"`` and the ``[winrt]`` extra. Region is relative
+            to the captured window surface. Use
+            :func:`dxcam.util.hwnd.pick_largest_visible_hwnd` to resolve a
+            window by process ID.
 
     Returns:
         A :class:`dxcam.dxcam.DXCamera` instance.
@@ -267,6 +278,7 @@ def create(
         max_buffer_len=max_buffer_len,
         backend=backend,
         processor_backend=processor_backend,
+        target_hwnd=target_hwnd,
     )
 
 

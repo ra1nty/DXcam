@@ -215,6 +215,23 @@ Guideline:
 - Start with `dxgi` for most workloads, especially one-shot grab.
 - Try `winrt` if it performs better on your machine or fits your app constraints.
 
+#### Window capture (WinRT)
+With `backend="winrt"`, you can capture a specific window by passing its handle (HWND) as `target_hwnd`:
+
+```python
+import dxcam
+from dxcam.util.hwnd import pick_largest_visible_hwnd
+
+# Capture a window by process ID
+hwnd = pick_largest_visible_hwnd(pid=1234)
+if hwnd:
+    camera = dxcam.create(backend="winrt", target_hwnd=hwnd)
+    frame = camera.grab()
+    camera.release()
+```
+
+Requires the `[winrt]` extra. The `region` argument is interpreted relative to the captured window surface (not desktop coordinates). DXGI remains monitor-only and does not support `target_hwnd`.
+
 ### Processor Backend
 DXcam capture backends (`dxgi`/`winrt`) first acquire a BGRA frame.  
 The processor backend then handles post-processing:
