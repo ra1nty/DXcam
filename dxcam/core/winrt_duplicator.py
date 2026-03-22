@@ -35,6 +35,7 @@ class _WinRTCaptureBindings:
     directx_pixel_format: Any
     dirty_region_mode_enum: Any
     create_for_monitor: Callable[[int], Any]
+    create_for_window: Callable[[int], Any] | None
     create_direct3d11_device_from_dxgi_device: Callable[[int], Any]
     get_dxgi_surface_from_object: Callable[[Any], int]
 
@@ -62,6 +63,7 @@ class _WinRTCaptureBindings:
             capture_module, "GraphicsCaptureDirtyRegionMode"
         )
         create_for_monitor = getattr(capture_interop_module, "create_for_monitor")
+        create_for_window = getattr(capture_interop_module, "create_for_window", None)
         DirectXPixelFormat = getattr(directx_module, "DirectXPixelFormat")
         create_direct3d11_device_from_dxgi_device = getattr(
             d3d11_interop_module, "create_direct3d11_device_from_dxgi_device"
@@ -75,6 +77,7 @@ class _WinRTCaptureBindings:
             directx_pixel_format=DirectXPixelFormat,
             dirty_region_mode_enum=GraphicsCaptureDirtyRegionMode,
             create_for_monitor=create_for_monitor,
+            create_for_window=create_for_window,
             create_direct3d11_device_from_dxgi_device=(
                 create_direct3d11_device_from_dxgi_device
             ),
@@ -91,6 +94,7 @@ class WinRTDuplicator:
     updated: bool = False
     output: InitVar[Output | None] = None
     device: InitVar[Device | None] = None
+    target_hwnd: InitVar[int | None] = None
     latest_frame_ticks: int = 0
     accumulated_frames: int = 0
     performance_frequency: int = 0
@@ -123,11 +127,21 @@ class WinRTDuplicator:
     _border_required: bool | None = field(default=None, init=False, repr=False)
     _pixel_format: Any | None = field(default=None, init=False, repr=False)
     _dirty_region_mode_enum: Any | None = field(default=None, init=False, repr=False)
+    _target_hwnd: int | None = field(default=None, init=False, repr=False)
+    _last_winrt_content_size: tuple[int, int] | None = field(
+        default=None, init=False, repr=False
+    )
 
-    def __post_init__(self, output: Output | None, device: Device | None) -> None:
+    def __post_init__(
+        self,
+        output: Output | None,
+        device: Device | None,
+        target_hwnd: int | None = None,
+    ) -> None:
         if output is None or device is None:
             raise ValueError("WinRTDuplicator requires valid output and device.")
         self._output = output
+        self._target_hwnd = int(target_hwnd) if target_hwnd else None
         self._frame_wait_seconds = self._resolve_frame_wait_seconds()
         self._frame_pool_size = self._resolve_frame_pool_size()
         self._min_update_interval_seconds = self._resolve_min_update_interval_seconds()
@@ -280,8 +294,25 @@ class WinRTDuplicator:
             dxgi_device_ptr
         )
 
-        monitor = self._monitor_handle_to_int(output.hmonitor)
-        self._capture_item = bindings.create_for_monitor(monitor)
+        if self._target_hwnd is not None:
+            user32 = ctypes.windll.user32
+            if not user32.IsWindow(self._target_hwnd):
+                raise ValueError(
+                    f"target_hwnd={self._target_hwnd} is not a valid window handle."
+                )
+            if bindings.create_for_window is None:
+                raise RuntimeError(
+                    "WinRT window capture requires create_for_window from "
+                    '`winrt.windows.graphics.capture.interop` (install with '
+                    '`pip install "dxcam[winrt]"`).'
+                )
+            self._capture_item = bindings.create_for_window(self._target_hwnd)
+        else:
+            monitor = self._monitor_handle_to_int(output.hmonitor)
+            self._capture_item = bindings.create_for_monitor(monitor)
+
+        item_size = self._capture_item.size
+        self._last_winrt_content_size = (int(item_size.width), int(item_size.height))
 
         self._frame_pool = bindings.frame_pool_cls.create_free_threaded(
             self._winrt_device,
@@ -384,11 +415,15 @@ class WinRTDuplicator:
         return int(value.total_seconds() * self.performance_frequency)
 
     def _frame_size_mismatch(self, frame: Any) -> bool:
+        actual_width = int(frame.content_size.width)
+        actual_height = int(frame.content_size.height)
+        if self._target_hwnd is not None:
+            if self._last_winrt_content_size is None:
+                return False
+            return (actual_width, actual_height) != self._last_winrt_content_size
         if self._output is None:
             return False
         expected_width, expected_height = self._output.surface_size
-        actual_width = int(frame.content_size.width)
-        actual_height = int(frame.content_size.height)
         return (actual_width, actual_height) != (expected_width, expected_height)
 
     def _try_get_next_frame(self) -> tuple[Any | None, bool]:
@@ -456,6 +491,10 @@ class WinRTDuplicator:
         if not self._recreate_frame_pool(content_size):
             self.updated = False
             return False
+        self._last_winrt_content_size = (
+            int(content_size.width),
+            int(content_size.height),
+        )
         self.updated = False
         self.accumulated_frames = 0
         return True
@@ -512,6 +551,11 @@ class WinRTDuplicator:
         self.accumulated_frames = max(1, drained)
         self.updated = True
         return True
+
+    @property
+    def capture_content_size(self) -> tuple[int, int] | None:
+        """Capture-surface dimensions for window mode; ``None`` for monitor mode."""
+        return self._last_winrt_content_size if self._target_hwnd is not None else None
 
     @property
     def latest_frame_time(self) -> float:
