@@ -60,6 +60,11 @@ class Output:
         assert self.desc is not None
         return self.rotation_mapping[self.desc.Rotation]
 
+    @property
+    def origin(self) -> tuple[int, int]:
+        assert self.desc is not None
+        return (self.desc.DesktopCoordinates.left, self.desc.DesktopCoordinates.top)
+
     def __repr__(self) -> str:
         return "<{} Name:{} Resolution:{} Rotation:{}>".format(
             self.__class__.__name__,
