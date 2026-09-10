@@ -813,6 +813,19 @@ class DXCamera:
                 "Create a new camera instance with dxcam.create()."
             )
 
+    @property
+    def origin(self) -> tuple[int, int]:
+        """Get the origin of the current camera region relative to the desktop."""
+        origin_x, origin_y = self._output.origin
+        region_x, region_y, _, _ = self.region
+        return (origin_x + region_x, origin_y + region_y)
+
+    def to_absolute(self, coordinates: tuple[int, int]) -> tuple[int, int]:
+        """Convert coordinates relative to the camera region to absolute desktop coordinates."""
+        x, y = coordinates
+        cam_x, cam_y = self.origin
+        return (cam_x + x, cam_y + y)
+
     def __del__(self) -> None:
         try:
             if getattr(self, "_is_released", True):
