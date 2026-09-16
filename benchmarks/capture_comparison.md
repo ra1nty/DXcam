@@ -60,30 +60,29 @@ Python version, dependencies, imported package path and package version.
 
 ## Results: final runtime, 2026-09-16
 
-The authoritative run completed at **23:30:46 UTC** with the final camera-level
-processor lock. It compared the published **0.3.0** wheel to the **0.4.0.dev2**
-working source, including the pending runtime fixes, on checkout base
-`ce4b00fb17aad2f7d52b590bfdf26b37fe021815`.
+The authoritative run completed at **23:47:24 UTC** with the final Device-owned
+D3D guard and camera-level processor lock. It compared the published **0.3.0**
+wheel to the **0.4.0.dev2** working source, including the pending runtime fixes,
+on checkout base `1ffe237b3c148efd46cdbd226ca6817544dff6d6`.
 
 The source fingerprint before and after all trials matched:
-`f39259fcfae5ea4b89687c4d8b4d1896bc4ee0313843d48e99adc9a6c080cf4d`.
+`81cf459206c31b4535825739b6905cd5bbf728eee7a80a0650c385c2d64eb7b2`.
 This hashes sorted relative paths and contents of every `dxcam/**/*.py` file.
-Installed editable distribution metadata still said `0.4.0.dev1`; the harness
-records that separately and takes the development version from `pyproject.toml`.
-The imported source path was verified to be the current checkout.
+Installed editable distribution metadata and `pyproject.toml` both reported
+`0.4.0.dev2`. The imported source path was verified to be the current checkout.
 
 Environment: Windows 11 build 26220; AMD Ryzen 9 5900X (24 logical processors);
 NVIDIA GeForce RTX 3060 Ti; primary output 3840×2160, rotation 0°; actual capture
 region `(64, 64, 1344, 784)` (1280×720). Both workers used Python 3.14.3,
 NumPy 2.4.2, OpenCV 4.13.0.92, comtypes 1.4.16 and one OpenCV thread.
-The renderer submitted **119.99 updates/s**, while delivered desktop frames were
+The renderer submitted **120.01 updates/s**, while delivered desktop frames were
 near 60/s. Requested source FPS is not equivalent to presented source FPS.
 
-**Validity: passed.** All 12 trials completed: 4,426 timestamp-unique frames,
-4,381 distinct visual identifiers summed across trials, and zero trial errors,
+**Validity: passed.** All 12 trials completed: 4,418 timestamp-unique frames,
+4,367 distinct visual identifiers summed across trials, and zero trial errors,
 duplicate reads, missing frames returned, invalid source markers, backwards
 timestamps or negative ages. The source stayed unchanged during comparison.
-The largest deadline overrun was 29.7 ms on an eight-second trial, caused by
+The largest deadline overrun was 26.6 ms on an eight-second trial, caused by
 finishing the bounded read/sleep iteration; frames completed after the deadline
 were excluded from throughput.
 
@@ -94,10 +93,10 @@ produce a new timestamp with unchanged animation content.
 
 | Consumer | Version | Timestamp FPS | Visual FPS | CPU % of one core |
 |---|---|---:|---:|---:|
-| Immediate | 0.3.0 | 60.000 (60.000–60.125) | 59.875 (59.875–59.875) | 13.28 (10.74–13.67) |
-| Immediate | 0.4.0.dev2 | 59.875 (59.750–60.000) | 58.125 (56.625–60.000) | 9.18 (6.64–11.72) |
-| 30 ms delay | 0.3.0 | 32.375 (32.375–32.375) | 32.375 (32.375–32.375) | 9.74 (7.79–10.12) |
-| 30 ms delay | 0.4.0.dev2 | 32.125 (32.125–32.125) | 32.000 (32.000–32.125) | 6.42 (5.26–7.80) |
+| Immediate | 0.3.0 | 59.875 (59.625–60.000) | 59.625 (59.625–60.000) | 9.96 (8.20–10.16) |
+| Immediate | 0.4.0.dev2 | 59.750 (59.500–59.875) | 57.125 (56.750–59.750) | 11.52 (8.98–12.50) |
+| 30 ms delay | 0.3.0 | 32.375 (32.375–32.375) | 32.375 (32.375–32.375) | 7.99 (7.21–13.85) |
+| 30 ms delay | 0.4.0.dev2 | 32.125 (32.125–32.250) | 31.875 (31.750–32.250) | 4.30 (1.56–5.66) |
 
 Frame age is in **milliseconds**, measured from the DXGI last-present timestamp
 to completion of the frame read. These are medians/ranges of the individual
@@ -105,25 +104,27 @@ trial percentiles, not percentiles pooled across all trials.
 
 | Consumer | Version | p50 age, ms | p95 age, ms | p99 age, ms | Samples |
 |---|---|---:|---:|---:|---:|
-| Immediate | 0.3.0 | 3.13 (3.12–8.69) | 9.64 (8.61–10.52) | 10.83 (10.19–11.12) | 1,441 |
-| Immediate | 0.4.0.dev2 | 3.76 (2.70–6.88) | 7.68 (4.69–10.39) | 7.99 (4.89–10.68) | 1,437 |
-| 30 ms delay | 0.3.0 | 14.57 (12.03–15.07) | 22.21 (19.67–22.46) | 22.65 (20.39–23.43) | 777 |
-| 30 ms delay | 0.4.0.dev2 | 11.09 (10.70–11.79) | 21.21 (18.28–21.89) | 24.86 (19.08–25.82) | 771 |
+| Immediate | 0.3.0 | 6.68 (4.91–7.96) | 7.59 (5.93–8.90) | 8.06 (6.40–9.18) | 1,436 |
+| Immediate | 0.4.0.dev2 | 6.50 (5.27–7.25) | 7.39 (6.15–8.19) | 7.72 (6.40–8.44) | 1,433 |
+| 30 ms delay | 0.3.0 | 12.00 (11.30–16.88) | 19.46 (18.65–24.51) | 20.48 (19.96–25.26) | 777 |
+| 30 ms delay | 0.4.0.dev2 | 15.30 (14.82–17.11) | 22.53 (21.88–24.42) | 23.88 (22.94–28.85) | 772 |
 
 Both versions kept up with approximately 60 timestamp-unique desktop frames/s
-for the immediate consumer. The development version used less CPU in this run,
-but the ranges overlap and three trials do not establish a general CPU saving.
-Latency results are mixed: lower development p95 values accompanied a higher
-immediate-consumer p50 and a higher slow-consumer p99. Distinct animation delivery
-was slightly lower for the development version in this setup. These measurements
-do not support a blanket claim that the new runtime is faster or lower latency.
+for the immediate consumer. The development version used more CPU for the
+immediate consumer and less CPU for the slower consumer in this run. Immediate
+frame-age percentiles were similar, while slow-consumer frame age was higher for
+the development version. Distinct animation delivery was also lower for the
+development version in this setup. Three trials on one desktop do not establish
+a general performance result; these measurements do not support a blanket claim
+that the new runtime is faster or lower latency.
 
 The raw per-trial metrics, settings and source verification are available locally
 in `benchmarks/results/capture_comparison.json`, an ignored numeric
-artifact that the reproduction command regenerates. A preliminary run before the
-processor lock is retained locally as
-`results/capture_comparison_pre_processor_lock.json`; it is not the source of the
-tables above. No pixel arrays were serialized.
+artifact that the reproduction command regenerates. Earlier development runs are
+retained locally as `results/capture_comparison_pre_processor_lock.json` and
+`results/capture_comparison_pre_d3d_guard.json`; neither is the source of the
+tables above. An intermediate run was stopped when another guard change made it
+invalid. No pixel arrays were serialized.
 
 GDI update requests are limited by the desktop compositor and monitor refresh.
 This is a controlled real-capture comparison on one machine, not a

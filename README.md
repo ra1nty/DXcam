@@ -62,7 +62,7 @@ camera = dxcam.create(
 Note:
 - Version 0.4 uses a fixed three-slot frame buffer; `max_buffer_len` has been removed.
 - Device discovery happens on the first `create()`, `device_info()`, or `output_info()` call.
-- Upgrading from 0.3? See the [0.4 migration guide](docs/migration-0.4.md).
+- Upgrading from 0.3? See the [0.4 migration guide](https://github.com/ra1nty/DXcam/blob/dev/docs/migration-0.4.md).
 
 ### Screenshot
 ```python
@@ -263,7 +263,7 @@ DXcam raises a runtime error because that backend is explicitly the direct
 Cython path.
 
 ## Benchmarks
-See the [0.4 development comparison against PyPI 0.3.0](benchmarks/capture_comparison.md)
+See the [0.4 development comparison against PyPI 0.3.0](https://github.com/ra1nty/DXcam/blob/dev/benchmarks/capture_comparison.md)
 for measured fresh-frame throughput, frame age, CPU use, and reproducible steps.
 
 When using a similar logic (only capture newly rendered frames) running on a 240fps output, ```DXCam, python-mss, D3DShot``` benchmarked as follow:

@@ -109,20 +109,22 @@ class StageSurface:
             self.rebuild(dim=dim)
 
     def map(self) -> DXGI_MAPPED_RECT:
-        if self.interface is None:
+        if self.interface is None or self._device is None:
             raise RuntimeError("StageSurface interface is not initialized.")
         rect: DXGI_MAPPED_RECT = DXGI_MAPPED_RECT()
-        self.interface.Map(ctypes.byref(rect), 1)
+        with self._device.context_guard():
+            self.interface.Map(ctypes.byref(rect), 1)
         return rect
 
     def unmap(self) -> None:
-        if self.interface is None:
+        if self.interface is None or self._device is None:
             raise RuntimeError("StageSurface interface is not initialized.")
-        self.interface.Unmap()
+        with self._device.context_guard():
+            self.interface.Unmap()
 
     @contextmanager
     def mapped(self) -> Iterator[DXGI_MAPPED_RECT]:
-        """Context-manager wrapper around map/unmap."""
+        """Map/unmap under the device guard, without guarding CPU work."""
         # Several readers can lease the latest frame, but DXGI permits only one
         # active mapping of a surface. Leases keep it alive while readers queue.
         with self._map_lock:

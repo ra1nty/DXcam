@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from threading import Event, Lock, Thread, current_thread
+from contextlib import contextmanager
+from threading import Event, Lock, RLock, Thread, current_thread
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
+import dxcam.core.device as device_module
+from dxcam.core.device import Device
 from dxcam.core.stagesurf import StageSurface
 from dxcam.dxcam import DXCamera
 from dxcam.processor import Processor
@@ -81,6 +84,10 @@ def make_camera():
     camera._DXCamera__last_grab_entry = None
     camera._duplicator = SimpleNamespace(
         ticks_to_seconds=lambda value: value / 100, release=lambda: None
+    )
+    camera._device = Device.__new__(Device)
+    camera._device._multithread = SimpleNamespace(
+        Enter=lambda: None, Leave=lambda: None
     )
     camera._stagesurf = FakeStage()
     camera.width = camera.height = 2
@@ -277,6 +284,290 @@ def test_mapped_surface_holds_lock_through_unmap_even_on_error():
     assert events == ["map", "unmap"]
     assert stage._map_lock.acquire(blocking=False)
     stage._map_lock.release()
+
+
+@pytest.mark.parametrize("backend", ["dxgi", "winrt"])
+@pytest.mark.parametrize("capture_case", ["copy", "idle", "recover", "copy_error"])
+def test_capture_guards_copy_but_not_frame_pool_calls_or_recovery(
+    backend, capture_case
+):
+    camera, stages = make_camera()
+    camera.backend = backend
+    camera.rotation_angle = 0
+    device_lock = Lock()
+    events = []
+
+    def enter():
+        assert device_lock.acquire(blocking=False)
+        events.append("enter")
+
+    def leave():
+        events.append("leave")
+        device_lock.release()
+
+    @contextmanager
+    def acquire_frame(*, wait_for_frame):
+        assert not device_lock.locked()
+        events.append("acquire")
+        try:
+            yield capture_case != "recover", capture_case != "idle", 123
+        finally:
+            assert not device_lock.locked()
+            events.append("finish")
+
+    def copy(region, stage):
+        assert device_lock.locked()
+        events.append("copy")
+        if capture_case == "copy_error":
+            raise RuntimeError("copy failed")
+        return 2, 2
+
+    def recover():
+        assert not device_lock.locked()
+        events.append("recover")
+
+    camera._device._multithread = SimpleNamespace(Enter=enter, Leave=leave)
+    camera._duplicator.acquire_frame = acquire_frame
+    camera._copy_region_to_surface = copy
+    camera._recover_output = recover
+    try:
+        if capture_case == "copy_error":
+            with pytest.raises(RuntimeError, match="copy failed"):
+                camera._capture_to_stage(camera.region, stages[0])
+        else:
+            result = camera._capture_to_stage(camera.region, stages[0])
+            assert result[0] == (capture_case == "copy")
+        assert not device_lock.locked()
+        if capture_case in ("copy", "copy_error"):
+            assert events == ["acquire", "enter", "copy", "leave", "finish"]
+        elif capture_case == "recover":
+            assert events == ["acquire", "recover", "finish"]
+        else:
+            assert events == ["acquire", "finish"]
+    finally:
+        camera.release()
+
+
+@pytest.mark.parametrize("processor_fails", [False, True])
+def test_readout_guards_map_and_unmap_without_locking_device_during_cpu_work(
+    processor_fails,
+):
+    camera, _ = make_camera()
+    del camera._process_stage
+    stage = StageSurface.__new__(StageSurface)
+    stage._map_lock = Lock()
+    device_lock = Lock()
+    events = []
+
+    def enter():
+        assert device_lock.acquire(blocking=False)
+        events.append("enter")
+
+    def leave():
+        events.append("leave")
+        device_lock.release()
+
+    def mapped(*args):
+        assert device_lock.locked()
+        events.append("map")
+
+    def unmapped():
+        assert device_lock.locked()
+        events.append("unmap")
+
+    def process(*args):
+        assert not device_lock.locked()
+        assert stage._map_lock.locked()
+        assert camera._DXCamera__processor_lock.locked()
+        events.append("process")
+        if processor_fails:
+            raise RuntimeError("processor failed")
+
+    camera._device._multithread = SimpleNamespace(Enter=enter, Leave=leave)
+    stage._device = camera._device
+    stage.interface = SimpleNamespace(Map=mapped, Unmap=unmapped)
+    camera._processor = SimpleNamespace(process_into=process)
+    try:
+        kwargs = dict(stage=stage, frame_width=2, frame_height=2, rotation_angle=0)
+        if processor_fails:
+            with pytest.raises(RuntimeError, match="processor failed"):
+                camera._process_stage(**kwargs)
+        else:
+            camera._process_stage(**kwargs)
+        assert events == ["enter", "map", "leave", "process", "enter", "unmap", "leave"]
+        assert not device_lock.locked()
+        assert not stage._map_lock.locked()
+        assert not camera._DXCamera__processor_lock.locked()
+    finally:
+        camera.release()
+
+
+def test_surface_mapping_and_another_cameras_copy_share_device_guard():
+    mapping, finish_map, copy_boundary, copied = Event(), Event(), Event(), Event()
+
+    class ObservedLock:
+        def __init__(self):
+            self.lock = RLock()
+
+        def __enter__(self):
+            if not self.lock.acquire(blocking=False):
+                copy_boundary.set()
+                self.lock.acquire()
+
+        def __exit__(self, *args):
+            self.lock.release()
+
+    reader, _ = make_camera()
+    writer, writer_stages = make_camera()
+    shared_device = reader._device
+    writer._device = shared_device
+    lock = ObservedLock()
+    shared_device._multithread = SimpleNamespace(
+        Enter=lock.__enter__, Leave=lock.__exit__
+    )
+    del reader._process_stage
+    reader._processor = SimpleNamespace(process_into=lambda *args: None)
+    stage = StageSurface.__new__(StageSurface)
+    stage._device = shared_device
+    stage._map_lock = Lock()
+
+    def map_surface(*args):
+        mapping.set()
+        assert finish_map.wait(5)
+
+    stage.interface = SimpleNamespace(Map=map_surface, Unmap=lambda: None)
+
+    @contextmanager
+    def acquire_frame(**kwargs):
+        yield True, True, 123
+
+    def copy(region, destination):
+        copied.set()
+        return 2, 2
+
+    writer.rotation_angle = 0
+    writer._duplicator.acquire_frame = acquire_frame
+    writer._copy_region_to_surface = copy
+    errors = []
+
+    def read():
+        try:
+            reader._process_stage(
+                stage=stage, frame_width=2, frame_height=2, rotation_angle=0
+            )
+        except BaseException as exc:
+            errors.append(exc)
+
+    def write():
+        try:
+            writer._capture_to_stage(writer.region, writer_stages[0])
+        except BaseException as exc:
+            errors.append(exc)
+        finally:
+            copy_boundary.set()
+
+    read_thread, write_thread = Thread(target=read), Thread(target=write)
+    read_thread.start()
+    try:
+        assert mapping.wait(5)
+        write_thread.start()
+        assert copy_boundary.wait(5)
+        assert not copied.is_set(), "Copy overlapped a map on the same device"
+    finally:
+        finish_map.set()
+        read_thread.join(5)
+        if write_thread.ident is not None:
+            write_thread.join(5)
+        reader.release()
+        writer.release()
+    assert not read_thread.is_alive() and not write_thread.is_alive()
+    assert copied.is_set()
+    assert not errors
+
+
+def test_device_guard_leaves_the_captured_interface_even_after_error():
+    device = Device.__new__(Device)
+    calls = []
+    device._multithread = SimpleNamespace(
+        Enter=lambda: calls.append("original enter"),
+        Leave=lambda: calls.append("original leave"),
+    )
+    replacement = SimpleNamespace(
+        Enter=lambda: calls.append("replacement enter"),
+        Leave=lambda: calls.append("replacement leave"),
+    )
+    with pytest.raises(RuntimeError, match="operation failed"):
+        with device.context_guard():
+            device._multithread = replacement
+            raise RuntimeError("operation failed")
+    assert calls == ["original enter", "original leave"]
+
+
+def test_device_guard_rejects_unconfigured_native_protection():
+    device = Device.__new__(Device)
+    device._multithread = None
+    with pytest.raises(RuntimeError, match="protection is not initialized"):
+        with device.context_guard():
+            pytest.fail("An unprotected device must never execute graphics calls")
+
+
+@pytest.mark.parametrize("failure", [None, "query", "enable", "disabled"])
+def test_device_initialization_requires_enabled_native_protection(monkeypatch, failure):
+    calls = []
+
+    def enable(value):
+        assert value is True
+        calls.append("enable")
+        if failure == "enable":
+            raise OSError("enable failed")
+
+    def is_enabled():
+        calls.append("verify")
+        return failure != "disabled"
+
+    native = SimpleNamespace(
+        SetMultithreadProtected=enable,
+        GetMultithreadProtected=is_enabled,
+    )
+
+    def query(interface):
+        assert interface is device_module.ID3D11Multithread
+        calls.append("query")
+        if failure == "query":
+            raise OSError("query failed")
+        return native
+
+    context = SimpleNamespace(QueryInterface=query)
+    d3d_device = SimpleNamespace(GetImmediateContext=lambda pointer: None)
+
+    def pointer_type(interface):
+        if interface is device_module.ID3D11Device:
+            return lambda: d3d_device
+        assert interface is device_module.ID3D11DeviceContext
+        return lambda: context
+
+    # Replace only this module's ctypes facade; no GPU or global ctypes state is used.
+    monkeypatch.setattr(
+        device_module,
+        "ctypes",
+        SimpleNamespace(
+            POINTER=pointer_type,
+            byref=lambda value: value,
+            c_uint=device_module.ctypes.c_uint,
+            windll=SimpleNamespace(
+                d3d11=SimpleNamespace(D3D11CreateDevice=lambda *args: None)
+            ),
+        ),
+    )
+    adapter = SimpleNamespace(GetDesc1=lambda pointer: None)
+    if failure is None:
+        device = Device(adapter)
+        assert device._multithread is native
+        assert calls == ["query", "enable", "verify"]
+    else:
+        with pytest.raises(RuntimeError, match="requires native Direct3D") as caught:
+            Device(adapter)
+        assert caught.value.__cause__ is not None
 
 
 def test_readers_of_different_slots_do_not_overwrite_rotated_processor_scratch():

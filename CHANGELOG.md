@@ -2,6 +2,8 @@
 - Keep reader and writer ownership attached to individual staging surfaces, including across stop and display recovery.
 - Never overwrite the published or leased frame; skip capture when no safe slot is available.
 - Serialize frame conversion to protect shared processor scratch buffers; release retired surfaces after their last owner finishes.
+- Keep WinRT frame acquisition outside the D3D context lock and guard surface mapping/copying consistently to prevent capture/readout deadlocks.
+- Share native D3D multithread protection across cameras on a device; fail initialization clearly if protection is unavailable.
 - Read the latest available frame without waiting for another publication; pace video consumers explicitly.
 - Report capture timer setup failures and clean up after worker failures.
 - Lazily discover devices on first use, simplify the camera factory, and leave application logging unchanged on import.

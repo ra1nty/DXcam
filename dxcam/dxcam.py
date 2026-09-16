@@ -165,19 +165,6 @@ class DXCamera:
             device=self._device,
         )
 
-    @contextmanager
-    def _multithread_guard(self):
-        enter = getattr(self._duplicator, "enter_multithread", None)
-        leave = getattr(self._duplicator, "leave_multithread", None)
-        if callable(enter) and callable(leave):
-            enter()
-            try:
-                yield
-            finally:
-                leave()
-            return
-        yield
-
     def grab(
         self,
         region: Region | None = None,
@@ -428,23 +415,25 @@ class DXCamera:
         *,
         wait_for_frame: bool = True,
     ) -> tuple[bool, int, int, int, int]:
-        with self._multithread_guard():
-            with self._duplicator.acquire_frame(wait_for_frame=wait_for_frame) as (
-                ok,
-                updated,
-                frame_ticks,
-            ):
-                if not ok:
-                    logger.warning(
-                        "Output change/access loss detected (backend=%s, output=%dx%d).",
-                        self.backend,
-                        self.width,
-                        self.height,
-                    )
-                    self._recover_output()
-                    return False, 0, 0, 0, self.rotation_angle
-                if not updated:
-                    return False, 0, 0, 0, self.rotation_angle
+        # WinRT frame-pool calls can take their own locks. Never hold the device
+        # lock while acquiring/releasing frames or recovering a capture session.
+        with self._duplicator.acquire_frame(wait_for_frame=wait_for_frame) as (
+            ok,
+            updated,
+            frame_ticks,
+        ):
+            if not ok:
+                logger.warning(
+                    "Output change/access loss detected (backend=%s, output=%dx%d).",
+                    self.backend,
+                    self.width,
+                    self.height,
+                )
+                self._recover_output()
+                return False, 0, 0, 0, self.rotation_angle
+            if not updated:
+                return False, 0, 0, 0, self.rotation_angle
+            with self._device.context_guard():
                 frame_width, frame_height = self._copy_region_to_surface(region, stage)
         return (
             True,

@@ -12,7 +12,7 @@ from typing import Any, Callable, Iterator, Literal, cast
 
 import comtypes
 
-from dxcam._libs.d3d11 import ID3D11Multithread, ID3D11Texture2D
+from dxcam._libs.d3d11 import ID3D11Texture2D
 from dxcam._libs.dxgi import IDXGIDevice, IDXGISurface
 from dxcam.core.com_ptr import clear_com_pointer
 from dxcam.core.device import Device
@@ -102,7 +102,6 @@ class WinRTDuplicator:
     _session: Any | None = field(default=None, init=False, repr=False)
     _capture_item: Any | None = field(default=None, init=False, repr=False)
     _winrt_device: Any | None = field(default=None, init=False, repr=False)
-    _multithread: Any | None = field(default=None, init=False, repr=False)
     _dxgi_surface: Any = field(
         default_factory=lambda: ctypes.POINTER(IDXGISurface)(), init=False, repr=False
     )
@@ -138,7 +137,6 @@ class WinRTDuplicator:
         )
         self._border_required = self._resolve_bool_env("DXCAM_WINRT_BORDER_REQUIRED")
         self._configure_qpc_frequency()
-        self._configure_multithread_protection(device=device)
         self._create_capture_session(output=output, device=device)
 
     def _resolve_frame_wait_seconds(self) -> float:
@@ -246,7 +244,9 @@ class WinRTDuplicator:
                     mode = self._dirty_region_mode_enum.REPORT_AND_RENDER
                 self._session.dirty_region_mode = mode
             except Exception:
-                logger.warning("Failed to set session dirty_region_mode.", exc_info=True)
+                logger.warning(
+                    "Failed to set session dirty_region_mode.", exc_info=True
+                )
         if self._cursor_capture_enabled is not None:
             try:
                 self._session.is_cursor_capture_enabled = self._cursor_capture_enabled
@@ -259,7 +259,9 @@ class WinRTDuplicator:
             try:
                 self._session.is_border_required = self._border_required
             except Exception:
-                logger.warning("Failed to set session is_border_required.", exc_info=True)
+                logger.warning(
+                    "Failed to set session is_border_required.", exc_info=True
+                )
 
     def _configure_qpc_frequency(self) -> None:
         freq = ctypes.c_longlong()
@@ -329,34 +331,6 @@ class WinRTDuplicator:
         if self._frame_arrived_event is not None:
             self._frame_arrived_event.set()
 
-    def _configure_multithread_protection(self, device: Device) -> None:
-        try:
-            self._multithread = device.im_context.QueryInterface(ID3D11Multithread)
-        except comtypes.COMError:
-            logger.debug("ID3D11Multithread not available for WinRT backend.")
-            self._multithread = None
-            return
-        try:
-            self._multithread.SetMultithreadProtected(True)
-        except Exception:
-            logger.debug("Failed to enable multithread protection.", exc_info=True)
-
-    def enter_multithread(self) -> None:
-        if self._multithread is None:
-            return
-        try:
-            self._multithread.Enter()
-        except Exception:
-            logger.debug("Failed to enter ID3D11Multithread lock.", exc_info=True)
-
-    def leave_multithread(self) -> None:
-        if self._multithread is None:
-            return
-        try:
-            self._multithread.Leave()
-        except Exception:
-            logger.debug("Failed to leave ID3D11Multithread lock.", exc_info=True)
-
     def _monitor_handle_to_int(self, hmonitor: Any) -> int:
         value = getattr(hmonitor, "value", hmonitor)
         monitor = int(value or 0)
@@ -372,7 +346,9 @@ class WinRTDuplicator:
             try:
                 close_fn()
             except Exception:
-                logger.debug("Ignoring exception while closing %s.", name, exc_info=True)
+                logger.debug(
+                    "Ignoring exception while closing %s.", name, exc_info=True
+                )
 
     def _release_dxgi_surface(self) -> None:
         # The pointer returned by winrt interop behaves like a borrowed pointer in

@@ -63,6 +63,10 @@ processor scratch buffers shared by concurrent readers. Call `start()`, `stop()`
 and `release()` from one controlling thread; concurrent lifecycle mutations are
 not supported.
 
+Native Direct3D multithread protection is required. Device initialization raises
+a clear error if it cannot be enabled, instead of continuing with unsafe shared
+device access.
+
 ## Processing backends
 
 `processor_backend="cython"` selects the direct compiled kernels. Windows wheels
