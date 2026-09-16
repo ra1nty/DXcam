@@ -67,7 +67,7 @@ jobs:
         run: python -m pip install -e . --no-build-isolation
 
       - name: Run unit and parity tests
-        run: python -m pytest -q tests/test_processor_parity.py tests/test_dxgi_transient_policy.py
+        run: python -m pytest -q tests --ignore=tests/benchmarks
 
   micro-benchmarks:
     name: Processor Micro Benchmarks (pytest-benchmark)

@@ -215,7 +215,15 @@ def main() -> None:
             f"fps={args.fps} frames={args.frames} region={region} "
             f"queue={queue_size} output={args.output}"
         )
+        frame_interval = 1.0 / args.fps
+        next_frame = time.perf_counter()
         while captured_frames < args.frames:
+            # Readout returns the latest frame immediately, even if unchanged.
+            delay = next_frame - time.perf_counter()
+            if delay > 0:
+                time.sleep(delay)
+            # Rebase after delays instead of catching up with duplicate frames.
+            next_frame = time.perf_counter() + frame_interval
             frame = camera.get_latest_frame()
             if frame is None:
                 continue

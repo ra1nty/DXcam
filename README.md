@@ -60,13 +60,15 @@ camera = dxcam.create(
 )
 ```
 Note:
-- From 0.4.0 the `dxcam.create(max_buffer_len=...)` is deprecated, screen capture now always uses a tripple buffer.
+- Version 0.4 uses a fixed three-slot frame buffer; `max_buffer_len` has been removed.
+- Device discovery happens on the first `create()`, `device_info()`, or `output_info()` call.
+- Upgrading from 0.3? See the [0.4 migration guide](https://github.com/ra1nty/DXcam/blob/dev/docs/migration-0.4.md).
 
 ### Screenshot
 ```python
 frame = camera.grab()
 ```
-`grab()` returns a `numpy.ndarray`. `None` if no new frame is available since the last capture; use `camera.grab(new_frame_only=False)` to make dxcam always return the latest frame.
+`grab()` returns a `numpy.ndarray`. In one-shot mode it returns `None` if no new frame is available; `camera.grab(new_frame_only=False)` can reuse the last cached frame. During threaded capture, it reads the latest published frame and ignores `new_frame_only`.
 
 Use `camera.grab_into(dst)` to reuse caller-managed memory.
 
@@ -89,9 +91,9 @@ camera.is_capturing  # False
 #### Consume the Screen Capture Data
 ```python
 for _ in range(1000):
-    frame = camera.get_latest_frame()  # blocks until a frame is available
+    frame = camera.get_latest_frame()  # waits for the first available frame
 ```
->The screen capture mode spins up a thread that polls newly rendered frames and publishes them into a latest-only in-memory frame buffer. The blocking and `video_mode` behavior is designed for downstream video recording and machine learning workloads.
+The capture thread publishes into a latest-only frame buffer. Once a frame is available, reads return immediately and can return the same timestamp repeatedly. Consumers control their own pacing; compare timestamps when you need only fresh frames. `target_fps` controls the producer, not the frequency of consumer reads.
 
 Useful variants:
 - `camera.get_latest_frame(with_timestamp=True)` -> `(frame, frame_timestamp)` -> return frame timestamp
@@ -102,6 +104,7 @@ Useful variants:
 ### Safely Releasing Resources
 `release()` stops capture, frees buffers, and releases capture resources.
 After `release()`, the same instance cannot be reused.
+In-flight readers retain their staging surfaces until readout completes, including across stop or output recovery.
 
 ```python
 camera = dxcam.create(output_idx=0, output_color="BGR")
@@ -152,10 +155,10 @@ Notes:
 - `RGB`, `BGR`, `RGBA`, `GRAY` require conversion (`cv2`, `cython`, or compiled `numpy` backend).
 
 ### Frame Buffer
-DXcam uses a fixed three-slot latest-only frame buffer in-memory. Readers always consume the newest published frame, and older staged frames may be overwritten once they are no longer leased.
+DXcam uses a fixed three-slot latest-only frame buffer in-memory. Readers consume the newest published frame. A surface being read is never overwritten; if no safe write slot is available, capture skips that cycle. Older surfaces are released only after their readers finish.
 
 ```python
-camera = dxcam.create()  # max_buffer_len is accepted but ignored
+camera = dxcam.create()
 ```
 
 ### Target FPS
@@ -185,20 +188,31 @@ With `video_mode=True`, DXcam continues publishing at target FPS, reusing the pr
 ```python
 import cv2
 import dxcam
+import time
 
 target_fps = 30
 camera = dxcam.create(output_color="BGR")
 camera.start(target_fps=target_fps, video_mode=True)
 
 writer = cv2.VideoWriter(
-    "video.mp4", cv2.VideoWriter_fourcc(*"mp4v"), target_fps, (1920, 1080)
+    "video.mp4", cv2.VideoWriter_fourcc(*"mp4v"), target_fps,
+    (camera.width, camera.height),
 )
-for _ in range(600):
-    writer.write(camera.get_latest_frame())
-
-camera.stop()
-writer.release()
+try:
+    next_frame = time.perf_counter()
+    for _ in range(600):
+        time.sleep(max(0, next_frame - time.perf_counter()))
+        next_frame = time.perf_counter() + 1 / target_fps
+        frame = camera.get_latest_frame()
+        if frame is not None:
+            writer.write(frame)
+finally:
+    camera.release()
+    writer.release()
 ```
+
+Latest-frame reads return immediately once a frame exists. Pace the consumer as
+above to avoid filling the video with repeated reads as fast as Python can run.
 
 ### Capture Backend
 DXcam supports two capture backends:
@@ -249,6 +263,9 @@ DXcam raises a runtime error because that backend is explicitly the direct
 Cython path.
 
 ## Benchmarks
+See the [0.4 development comparison against PyPI 0.3.0](https://github.com/ra1nty/DXcam/blob/dev/benchmarks/capture_comparison.md)
+for measured fresh-frame throughput, frame age, CPU use, and reproducible steps.
+
 When using a similar logic (only capture newly rendered frames) running on a 240fps output, ```DXCam, python-mss, D3DShot``` benchmarked as follow:
 
 |             | DXcam  | python-mss | D3DShot |

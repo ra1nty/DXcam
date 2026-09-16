@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import ctypes
-from dataclasses import dataclass
-from typing import Any, cast
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from typing import Any, Iterator, cast
 
 import comtypes
 from dxcam._libs.d3d11 import (
@@ -11,6 +12,7 @@ from dxcam._libs.d3d11 import (
     D3D_FEATURE_LEVEL_11_0,
     ID3D11Device,
     ID3D11DeviceContext,
+    ID3D11Multithread,
 )
 from dxcam._libs.dxgi import (
     DXGI_ADAPTER_DESC1,
@@ -32,6 +34,7 @@ class Device:
     context: Any = None
     im_context: Any = None
     desc: DXGI_ADAPTER_DESC1 | None = None
+    _multithread: Any | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.desc = DXGI_ADAPTER_DESC1()
@@ -63,6 +66,32 @@ class Device:
         )
         device = cast(Any, self.device)
         device.GetImmediateContext(ctypes.byref(self.im_context))
+        try:
+            context = cast(Any, self.im_context)
+            multithread = context.QueryInterface(ID3D11Multithread)
+            multithread.SetMultithreadProtected(True)
+            if not multithread.GetMultithreadProtected():
+                raise RuntimeError("The device left multithread protection disabled.")
+        except Exception as exc:
+            raise RuntimeError(
+                "DXcam requires native Direct3D multithread protection "
+                "(ID3D11Multithread), but it could not be enabled."
+            ) from exc
+        self._multithread = multithread
+
+    @contextmanager
+    def context_guard(self) -> Iterator[None]:
+        """Serialize context/DXGI calls across every camera using this device."""
+        multithread = self._multithread
+        if multithread is None:
+            raise RuntimeError(
+                "Native Direct3D multithread protection is not initialized."
+            )
+        multithread.Enter()
+        try:
+            yield
+        finally:
+            multithread.Leave()
 
     def enum_outputs(self) -> list[Any]:
         i = 0

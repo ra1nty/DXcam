@@ -1,3 +1,21 @@
+### 0.4.0.dev2
+- Keep reader and writer ownership attached to individual staging surfaces, including across stop and display recovery.
+- Never overwrite the published or leased frame; skip capture when no safe slot is available.
+- Serialize frame conversion to protect shared processor scratch buffers; release retired surfaces after their last owner finishes.
+- Keep WinRT frame acquisition outside the D3D context lock and guard surface mapping/copying consistently to prevent capture/readout deadlocks.
+- Share native D3D multithread protection across cameras on a device; fail initialization clearly if protection is unavailable.
+- Read the latest available frame without waiting for another publication; pace video consumers explicitly.
+- Report capture timer setup failures and clean up after worker failures.
+- Lazily discover devices on first use, simplify the camera factory, and leave application logging unchanged on import.
+- Remove the ignored `max_buffer_len` argument; make backend options keyword-only.
+- Add runtime/factory regression tests to source and wheel CI, plus the [0.4 migration guide](docs/migration-0.4.md).
+- Add a reproducible [capture comparison against PyPI 0.3.0](benchmarks/capture_comparison.md) covering fresh throughput, frame age, and CPU use.
+
+### 0.4.0.dev1
+- Replace the ring buffer with three latest-frame staging slots and move rotation/color conversion to reader time.
+- Add a direct Cython processor and `grab_into` / `get_latest_frame_into` APIs.
+- Remove copy/view API variants and simplify capture worker and resource ownership.
+
 ### 0.3.0
 - add proper handling of the DXGI mode switch (exclusively <-> normal)
 - add microbenchmark for processors
