@@ -221,7 +221,7 @@ class DXGIDuplicator:
         So DXCam default to early release.
 
         Returns:
-            bool: Sucessfully
+            bool: Successfully
         """
         if self.duplicator is None or not self._frame_held:
             return True
@@ -263,7 +263,7 @@ class DXGIDuplicator:
             self.duplicator = None
 
     def __repr__(self) -> str:
-        return "<{} Initalized:{}>".format(
+        return "<{} Initialized:{}>".format(
             self.__class__.__name__,
             self.duplicator is not None,
         )
