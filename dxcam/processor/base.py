@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -27,7 +27,7 @@ def normalize_processor_backend_name(backend: str) -> ProcessorBackend:
         raise ValueError(
             f"Unsupported processor backend '{backend}'. Supported: {supported}."
         )
-    return cast(ProcessorBackend, normalized)
+    return normalized
 
 
 class Processor:

@@ -59,19 +59,26 @@ include = ["dxcam*"]
 dxcam = ["processor/*.pyx"]
 
 [dependency-groups]
+lint = [
+    "ruff==0.16.8",
+    "ty==0.0.81",
+]
 dev = [
+    { include-group = "lint" },
     "opencv-python>=4.13.0.92",
     "pdoc>=15.0.4",
     "pytest>=8.4.0",
     "pytest-benchmark>=5.2.3",
-    "ruff>=0.15.5",
-    "ty>=0.0.21",
 ]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py310"
 line-length = 88
 extend-exclude = ["benchmarks"]
+
+[tool.ruff.lint]
+# Keep the established rule set explicit; Ruff 0.16 expanded its defaults.
+select = ["E4", "E7", "E9", "F"]
 
 [tool.ty.src]
 include = ["dxcam", "examples"]

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, cast
+from typing import Callable
 
 from dxcam.core.device import Device
 from dxcam.core.dxgi_duplicator import DXGIDuplicator
@@ -45,7 +45,7 @@ def normalize_backend_name(backend: str) -> CaptureBackend:
     if normalized not in _SUPPORTED_BACKENDS:
         supported = ", ".join(_SUPPORTED_BACKENDS)
         raise ValueError(f"Unsupported backend '{backend}'. Supported: {supported}.")
-    return cast(CaptureBackend, normalized)
+    return normalized
 
 
 def create_backend_duplicator(
