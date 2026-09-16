@@ -66,7 +66,7 @@ class DXCamera:
         device: Device,
         region: Region | None,
         output_color: ColorMode = "RGB",
-        max_buffer_len: int = 8,
+        *,
         backend: CaptureBackend = "dxgi",
         processor_backend: ProcessorBackend = "cv2",
     ) -> None:
@@ -80,8 +80,6 @@ class DXCamera:
             device: Internal DXGI device descriptor.
             region: Initial capture region as ``(left, top, right, bottom)``.
             output_color: Returned color format.
-            max_buffer_len: Kept for API compatibility. Threaded mode uses
-                a fixed three-slot latest-only frame buffer.
             backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
             processor_backend: Post-processing backend, ``"cv2"``,
                 ``"cython"``, or ``"numpy"``.
@@ -97,20 +95,12 @@ class DXCamera:
         self._initialize_output_state(region=region, output_color=output_color)
         self._initialize_recovery_handler()
 
-        if max_buffer_len != 3:
-            logger.info(
-                "latest-only three-slot frame buffering is enabled; ignoring "
-                "max_buffer_len=%d.",
-                max_buffer_len,
-            )
-        self.max_buffer_len = 3
         self.is_capturing = False
 
         self.__lock: LockType = Lock()
+        self.__processor_lock: LockType = Lock()
         self.__worker: CaptureWorker | None = None
-        self.__frame_buffer = FrameBuffer(
-            slot_count=3,
-        )
+        self.__frame_buffer = FrameBuffer()
 
         self.__last_grab_entry: tuple[Region, Frame] | None = None
 
@@ -291,28 +281,22 @@ class DXCamera:
             )
 
     def _wait_for_read_lease(self):
+        worker = self.__worker
+        if worker is None:
+            return None
         while True:
             with self.__lock:
-                if not self.__frame_buffer.slots:
+                # A reader from a stopped session must not join a later start.
+                if worker is not self.__worker or not self.__frame_buffer.slots:
                     return None
-            worker = self.__worker
-            if worker is None:
-                return None
-            if not worker.wait_for_frame(timeout=0.1):
+                leased = self.__frame_buffer.lease_latest_slot()
+                if leased is not None:
+                    return leased
                 if not worker.is_running():
                     return None
-                continue
-            with self.__lock:
-                leased = self.__frame_buffer.lease_latest_slot()
-                if leased is None:
-                    worker.clear_frame_signal()
-                    if not self.__frame_buffer.slots:
-                        return None
-                    if not worker.is_running():
-                        return None
-                    continue
+                # Clear under the same lock used by the producer to publish.
                 worker.clear_frame_signal()
-                return leased
+            worker.wait_for_frame(timeout=0.1)
 
     @contextmanager
     def _read_lease(self):
@@ -339,7 +323,8 @@ class DXCamera:
                 frame_height=frame_height,
                 channel_size=self.channel_size,
             )
-        with stage.mapped() as rect:
+        # Different leased slots still share one processor and its scratch arrays.
+        with self.__processor_lock, stage.mapped() as rect:
             self._processor.process_into(
                 rect,
                 frame_width,
@@ -550,13 +535,24 @@ class DXCamera:
             self.channel_size,
             self.__frame_buffer.slot_count,
         )
-        self.__frame_buffer.allocate_stage_slots(
-            output=self._output,
-            device=self._device,
-            memory_width=memory_width,
-            memory_height=memory_height,
-            frame_height=frame_height,
+        stages: list[StageSurface] = []
+        try:
+            for _ in range(self.__frame_buffer.slot_count):
+                stages.append(
+                    StageSurface(
+                        output=self._output,
+                        device=self._device,
+                        dim=(memory_width, memory_height),
+                    )
+                )
+        except Exception:
+            for stage in stages:
+                stage.release()
+            raise
+        self.__frame_buffer.replace_slots(
+            stages,
             frame_width=frame_width,
+            frame_height=frame_height,
             rotation_angle=self.rotation_angle,
         )
 
@@ -600,18 +596,25 @@ class DXCamera:
             self._region_set_by_user = True
             self.region = region
         validate_region(region, self.width, self.height)
-        self.is_capturing = True
-        self._allocate_capture_slots_for_region(region, reason="build(start)")
-        self.__worker = CaptureWorker(
-            frame_buffer=self.__frame_buffer,
-            lock=self.__lock,
-            capture_to_stage=self._capture_to_stage,
-            get_region=self._get_capture_region,
-            target_fps=target_fps,
-            video_mode=video_mode,
-            thread_name="DXCamera",
-        )
-        self.__worker.start()
+        with self.__lock:
+            self._allocate_capture_slots_for_region(region, reason="build(start)")
+            self.__worker = CaptureWorker(
+                frame_buffer=self.__frame_buffer,
+                lock=self.__lock,
+                capture_to_stage=self._capture_to_stage,
+                get_region=self._get_capture_region,
+                target_fps=target_fps,
+                video_mode=video_mode,
+                thread_name="DXCamera",
+            )
+            self.is_capturing = True
+            try:
+                self.__worker.start()
+            except Exception:
+                self.__worker = None
+                self.is_capturing = False
+                self.__frame_buffer.clear()
+                raise
 
     def stop(self) -> None:
         """Stop threaded capture and clear buffered frames.
@@ -777,10 +780,17 @@ class DXCamera:
         """
         if self._is_released:
             return
-        self._is_released = True
-        self.stop()
-        self._duplicator.release()
-        self._stagesurf.release()
+        try:
+            self.stop()
+        finally:
+            # stop() also reports producer errors after joining and retiring the
+            # buffer. Finish disposal in that case, but never after a join timeout.
+            if self.__worker is None or not self.__worker.is_running():
+                try:
+                    self._duplicator.release()
+                finally:
+                    self._stagesurf.release()
+                    self._is_released = True
 
     @property
     def is_released(self) -> bool:

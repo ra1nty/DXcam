@@ -64,11 +64,7 @@ class CaptureWorker:
 
     def join(self, timeout: float | None = None) -> bool:
         thread = self._thread
-        if (
-            thread is not None
-            and thread.is_alive()
-            and thread is not current_thread()
-        ):
+        if thread is not None and thread.is_alive() and thread is not current_thread():
             thread.join(timeout=timeout)
         thread = self._thread
         if thread is not None and thread.is_alive():
@@ -94,36 +90,35 @@ class CaptureWorker:
                 if self.video_mode and self.frame_buffer.commit_repeat():
                     self._frame_available_event.set()
                 return
-            slot_idx, stage = write_slot
 
-        captured, frame_ticks, frame_width, frame_height, rotation_angle = (
-            self.capture_to_stage(self.get_region(), stage)
-        )
-        if not captured:
-            if self.video_mode:
-                with self.lock:
-                    if self.frame_buffer.commit_repeat():
-                        self._frame_available_event.set()
-            return
-
-        with self.lock:
-            if self.frame_buffer.commit_write(
-                slot_idx,
-                frame_ticks=frame_ticks,
-                frame_width=frame_width,
-                frame_height=frame_height,
-                rotation_angle=rotation_angle,
-            ):
-                self._frame_available_event.set()
+        try:
+            captured, frame_ticks, frame_width, frame_height, rotation_angle = (
+                self.capture_to_stage(self.get_region(), write_slot.stage)
+            )
+            with self.lock:
+                if captured:
+                    published = self.frame_buffer.commit_write(
+                        write_slot,
+                        frame_ticks=frame_ticks,
+                        frame_width=frame_width,
+                        frame_height=frame_height,
+                        rotation_angle=rotation_angle,
+                    )
+                else:
+                    published = self.video_mode and self.frame_buffer.commit_repeat()
+                if published:
+                    self._frame_available_event.set()
+        finally:
+            with self.lock:
+                self.frame_buffer.cancel_write(write_slot)
 
     def run_loop(self) -> None:
         timer_handle: Any | None = None
-        if self.target_fps != 0:
-            timer_handle = create_high_resolution_timer()
-            set_periodic_timer(timer_handle, self.target_fps)
-
         start_time = time.perf_counter()
         try:
+            if self.target_fps != 0:
+                timer_handle = create_high_resolution_timer()
+                set_periodic_timer(timer_handle, self.target_fps)
             while not self._stop_event.is_set():
                 if timer_handle is not None:
                     wait_for_timer(timer_handle)

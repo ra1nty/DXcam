@@ -22,6 +22,7 @@ import signal
 import time
 import weakref
 from types import FrameType
+from threading import Lock, RLock
 from typing import Any, Callable, cast
 
 from dxcam.runtime.backend import normalize_backend_name
@@ -50,43 +51,22 @@ __all__ = [
 
 # Hide internal factory/signal plumbing from pdoc output.
 __pdoc__: dict[str, bool] = {
-    "Singleton": False,
     "DXFactory": False,
-    "_configure_comtypes_logging": False,
+    "_get_factory": False,
     "_handle_sigterm": False,
     "_install_sigterm_handler": False,
     "__factory": False,
 }
 
 
-def _configure_comtypes_logging() -> None:
-    # Suppress noisy per-frame COM Release debug logs from comtypes internals.
-    logging.getLogger("comtypes").setLevel(logging.INFO)
-    logging.getLogger("comtypes._post_coinit.unknwn").setLevel(logging.INFO)
-
-
-class Singleton(type):
-    """Metaclass that allows exactly one instance per class."""
-
-    _instances = {}
-
-    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        else:
-            logger.warning("Only 1 instance of %s is allowed.", cls.__name__)
-
-        return cls._instances[cls]
-
-
-class DXFactory(metaclass=Singleton):
+class DXFactory:
     """Factory that owns device/output discovery and camera singletons."""
 
-    _camera_instances: weakref.WeakValueDictionary[
-        tuple[int, int, CaptureBackend], DXCamera
-    ] = weakref.WeakValueDictionary()
-
     def __init__(self) -> None:
+        self._camera_instances: weakref.WeakValueDictionary[
+            tuple[int, int, CaptureBackend], DXCamera
+        ] = weakref.WeakValueDictionary()
+        self._camera_lock = RLock()
         p_adapters = enum_dxgi_adapters()
         self.devices: list[Device] = []
         self.outputs: list[list[Output]] = []
@@ -104,7 +84,7 @@ class DXFactory(metaclass=Singleton):
         output_idx: int | None = None,
         region: Region | None = None,
         output_color: ColorMode = "RGB",
-        max_buffer_len: int = 8,
+        *,
         backend: CaptureBackend = "dxgi",
         processor_backend: ProcessorBackend = "cv2",
     ) -> DXCamera:
@@ -127,41 +107,32 @@ class DXFactory(metaclass=Singleton):
                 )
             output_idx = primary_output_indices[0]
         instance_key = (device_idx, output_idx, backend)
-        existing_camera = self._camera_instances.get(instance_key)
-        if existing_camera is not None and existing_camera.is_released:
-            logger.info(
-                "Dropping released DXCamera instance for device=%s output=%s backend=%s.",
-                device_idx,
-                output_idx,
-                backend,
-            )
-            del self._camera_instances[instance_key]
-            existing_camera = None
-        if existing_camera is not None:
-            logger.warning(
-                "DXCamera instance already exists for device=%s output=%s backend=%s; "
-                "returning the existing instance. Call release() before "
-                "recreating it with new parameters.",
-                device_idx,
-                output_idx,
-                backend,
-            )
-            return existing_camera
+        with self._camera_lock:
+            existing_camera = self._camera_instances.get(instance_key)
+            if existing_camera is not None and not existing_camera.is_released:
+                logger.warning(
+                    "DXCamera instance already exists for device=%s output=%s "
+                    "backend=%s; returning the existing instance. Call release() "
+                    "before recreating it with new parameters.",
+                    device_idx,
+                    output_idx,
+                    backend,
+                )
+                return existing_camera
 
-        output = self.outputs[device_idx][output_idx]
-        output.update_desc()
-        camera = DXCamera(
-            output=output,
-            device=device,
-            region=region,
-            output_color=output_color,
-            max_buffer_len=max_buffer_len,
-            backend=backend,
-            processor_backend=processor_backend,
-        )
-        self._camera_instances[instance_key] = camera
-        time.sleep(0.1)  # Fix for https://github.com/ra1nty/DXcam/issues/31
-        return camera
+            output = self.outputs[device_idx][output_idx]
+            output.update_desc()
+            camera = DXCamera(
+                output=output,
+                device=device,
+                region=region,
+                output_color=output_color,
+                backend=backend,
+                processor_backend=processor_backend,
+            )
+            self._camera_instances[instance_key] = camera
+            time.sleep(0.1)  # Fix for https://github.com/ra1nty/DXcam/issues/31
+            return camera
 
     def device_info(self) -> str:
         ret = ""
@@ -181,18 +152,30 @@ class DXFactory(metaclass=Singleton):
         return ret
 
     def clean_up(self) -> None:
-        for _, camera in list(self._camera_instances.items()):
+        with self._camera_lock:
+            cameras = list(self._camera_instances.values())
+        for camera in cameras:
             camera.release()
 
 
-__factory = DXFactory()
-_configure_comtypes_logging()
+__factory: DXFactory | None = None
+_factory_lock = Lock()
+
+
+def _get_factory() -> DXFactory:
+    global __factory
+
+    with _factory_lock:
+        if __factory is None:
+            __factory = DXFactory()
+        return __factory
 
 
 def _handle_sigterm(signum: int, frame: FrameType | None) -> None:
     logger.info("Received SIGTERM; releasing active DXCamera instances.")
     try:
-        __factory.clean_up()
+        if __factory is not None:
+            __factory.clean_up()
     except Exception:
         logger.exception("Failed during DXCamera SIGTERM cleanup.")
 
@@ -213,8 +196,9 @@ def _install_sigterm_handler() -> None:
     if _sigterm_handler_installed:
         return
     try:
-        _previous_sigterm_handler = signal.getsignal(signal.SIGTERM)
+        previous = signal.getsignal(signal.SIGTERM)
         signal.signal(signal.SIGTERM, _handle_sigterm)
+        _previous_sigterm_handler = previous
         _sigterm_handler_installed = True
     except (ValueError, AttributeError):
         # ValueError: called outside the main thread.
@@ -227,7 +211,7 @@ def create(
     output_idx: int | None = None,
     region: Region | None = None,
     output_color: ColorMode = "RGB",
-    max_buffer_len: int = 8,
+    *,
     backend: CaptureBackend = "dxgi",
     processor_backend: ProcessorBackend = "cv2",
 ) -> DXCamera:
@@ -239,8 +223,6 @@ def create(
             the primary output.
         region: Optional capture region as ``(left, top, right, bottom)``.
         output_color: Output pixel format.
-        max_buffer_len: Kept for API compatibility. Threaded capture uses a
-            fixed three-slot latest-only frame buffer.
         backend: Capture backend, ``"dxgi"`` or ``"winrt"``.
         processor_backend: Post-processing backend, ``"cv2"`` (default),
             ``"cython"``, or ``"numpy"``. The ``"cython"`` backend uses the
@@ -262,12 +244,11 @@ def create(
         >>> cam.release()
     """
     _install_sigterm_handler()
-    return __factory.create(
+    return _get_factory().create(
         device_idx=device_idx,
         output_idx=output_idx,
         region=region,
         output_color=output_color,
-        max_buffer_len=max_buffer_len,
         backend=backend,
         processor_backend=processor_backend,
     )
@@ -280,7 +261,7 @@ def device_info() -> str:
         >>> import dxcam
         >>> print(dxcam.device_info())
     """
-    return __factory.device_info()
+    return _get_factory().device_info()
 
 
 def output_info() -> str:
@@ -290,4 +271,4 @@ def output_info() -> str:
         >>> import dxcam
         >>> print(dxcam.output_info())
     """
-    return __factory.output_info()
+    return _get_factory().output_info()

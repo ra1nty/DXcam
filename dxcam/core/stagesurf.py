@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import ctypes
+from _thread import LockType
 from contextlib import contextmanager
 from dataclasses import InitVar, dataclass, field
+from threading import Lock
 from typing import Any, Iterator, cast
 
 from dxcam._libs.d3d11 import (
@@ -30,6 +32,7 @@ class StageSurface:
     texture: Any = None
     interface: Any = None
     _copy_region_box: D3D11_BOX = field(default_factory=D3D11_BOX, repr=False)
+    _map_lock: LockType = field(default_factory=Lock, init=False, repr=False)
     output: InitVar[Output | None] = None
     device: InitVar[Device | None] = None
     dim: InitVar[tuple[int, int] | None] = None
@@ -120,11 +123,14 @@ class StageSurface:
     @contextmanager
     def mapped(self) -> Iterator[DXGI_MAPPED_RECT]:
         """Context-manager wrapper around map/unmap."""
-        rect = self.map()
-        try:
-            yield rect
-        finally:
-            self.unmap()
+        # Several readers can lease the latest frame, but DXGI permits only one
+        # active mapping of a surface. Leases keep it alive while readers queue.
+        with self._map_lock:
+            rect = self.map()
+            try:
+                yield rect
+            finally:
+                self.unmap()
 
     def copy_region_from(
         self,

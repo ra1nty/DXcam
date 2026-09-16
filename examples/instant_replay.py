@@ -6,6 +6,7 @@ from collections import deque
 from importlib import import_module
 import logging
 from threading import Event, Lock
+import time
 from typing import Any
 
 import dxcam
@@ -85,7 +86,15 @@ def main() -> None:
     encoded_packets = 0
     try:
         listener.wait()
+        frame_interval = 1.0 / TARGET_FPS
+        next_frame = time.perf_counter()
         while not stop_event.is_set():
+            # The camera's target FPS paces capture, not calls to read the latest.
+            delay = next_frame - time.perf_counter()
+            if delay > 0 and stop_event.wait(delay):
+                break
+            # Rebase after delays instead of catching up with duplicate frames.
+            next_frame = time.perf_counter() + frame_interval
             frame = camera.get_latest_frame()
             if frame is None:
                 continue
