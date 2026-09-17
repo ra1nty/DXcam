@@ -2,7 +2,8 @@
 - Keep the selected fallback output alive during display recovery; release unused candidates on both successful selection and exceptions.
 - Add per-reader `after_timestamp` filtering and optional waiting deadlines to `get_latest_frame()` and `get_latest_frame_into()`; retain immediate latest-frame reads by default.
 - Wake all waiting readers on publication, stop, or worker failure; preserve destination arrays when no eligible frame is available.
-- Add `start(frame_timeout_ms=10)` to bound native acquisition waits independently of consumer deadlines, capped at one frame period when producer pacing is enabled.
+- Add `start(frame_timeout_ms=0)` with polling as the default; explicit positive values bound native acquisition waits independently of consumer deadlines and are capped at one frame period when producer pacing is enabled.
+- Document DXGI acquisition-wait recommendations by use case, based on [CPU and frame-age measurements](benchmarks/acquisition_wait_comparison.md); positive waits remain an explicit latency/CPU tradeoff.
 - Ignore DXGI pointer-only updates after the initial image in each capture session; video-mode repeats retain their original timestamp and do not satisfy fresh-frame reads.
 
 ### 0.4.0.dev2

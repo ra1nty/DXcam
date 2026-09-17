@@ -93,13 +93,38 @@ See [capture_to_video.py](../examples/capture_to_video.py) for paced recording.
 
 ### Native acquisition timeout (unreleased)
 
-`start(frame_timeout_ms=10)` sets the maximum backend acquisition wait in
-milliseconds. Valid values are integers from `0` to `1000`, excluding booleans;
-`0` polls. With positive `target_fps`, this is capped at one nominal frame period
-rounded down to whole milliseconds. For example, the default becomes 8 ms at
-120 FPS and 4 ms at 240 FPS. `target_fps=0` disables timer pacing and uses the
-full requested acquisition wait. Producer pacing, native acquisition waits,
-and consumer read timeouts are separate controls.
+`start(frame_timeout_ms=0)` defaults to polling the backend. This option sets
+the maximum acquisition wait in milliseconds; valid values are integers from
+`0` to `1000`, excluding booleans. A positive timeout returns early when a frame
+arrives and does not impose a fixed sleep per frame.
+
+With positive `target_fps`, the wait is capped at one nominal frame period,
+rounded down to whole milliseconds. An explicitly requested 10 ms becomes 8 ms
+at 120 FPS and 4 ms at 240 FPS; the default remains `0`. `target_fps=0` disables
+timer pacing and uses the full requested acquisition wait. Producer pacing,
+native acquisition waits in milliseconds, and consumer read timeouts in seconds
+are separate controls.
+
+For DXGI realtime or vision workloads, start with paced polling:
+
+```python
+camera.start(target_fps=120, frame_timeout_ms=0)
+```
+
+Unpaced polling (`target_fps=0, frame_timeout_ms=0`) prioritizes low frame age
+and tighter tails at a cost of roughly one logical core in our test. Paced
+polling is already inexpensive when idle. If background work must remain
+unpaced, consider `target_fps=0` with an explicit 1–10 ms wait only when
+increased frame age and tail latency are acceptable. At a 60 FPS target,
+an explicit 10 ms wait improved typical frame age but increased CPU use and
+tail latency, so compare it with polling before choosing recording settings.
+Video writers still need their own pacing.
+
+These starting points come from one RTX 3060 Ti DXGI setup; they do not establish
+WinRT recommendations or a universally optimal timeout. See the
+[use-case table](../README.md#native-acquisition-wait-unreleased) and
+[benchmark report](../benchmarks/acquisition_wait_comparison.md), then measure
+your own workload.
 
 DXGI now suppresses pointer-only updates after the first image in each capture
 session. The first image can seed the buffer using a mouse-update timestamp or

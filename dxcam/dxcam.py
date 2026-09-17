@@ -587,7 +587,7 @@ class DXCamera:
         video_mode: bool = False,
         delay: int = 0,
         *,
-        frame_timeout_ms: int = 10,
+        frame_timeout_ms: int = 0,
     ) -> None:
         """Start threaded capture into latest-only frame-buffer slots.
 
@@ -597,9 +597,12 @@ class DXCamera:
             video_mode: Reuse previous frame when no new frame arrives.
             delay: Optional startup delay in seconds.
             frame_timeout_ms: Backend acquisition wait in milliseconds (0-1000).
-                Defaults to 10; 0 polls. This bounds each producer acquisition,
+                Defaults to 0 (polling). This bounds each producer acquisition,
                 independently of consumer read timeouts. With FPS pacing, the
                 wait is capped at one frame period, rounded down to milliseconds.
+                For DXGI, prefer polling with FPS pacing to balance latency and
+                CPU use. A positive wait can reduce unpaced idle CPU but increase
+                readout latency; measure it with your workload before enabling it.
 
         Example:
             >>> cam.start(target_fps=120)

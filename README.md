@@ -190,7 +190,22 @@ camera.start(target_fps=120)  # default to 60, greater than 120 is resource heav
 On Python 3.11+, DXcam relies on Windows high-resolution timer behavior used by `time.sleep()`.
 On older versions, DXcam uses WinAPI waitable timers directly.
 
-The unreleased `start(frame_timeout_ms=10)` option sets the maximum native acquisition wait in milliseconds. It accepts integers from `0` through `1000` (excluding booleans); `0` polls. When `target_fps` is positive, the wait is also capped at one nominal frame period in whole milliseconds: the default becomes 8 ms at 120 FPS and 4 ms at 240 FPS. With `target_fps=0`, timer pacing is disabled and the full requested acquisition wait applies. This producer setting is separate from the consumer's `get_latest_frame(timeout=...)` deadline.
+#### Native Acquisition Wait (Unreleased)
+
+The unreleased `start(frame_timeout_ms=0)` option sets the maximum native acquisition wait in milliseconds. The default is `0` (polling). Valid values are integers from `0` through `1000`, excluding booleans. A positive timeout lets acquisition return as soon as a frame arrives; it does not add a fixed sleep to each frame.
+
+When `target_fps` is positive, the wait is capped at one nominal frame period, rounded down to whole milliseconds. An explicitly requested `frame_timeout_ms=10` becomes 8 ms at 120 FPS and 4 ms at 240 FPS; the default remains `0`. With `target_fps=0`, timer pacing is disabled and the full requested acquisition wait applies. This producer setting uses milliseconds; the consumer's `get_latest_frame(timeout=...)` uses seconds and only bounds waiting for an eligible published frame.
+
+For **DXGI**, use these settings as starting points:
+
+| Use case | Example `camera.start(...)` arguments | Tradeoff |
+| --- | --- | --- |
+| Realtime vision or interactive capture | `target_fps=120, frame_timeout_ms=0` | Timer pacing limits polling CPU cost while retaining low frame age. |
+| Latency priority, CPU budget available | `target_fps=0, frame_timeout_ms=0` | Consistently low frame age and tighter tails in our test, at roughly one logical core even when idle. |
+| Idle or background capture that must remain unpaced | `target_fps=0, frame_timeout_ms=1` | Consider an explicit 1–10 ms wait if increased frame age and tail latency are acceptable; use paced polling when a fixed capture target suits the workload. |
+| 60 FPS recording | `target_fps=60, frame_timeout_ms=0` | Compare an explicit 10 ms wait on your setup: it improved typical frame age in our test, but increased CPU use and tail latency. Pace the video writer separately. |
+
+These recommendations come from [DXGI acquisition-wait measurements](benchmarks/acquisition_wait_comparison.md) on one RTX 3060 Ti setup with approximately 60 FPS desktop delivery. No timeout was best for every use case. Benchmark your own workload; these measurements do not establish recommendations for WinRT.
 
 ### Frame Timestamp
 Read the most recent frame timestamp (seconds):

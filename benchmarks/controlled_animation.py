@@ -25,6 +25,10 @@ def main() -> None:
     parser.add_argument("--height", type=int, default=720)
     parser.add_argument("--fps", type=float, default=120)
     parser.add_argument("--max-seconds", type=float, default=180)
+    parser.add_argument(
+        "--static", action="store_true",
+        help="Draw source frame 1 once, then only pump window messages and wait.",
+    )
     args = parser.parse_args()
     if sys.platform != "win32":
         raise RuntimeError("The controlled workload requires Windows.")
@@ -102,6 +106,7 @@ def main() -> None:
     threading.Thread(target=lambda: (sys.stdin.readline(), stop.set()), daemon=True).start()
     started = time.perf_counter()
     frame_id = 0
+    draw_count = 0
     deadline = started
     message = wintypes.MSG()
 
@@ -110,23 +115,39 @@ def main() -> None:
         gdi32.SetDCBrushColor(memory_dc, color)
         user32.FillRect(memory_dc, ctypes.byref(rect), brush)
 
+    def draw_frame(source_id: int) -> None:
+        fill(0, 0, width, height, 0x302820)
+        bar = (source_id * 7) % width
+        fill(bar, 80, min(bar + 100, width), height, 0xE0A050)
+        bits = tuple((source_id >> bit) & 1 for bit in range(16))
+        for index, value in enumerate(MARKER + bits + tuple(1 - bit for bit in bits)):
+            fill(BAR_X + index * CELL, BAR_Y, BAR_X + (index + 1) * CELL,
+                 BAR_Y + CELL, 0xFFFFFF if value else 0)
+        gdi32.BitBlt(screen_dc, 0, 0, width, height, memory_dc, 0, 0, 0x00CC0020)
+        gdi32.GdiFlush()
+
     try:
+        if args.static:
+            frame_id = 1
+            draw_frame(frame_id)
+            draw_count = 1
         print(json.dumps({"region": [64, 64, 64 + width, 64 + height],
-                          "requested_source_fps": args.fps}), flush=True)
+                          "requested_source_fps": 0 if args.static else args.fps,
+                          "workload_mode": "static" if args.static else "animated"}),
+              flush=True)
         while not stop.is_set() and time.perf_counter() - started < args.max_seconds:
             while user32.PeekMessageW(ctypes.byref(message), None, 0, 0, 1):
                 user32.TranslateMessage(ctypes.byref(message))
                 user32.DispatchMessageW(ctypes.byref(message))
+            if args.static:
+                # Do not redraw even unchanged pixels: a GDI blit can cause a
+                # desktop update and would invalidate an idle-acquisition trial.
+                remaining = args.max_seconds - (time.perf_counter() - started)
+                stop.wait(max(0, min(0.05, remaining)))
+                continue
             frame_id += 1
-            fill(0, 0, width, height, 0x302820)
-            bar = (frame_id * 7) % width
-            fill(bar, 80, min(bar + 100, width), height, 0xE0A050)
-            bits = tuple((frame_id >> bit) & 1 for bit in range(16))
-            for index, value in enumerate(MARKER + bits + tuple(1 - bit for bit in bits)):
-                fill(BAR_X + index * CELL, BAR_Y, BAR_X + (index + 1) * CELL,
-                     BAR_Y + CELL, 0xFFFFFF if value else 0)
-            gdi32.BitBlt(screen_dc, 0, 0, width, height, memory_dc, 0, 0, 0x00CC0020)
-            gdi32.GdiFlush()
+            draw_frame(frame_id)
+            draw_count += 1
             deadline += 1.0 / args.fps
             delay = deadline - time.perf_counter()
             if delay > 0:
@@ -134,7 +155,8 @@ def main() -> None:
             elif delay < -0.1:
                 deadline = time.perf_counter()
         elapsed = time.perf_counter() - started
-        print(json.dumps({"submitted_frames": frame_id, "elapsed_s": elapsed,
+        print(json.dumps({"submitted_frames": frame_id, "draw_count": draw_count,
+                          "elapsed_s": elapsed,
                           "source_submissions_per_s": frame_id / elapsed}), flush=True)
     finally:
         gdi32.SelectObject(memory_dc, old_bitmap)

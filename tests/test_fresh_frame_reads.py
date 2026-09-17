@@ -425,8 +425,10 @@ def test_start_forwards_native_wait_capped_by_frame_period(
     assert harness.capture_options == [(True, expected)]
 
 
-def test_start_defaults_to_ten_millisecond_native_wait(harness):
-    harness.start()
-    harness.publish(100)
-    assert harness.capture_options
-    assert all(options == (True, 10) for options in harness.capture_options)
+@pytest.mark.parametrize("fps", [0, 60, 120, 240])
+def test_start_defaults_to_native_polling(harness, monkeypatch, fps):
+    monkeypatch.setattr(CaptureWorker, "start", lambda self: None)
+    harness.camera.start(target_fps=fps)
+    harness.requests.put((100, 1))
+    harness.worker._run_capture_cycle()
+    assert harness.capture_options == [(True, 0)]
