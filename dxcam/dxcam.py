@@ -22,8 +22,10 @@ from __future__ import annotations
 from _thread import LockType
 
 import logging
+import math
 import time
 from contextlib import contextmanager
+from functools import partial
 from threading import Lock, current_thread
 from typing import Any, Literal, overload
 
@@ -267,27 +269,54 @@ class DXCamera:
                 rotation_angle=leased.rotation_angle,
             )
 
-    def _wait_for_read_lease(self):
+    def _wait_for_read_lease(
+        self,
+        *,
+        after_timestamp: float | None = None,
+        timeout: float | None = None,
+    ):
+        if isinstance(after_timestamp, bool):
+            raise TypeError("after_timestamp must be a number or None, not bool.")
+        if isinstance(timeout, bool):
+            raise TypeError("timeout must be a number or None, not bool.")
+        if after_timestamp is not None and not math.isfinite(after_timestamp):
+            raise ValueError("after_timestamp must be finite.")
+        if timeout is not None and (not math.isfinite(timeout) or timeout < 0):
+            raise ValueError("timeout must be a finite nonnegative number or None.")
+        deadline = None if timeout is None else time.monotonic() + timeout
         worker = self.__worker
         if worker is None:
             return None
-        while True:
-            with self.__lock:
+        with worker.frame_condition:
+            while True:
                 # A reader from a stopped session must not join a later start.
                 if worker is not self.__worker or not self.__frame_buffer.slots:
                     return None
-                leased = self.__frame_buffer.lease_latest_slot()
-                if leased is not None:
-                    return leased
-                if not worker.is_running():
+                ticks = self.__frame_buffer.latest_frame_ticks
+                if ticks is not None and (
+                    after_timestamp is None
+                    or self._duplicator.ticks_to_seconds(ticks) > after_timestamp
+                ):
+                    return self.__frame_buffer.lease_latest_slot()
+                if worker.stopped or not worker.is_running():
                     return None
-                # Clear under the same lock used by the producer to publish.
-                worker.clear_frame_signal()
-            worker.wait_for_frame(timeout=0.1)
+                remaining = None if deadline is None else deadline - time.monotonic()
+                if remaining is not None and remaining <= 0:
+                    return None
+                # Checking the predicate and starting the wait share the
+                # publication lock. All readers wake without consuming a signal.
+                worker.frame_condition.wait(timeout=remaining)
 
     @contextmanager
-    def _read_lease(self):
-        lease = self._wait_for_read_lease()
+    def _read_lease(
+        self,
+        *,
+        after_timestamp: float | None = None,
+        timeout: float | None = None,
+    ):
+        lease = self._wait_for_read_lease(
+            after_timestamp=after_timestamp, timeout=timeout
+        )
         try:
             yield lease
         finally:
@@ -414,10 +443,13 @@ class DXCamera:
         stage: StageSurface,
         *,
         wait_for_frame: bool = True,
+        timeout_ms: int | None = None,
     ) -> tuple[bool, int, int, int, int]:
         # WinRT frame-pool calls can take their own locks. Never hold the device
         # lock while acquiring/releasing frames or recovering a capture session.
-        with self._duplicator.acquire_frame(wait_for_frame=wait_for_frame) as (
+        with self._duplicator.acquire_frame(
+            wait_for_frame=wait_for_frame, timeout_ms=timeout_ms
+        ) as (
             ok,
             updated,
             frame_ticks,
@@ -554,6 +586,8 @@ class DXCamera:
         target_fps: int = 60,
         video_mode: bool = False,
         delay: int = 0,
+        *,
+        frame_timeout_ms: int = 10,
     ) -> None:
         """Start threaded capture into latest-only frame-buffer slots.
 
@@ -562,6 +596,10 @@ class DXCamera:
             target_fps: Target capture FPS. ``0`` disables timer pacing.
             video_mode: Reuse previous frame when no new frame arrives.
             delay: Optional startup delay in seconds.
+            frame_timeout_ms: Backend acquisition wait in milliseconds (0-1000).
+                Defaults to 10; 0 polls. This bounds each producer acquisition,
+                independently of consumer read timeouts. With FPS pacing, the
+                wait is capped at one frame period, rounded down to milliseconds.
 
         Example:
             >>> cam.start(target_fps=120)
@@ -569,6 +607,12 @@ class DXCamera:
             >>> cam.stop()
         """
         self._ensure_not_released()
+        if (
+            isinstance(frame_timeout_ms, bool)
+            or not isinstance(frame_timeout_ms, int)
+            or not 0 <= frame_timeout_ms <= 1000
+        ):
+            raise ValueError("frame_timeout_ms must be an integer between 0 and 1000.")
         if self.is_capturing:
             raise RuntimeError("Capture is already running. Call stop() first.")
         if self.__worker is not None and self.__worker.is_running():
@@ -585,12 +629,18 @@ class DXCamera:
             self._region_set_by_user = True
             self.region = region
         validate_region(region, self.width, self.height)
+        acquisition_timeout_ms = frame_timeout_ms
+        if target_fps > 0:
+            acquisition_timeout_ms = min(frame_timeout_ms, int(1000 / target_fps))
         with self.__lock:
             self._allocate_capture_slots_for_region(region, reason="build(start)")
+            self._duplicator.reset_frame_tracking()
             self.__worker = CaptureWorker(
                 frame_buffer=self.__frame_buffer,
                 lock=self.__lock,
-                capture_to_stage=self._capture_to_stage,
+                capture_to_stage=partial(
+                    self._capture_to_stage, timeout_ms=acquisition_timeout_ms
+                ),
                 get_region=self._get_capture_region,
                 target_fps=target_fps,
                 video_mode=video_mode,
@@ -635,9 +685,7 @@ class DXCamera:
             self.is_capturing = False
             self.__frame_buffer.clear()
             self.__last_grab_entry = None
-        if worker is not None:
-            worker.clear_frame_signal()
-        self.__worker = None
+            self.__worker = None
         if capture_error is not None:
             logger.error("Unhandled exception in capture loop.", exc_info=capture_error)
             raise capture_error
@@ -673,32 +721,51 @@ class DXCamera:
 
     @overload
     def get_latest_frame(
-        self, with_timestamp: Literal[False] = False
+        self,
+        with_timestamp: Literal[False] = False,
+        *,
+        after_timestamp: float | None = None,
+        timeout: float | None = None,
     ) -> Frame | None: ...
 
     @overload
     def get_latest_frame(
-        self, with_timestamp: Literal[True] = True
+        self,
+        with_timestamp: Literal[True] = True,
+        *,
+        after_timestamp: float | None = None,
+        timeout: float | None = None,
     ) -> tuple[Frame, float] | None: ...
 
     def get_latest_frame(
-        self, with_timestamp: bool = False
+        self,
+        with_timestamp: bool = False,
+        *,
+        after_timestamp: float | None = None,
+        timeout: float | None = None,
     ) -> Frame | tuple[Frame, float] | None:
         """Block until a buffered frame is available and return the latest one.
 
         Args:
             with_timestamp: Return ``(frame, timestamp_seconds)`` when ``True``.
+            after_timestamp: Only return a source frame strictly newer than this
+                timestamp. Each consumer can pass its own last returned timestamp.
+                Video-mode repeat publications do not qualify as newer frames.
+            timeout: Maximum seconds to wait for an eligible frame. ``None``
+                waits indefinitely, and ``0`` polls. Does not bound conversion.
 
         Returns:
             Frame data, optionally with timestamp, or ``None`` if capture is
-            stopped and the buffer is unavailable.
+            stopped, the buffer is unavailable, or the wait times out.
 
         Example:
             >>> cam.start(target_fps=60)
             >>> frame, ts = cam.get_latest_frame(with_timestamp=True)
             >>> cam.stop()
         """
-        with self._read_lease() as leased:
+        with self._read_lease(
+            after_timestamp=after_timestamp, timeout=timeout
+        ) as leased:
             if leased is None:
                 return None
             frame = self._process_stage(
@@ -713,24 +780,41 @@ class DXCamera:
 
     @overload
     def get_latest_frame_into(
-        self, dst: Frame, with_timestamp: Literal[False] = False
+        self,
+        dst: Frame,
+        with_timestamp: Literal[False] = False,
+        *,
+        after_timestamp: float | None = None,
+        timeout: float | None = None,
     ) -> bool | None: ...
 
     @overload
     def get_latest_frame_into(
-        self, dst: Frame, with_timestamp: Literal[True] = True
+        self,
+        dst: Frame,
+        with_timestamp: Literal[True] = True,
+        *,
+        after_timestamp: float | None = None,
+        timeout: float | None = None,
     ) -> tuple[bool, float] | None: ...
 
     def get_latest_frame_into(
         self,
         dst: Frame,
         with_timestamp: bool = False,
+        *,
+        after_timestamp: float | None = None,
+        timeout: float | None = None,
     ) -> bool | tuple[bool, float] | None:
         """Block until a buffered frame is available and write into ``dst``.
 
         ``dst`` must match the active output shape and channel count.
+        ``after_timestamp`` and ``timeout`` follow :meth:`get_latest_frame`.
+        If no eligible frame arrives, return ``None`` without modifying ``dst``.
         """
-        with self._read_lease() as leased:
+        with self._read_lease(
+            after_timestamp=after_timestamp, timeout=timeout
+        ) as leased:
             if leased is None:
                 return None
             validate_destination_frame(

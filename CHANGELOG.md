@@ -1,3 +1,10 @@
+### Unreleased
+- Keep the selected fallback output alive during display recovery; release unused candidates on both successful selection and exceptions.
+- Add per-reader `after_timestamp` filtering and optional waiting deadlines to `get_latest_frame()` and `get_latest_frame_into()`; retain immediate latest-frame reads by default.
+- Wake all waiting readers on publication, stop, or worker failure; preserve destination arrays when no eligible frame is available.
+- Add `start(frame_timeout_ms=10)` to bound native acquisition waits independently of consumer deadlines, capped at one frame period when producer pacing is enabled.
+- Ignore DXGI pointer-only updates after the initial image in each capture session; video-mode repeats retain their original timestamp and do not satisfy fresh-frame reads.
+
 ### 0.4.0.dev2
 - Keep reader and writer ownership attached to individual staging surfaces, including across stop and display recovery.
 - Never overwrite the published or leased frame; skip capture when no safe slot is available.

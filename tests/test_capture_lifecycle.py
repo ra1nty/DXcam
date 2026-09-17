@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from threading import Event, Lock, RLock, Thread, current_thread
+from threading import Condition, Event, Lock, RLock, Thread, current_thread
 from types import SimpleNamespace
 
 import numpy as np
@@ -28,13 +28,17 @@ class FakeWorker:
     thread = None
     elapsed_seconds = 0
 
-    def __init__(self, error=None, join_ok=True):
+    def __init__(self, error=None, join_ok=True, lock=None):
         self.running = True
+        self.stopped = False
         self.error = error
         self.join_ok = join_ok
+        self.frame_condition = Condition(lock)
 
     def stop(self):
-        pass
+        self.stopped = True
+        with self.frame_condition:
+            self.frame_condition.notify_all()
 
     def join(self, timeout=None):
         self.running = not self.join_ok
@@ -45,12 +49,6 @@ class FakeWorker:
 
     def is_running(self):
         return self.running
-
-    def clear_frame_signal(self):
-        pass
-
-    def wait_for_frame(self, timeout):
-        raise AssertionError("A published frame must not wait for another event")
 
 
 def make_buffer():
@@ -80,7 +78,7 @@ def make_camera():
     camera._DXCamera__lock = Lock()
     camera._DXCamera__processor_lock = Lock()
     camera._DXCamera__frame_buffer, stages = make_buffer()
-    camera._DXCamera__worker = FakeWorker()
+    camera._DXCamera__worker = FakeWorker(lock=camera._DXCamera__lock)
     camera._DXCamera__last_grab_entry = None
     camera._duplicator = SimpleNamespace(
         ticks_to_seconds=lambda value: value / 100, release=lambda: None
@@ -149,11 +147,11 @@ def test_waiter_does_not_consume_a_restarted_sessions_frame():
     old_worker = camera._DXCamera__worker
 
     def restart(timeout):
-        camera._DXCamera__worker = FakeWorker()
+        camera._DXCamera__worker = FakeWorker(lock=camera._DXCamera__lock)
         publish(camera._DXCamera__frame_buffer)
         return True
 
-    old_worker.wait_for_frame = restart
+    old_worker.frame_condition.wait = restart
     try:
         assert camera.get_latest_frame() is None
         assert camera.get_latest_frame() is not None
@@ -170,7 +168,7 @@ def test_capture_exception_cancels_writer_reservation():
     worker = CaptureWorker(buffer, Lock(), fail, lambda: (0, 0, 2, 2), target_fps=0)
     worker.run_loop()
     assert str(worker.consume_error()) == "capture failed"
-    assert worker.wait_for_frame(timeout=0)
+    assert worker.stopped
     assert not any(slot.writing for slot in buffer.slots)
     buffer.clear()
 
@@ -209,14 +207,16 @@ def test_timer_setup_error_wakes_waiters_and_is_reported(monkeypatch):
     worker = CaptureWorker(buffer, Lock(), lambda *args: None, lambda: (0, 0, 2, 2))
     worker.run_loop()
     assert str(worker.consume_error()) == "timer failed"
-    assert worker.wait_for_frame(timeout=0)
+    assert worker.stopped
     assert closed == ["timer"]
     buffer.clear()
 
 
 def test_release_cleans_resources_after_reporting_capture_error():
     camera, stages = make_camera()
-    camera._DXCamera__worker = FakeWorker(error=RuntimeError("producer failed"))
+    camera._DXCamera__worker = FakeWorker(
+        error=RuntimeError("producer failed"), lock=camera._DXCamera__lock
+    )
     released = []
     camera._duplicator.release = lambda: released.append(True)
     with pytest.raises(RuntimeError, match="producer failed"):
@@ -231,7 +231,9 @@ def test_release_cleans_resources_after_reporting_capture_error():
 
 def test_release_join_timeout_keeps_live_capture_resources():
     camera, stages = make_camera()
-    worker = camera._DXCamera__worker = FakeWorker(join_ok=False)
+    worker = camera._DXCamera__worker = FakeWorker(
+        join_ok=False, lock=camera._DXCamera__lock
+    )
     try:
         with pytest.raises(RuntimeError, match="did not stop"):
             camera.release()
@@ -306,7 +308,7 @@ def test_capture_guards_copy_but_not_frame_pool_calls_or_recovery(
         device_lock.release()
 
     @contextmanager
-    def acquire_frame(*, wait_for_frame):
+    def acquire_frame(*, wait_for_frame, timeout_ms=None):
         assert not device_lock.locked()
         events.append("acquire")
         try:

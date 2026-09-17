@@ -93,11 +93,30 @@ camera.is_capturing  # False
 for _ in range(1000):
     frame = camera.get_latest_frame()  # waits for the first available frame
 ```
-The capture thread publishes into a latest-only frame buffer. Once a frame is available, reads return immediately and can return the same timestamp repeatedly. Consumers control their own pacing; compare timestamps when you need only fresh frames. `target_fps` controls the producer, not the frequency of consumer reads.
+The capture thread publishes into a latest-only frame buffer. Once a frame is available, reads return immediately and can return the same timestamp repeatedly. Consumers control their own pacing. `target_fps` controls the producer, not the frequency of consumer reads.
 
 Useful variants:
 - `camera.get_latest_frame(with_timestamp=True)` -> `(frame, frame_timestamp)` -> return frame timestamp
 - `camera.get_latest_frame_into(dst)` -> write latest frame into caller-provided array
+
+#### Wait for a Fresh Frame (Unreleased)
+The current development branch adds `after_timestamp` and `timeout` to both latest-frame methods. These options are not included in `0.4.0.dev2`.
+
+```python
+last_timestamp = None
+for _ in range(1000):
+    result = camera.get_latest_frame(
+        with_timestamp=True, after_timestamp=last_timestamp, timeout=0.5
+    )
+    if result is None:
+        break  # no eligible frame before timeout, or capture stopped/failed
+    frame, last_timestamp = result
+    # Process frame here.
+```
+
+`after_timestamp` requires a strictly newer source timestamp. Each consumer keeps its own threshold; one reader does not consume another reader's update. A slow consumer receives the newest available frame and can skip intermediate frames. Freshness follows the source timestamp, not a pixel comparison of the selected region.
+
+`timeout` is in seconds: `None` waits indefinitely, `0` polls, and a finite nonnegative value bounds the wait. It does not limit frame conversion time. When no eligible frame is available, the methods return `None`; `get_latest_frame_into(dst, after_timestamp=..., timeout=...)` leaves `dst` unchanged. Worker failures are reported by `stop()`. Omitting these options preserves the latest-frame behavior above.
 
 > When `start()` capture is running, calling `grab()` reads from the in-memory frame buffer instead of directly polling the capture backend.
 
@@ -171,6 +190,8 @@ camera.start(target_fps=120)  # default to 60, greater than 120 is resource heav
 On Python 3.11+, DXcam relies on Windows high-resolution timer behavior used by `time.sleep()`.
 On older versions, DXcam uses WinAPI waitable timers directly.
 
+The unreleased `start(frame_timeout_ms=10)` option sets the maximum native acquisition wait in milliseconds. It accepts integers from `0` through `1000` (excluding booleans); `0` polls. When `target_fps` is positive, the wait is also capped at one nominal frame period in whole milliseconds: the default becomes 8 ms at 120 FPS and 4 ms at 240 FPS. With `target_fps=0`, timer pacing is disabled and the full requested acquisition wait applies. This producer setting is separate from the consumer's `get_latest_frame(timeout=...)` deadline.
+
 ### Frame Timestamp
 Read the most recent frame timestamp (seconds):
 ```python
@@ -181,6 +202,8 @@ camera.stop()
 
 For `backend="dxgi"`, this value comes from `DXGI_OUTDUPL_FRAME_INFO.LastPresentTime`.
 For `backend="winrt"`, this value is derived from WinRT `SystemRelativeTime`.
+
+In the unreleased development branch, DXGI pointer-only updates are ignored after the initial image in each capture session. That first image may use the mouse-update timestamp or a performance-counter fallback when no presentation timestamp is available. WinRT can include the cursor in the captured pixels, so cursor movement can still produce new frames.
 
 ### Video Mode
 With `video_mode=True`, DXcam continues publishing at target FPS, reusing the previous frame when no new frame is rendered.
@@ -213,6 +236,8 @@ finally:
 
 Latest-frame reads return immediately once a frame exists. Pace the consumer as
 above to avoid filling the video with repeated reads as fast as Python can run.
+Repeated video-mode frames retain their original source timestamp, so they do
+not satisfy an `after_timestamp` threshold equal to that timestamp.
 
 ### Capture Backend
 DXcam supports two capture backends:

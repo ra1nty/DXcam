@@ -4,6 +4,7 @@ import ctypes
 import importlib
 import logging
 import os
+import time
 from contextlib import contextmanager
 from dataclasses import InitVar, dataclass, field
 from datetime import timedelta
@@ -400,10 +401,20 @@ class WinRTDuplicator:
             latest = frame
         return latest, drained, False
 
-    def _wait_for_frame_arrival(self) -> bool:
-        if self._frame_arrived_event is None or self._frame_wait_seconds <= 0.0:
+    def _wait_for_frame_arrival(self, timeout_ms: int | None = None) -> bool:
+        timeout_seconds = (
+            self._frame_wait_seconds if timeout_ms is None else timeout_ms / 1000
+        )
+        if timeout_seconds <= 0.0:
             return False
-        signaled = self._frame_arrived_event.wait(timeout=self._frame_wait_seconds)
+        if self._frame_arrived_event is None:
+            if timeout_ms is None:
+                return False
+            # Event subscription can fail on some runtimes. Still honor an
+            # explicit producer wait before polling the frame pool again.
+            time.sleep(timeout_seconds)
+            return True
+        signaled = self._frame_arrived_event.wait(timeout=timeout_seconds)
         if signaled:
             self._frame_arrived_event.clear()
         return signaled
@@ -443,7 +454,9 @@ class WinRTDuplicator:
         self.accumulated_frames = 0
         return True
 
-    def _update_frame(self, wait_for_frame: bool = False) -> bool:
+    def _update_frame(
+        self, wait_for_frame: bool = False, *, timeout_ms: int | None = None
+    ) -> bool:
         if self._frame is not None or self._dxgi_surface:
             if not self._release_frame():
                 self.updated = False
@@ -454,7 +467,12 @@ class WinRTDuplicator:
             self.updated = False
             return False
 
-        if frame is None and wait_for_frame and self._wait_for_frame_arrival():
+        should_wait = wait_for_frame if timeout_ms is None else timeout_ms > 0
+        if (
+            frame is None
+            and should_wait
+            and self._wait_for_frame_arrival(timeout_ms=timeout_ms)
+        ):
             frame, extra_drained, failed = self._drain_to_latest_frame()
             drained += extra_drained
             if failed:
@@ -498,9 +516,9 @@ class WinRTDuplicator:
 
     @contextmanager
     def acquire_frame(
-        self, wait_for_frame: bool = False
+        self, wait_for_frame: bool = False, *, timeout_ms: int | None = None
     ) -> Iterator[tuple[bool, bool, int]]:
-        ok = self._update_frame(wait_for_frame=wait_for_frame)
+        ok = self._update_frame(wait_for_frame=wait_for_frame, timeout_ms=timeout_ms)
         updated = ok and self.updated
         frame_ticks = self.latest_frame_ticks
         try:
@@ -517,6 +535,9 @@ class WinRTDuplicator:
         if self.performance_frequency <= 0:
             return 0.0
         return ticks / self.performance_frequency
+
+    def reset_frame_tracking(self) -> None:
+        """WinRT delivers complete rendered frames and needs no seed tracking."""
 
     def _release_frame(self) -> bool:
         if self._frame is not None:
