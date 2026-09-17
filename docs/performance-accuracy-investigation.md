@@ -45,6 +45,12 @@ temporary copy from cached one-shot `grab_into()`. It includes isolated CPU and
 allocation measurements plus real DXGI/WinRT lifecycle checks. The broader D3D
 handoff, fused NumPy conversion, and processed-frame-cache proposals remain open.
 
+The [NumPy pitched-row follow-up](../benchmarks/numpy_pitch_comparison.md) removes
+the contiguous BGRA input temporary for positive padded/cropped rows. Packed
+inputs, BGRA output, and rotation preparation retain their existing paths;
+rotation/color fusion remains separate work. Its processor measurements do not
+establish capture FPS or end-to-end frame-age improvements.
+
 Detached-output fallback selection now retains its selected replacement and
 releases unused candidates, including on exceptions.
 
