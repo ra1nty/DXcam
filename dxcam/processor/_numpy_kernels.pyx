@@ -126,6 +126,8 @@ cdef inline cnp.ndarray[uint8_t, ndim=3, mode="c"] _ensure_src_bgra_contiguous(
 cdef inline cnp.ndarray[uint8_t, ndim=3, mode="c"] _ensure_dst_contiguous(
     cnp.ndarray[uint8_t, ndim=3] dst
 ):
+    if not dst.flags.writeable:
+        raise ValueError("Destination array must be writable.")
     if not dst.flags.c_contiguous:
         raise ValueError("Destination array must be C-contiguous.")
     return dst

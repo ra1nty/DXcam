@@ -71,6 +71,9 @@ frame = camera.grab()
 `grab()` returns a `numpy.ndarray`. In one-shot mode it returns `None` if no new frame is available; `camera.grab(new_frame_only=False)` can reuse the last cached frame. During threaded capture, it reads the latest published frame and ignores `new_frame_only`.
 
 Use `camera.grab_into(dst)` to reuse caller-managed memory.
+Both `grab_into(dst)` and `get_latest_frame_into(dst)` require a writable NumPy
+`uint8` array with the frame's `(height, width, channels)` shape. The unreleased
+development branch raises `ValueError` for a read-only destination before writing.
 
 To capture a region:
 ```python
@@ -93,11 +96,30 @@ camera.is_capturing  # False
 for _ in range(1000):
     frame = camera.get_latest_frame()  # waits for the first available frame
 ```
-The capture thread publishes into a latest-only frame buffer. Once a frame is available, reads return immediately and can return the same timestamp repeatedly. Consumers control their own pacing; compare timestamps when you need only fresh frames. `target_fps` controls the producer, not the frequency of consumer reads.
+The capture thread publishes into a latest-only frame buffer. Once a frame is available, reads return immediately and can return the same timestamp repeatedly. Consumers control their own pacing. `target_fps` controls the producer, not the frequency of consumer reads.
 
 Useful variants:
 - `camera.get_latest_frame(with_timestamp=True)` -> `(frame, frame_timestamp)` -> return frame timestamp
 - `camera.get_latest_frame_into(dst)` -> write latest frame into caller-provided array
+
+#### Wait for a Fresh Frame (Unreleased)
+The current development branch adds `after_timestamp` and `timeout` to both latest-frame methods. These options are not included in `0.4.0.dev2`.
+
+```python
+last_timestamp = None
+for _ in range(1000):
+    result = camera.get_latest_frame(
+        with_timestamp=True, after_timestamp=last_timestamp, timeout=0.5
+    )
+    if result is None:
+        break  # no eligible frame before timeout, or capture stopped/failed
+    frame, last_timestamp = result
+    # Process frame here.
+```
+
+`after_timestamp` requires a strictly newer source timestamp. Each consumer keeps its own threshold; one reader does not consume another reader's update. A slow consumer receives the newest available frame and can skip intermediate frames. Freshness follows the source timestamp, not a pixel comparison of the selected region.
+
+`timeout` is in seconds: `None` waits indefinitely, `0` polls, and a finite nonnegative value bounds the wait. It does not limit frame conversion time. When no eligible frame is available, the methods return `None`; `get_latest_frame_into(dst, after_timestamp=..., timeout=...)` leaves `dst` unchanged. Worker failures are reported by `stop()`. Omitting these options preserves the latest-frame behavior above.
 
 > When `start()` capture is running, calling `grab()` reads from the in-memory frame buffer instead of directly polling the capture backend.
 
@@ -105,6 +127,11 @@ Useful variants:
 `release()` stops capture, frees buffers, and releases capture resources.
 After `release()`, the same instance cannot be reused.
 In-flight readers retain their staging surfaces until readout completes, including across stop or output recovery.
+
+In the unreleased development branch, `stop()` cancels display-recovery retries
+and interrupts their backoff wait. A subsequent `start()` retries unfinished
+recovery before acquiring another frame. A native call already in progress must
+still return before the worker can stop.
 
 ```python
 camera = dxcam.create(output_idx=0, output_color="BGR")
@@ -171,6 +198,23 @@ camera.start(target_fps=120)  # default to 60, greater than 120 is resource heav
 On Python 3.11+, DXcam relies on Windows high-resolution timer behavior used by `time.sleep()`.
 On older versions, DXcam uses WinAPI waitable timers directly.
 
+#### Native Acquisition Wait (Unreleased)
+
+The unreleased `start(frame_timeout_ms=0)` option sets the maximum native acquisition wait in milliseconds. The default is `0` (polling). Valid values are integers from `0` through `1000`, excluding booleans. A positive timeout lets acquisition return as soon as a frame arrives; it does not add a fixed sleep to each frame.
+
+When `target_fps` is positive, the wait is capped at one nominal frame period, rounded down to whole milliseconds. An explicitly requested `frame_timeout_ms=10` becomes 8 ms at 120 FPS and 4 ms at 240 FPS; the default remains `0`. With `target_fps=0`, timer pacing is disabled and the full requested acquisition wait applies. This producer setting uses milliseconds; the consumer's `get_latest_frame(timeout=...)` uses seconds and only bounds waiting for an eligible published frame.
+
+For **DXGI**, use these settings as starting points:
+
+| Use case | Example `camera.start(...)` arguments | Tradeoff |
+| --- | --- | --- |
+| Realtime vision or interactive capture | `target_fps=120, frame_timeout_ms=0` | Timer pacing limits polling CPU cost while retaining low frame age. |
+| Latency priority, CPU budget available | `target_fps=0, frame_timeout_ms=0` | Consistently low frame age and tighter tails in our test, at roughly one logical core even when idle. |
+| Idle or background capture that must remain unpaced | `target_fps=0, frame_timeout_ms=1` | Consider an explicit 1–10 ms wait if increased frame age and tail latency are acceptable; use paced polling when a fixed capture target suits the workload. |
+| 60 FPS recording | `target_fps=60, frame_timeout_ms=0` | Compare an explicit 10 ms wait on your setup: it improved typical frame age in our test, but increased CPU use and tail latency. Pace the video writer separately. |
+
+These recommendations come from [DXGI acquisition-wait measurements](benchmarks/acquisition_wait_comparison.md) on one RTX 3060 Ti setup with approximately 60 FPS desktop delivery. No timeout was best for every use case. Benchmark your own workload; these measurements do not establish recommendations for WinRT.
+
 ### Frame Timestamp
 Read the most recent frame timestamp (seconds):
 ```python
@@ -181,6 +225,8 @@ camera.stop()
 
 For `backend="dxgi"`, this value comes from `DXGI_OUTDUPL_FRAME_INFO.LastPresentTime`.
 For `backend="winrt"`, this value is derived from WinRT `SystemRelativeTime`.
+
+In the unreleased development branch, DXGI pointer-only updates are ignored after the initial image in each capture session. That first image may use the mouse-update timestamp or a performance-counter fallback when no presentation timestamp is available. WinRT can include the cursor in the captured pixels, so cursor movement can still produce new frames.
 
 ### Video Mode
 With `video_mode=True`, DXcam continues publishing at target FPS, reusing the previous frame when no new frame is rendered.
@@ -213,6 +259,8 @@ finally:
 
 Latest-frame reads return immediately once a frame exists. Pace the consumer as
 above to avoid filling the video with repeated reads as fast as Python can run.
+Repeated video-mode frames retain their original source timestamp, so they do
+not satisfy an `after_timestamp` threshold equal to that timestamp.
 
 ### Capture Backend
 DXcam supports two capture backends:
@@ -229,6 +277,16 @@ Guideline:
 - If you need cursor rendering, use `winrt`.
 - Start with `dxgi` for most workloads, especially one-shot grab.
 - Try `winrt` if it performs better on your machine or fits your app constraints.
+
+In the unreleased development branch, WinRT frame-size changes trigger coordinated
+recovery of the camera geometry, region, staging buffers and capture session
+before another image is copied. The default full-output region follows the new
+size; a custom region is clamped when necessary.
+
+`DXCAM_WINRT_DIRTY_REGION_MODE=report_and_render` is rejected with `ValueError`
+before WinRT capture-session setup in the unreleased branch: that mode supplies
+partial frames, which DXcam does not reconstruct. Leave the variable unset or use
+`default` or `report_only` for complete frames.
 
 ### Processor Backend
 DXcam capture backends (`dxgi`/`winrt`) acquire raw BGRA frame. The processor backend then handles post-processing:

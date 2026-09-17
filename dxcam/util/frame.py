@@ -74,3 +74,5 @@ def validate_destination_frame(
         raise ValueError(
             f"Destination frame dtype mismatch: expected uint8, got {dst.dtype}."
         )
+    if not dst.flags.writeable:
+        raise ValueError("Destination frame must be writable.")

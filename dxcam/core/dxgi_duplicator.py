@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import logging
 import os
+import time
 from contextlib import contextmanager
 from dataclasses import InitVar, dataclass, field
 from typing import Any, Iterator, cast
@@ -51,6 +52,7 @@ class DXGIDuplicator:
     # ticks per second of the system
     performance_frequency: int = 0
     _frame_held: bool = False
+    _has_frame: bool = field(default=False, init=False, repr=False)
 
     def _drop_texture_reference(self) -> None:
         release_com_pointer(self.texture)
@@ -131,8 +133,10 @@ class DXGIDuplicator:
             self.duplicator = ctypes.POINTER(IDXGIOutputDuplication)()
             return False
 
-    def _update_frame(self, wait_for_frame: bool = False) -> bool:
-        del wait_for_frame  # DXGI path does not use extra wait logic.
+    def _update_frame(
+        self, wait_for_frame: bool = False, *, timeout_ms: int | None = None
+    ) -> bool:
+        del wait_for_frame  # Only an explicit timeout changes DXGI's polling default.
         if self._frame_held:
             if not self._release_frame():
                 self.updated = False
@@ -143,7 +147,7 @@ class DXGIDuplicator:
         try:
             try:
                 self.duplicator.AcquireNextFrame(
-                    0,
+                    0 if timeout_ms is None else timeout_ms,
                     ctypes.byref(info),
                     ctypes.byref(res),
                 )
@@ -168,6 +172,13 @@ class DXGIDuplicator:
                     return False
                 raise
             self._frame_held = True
+            present_ticks = int(info.LastPresentTime)
+            if present_ticks == 0 and self._has_frame:
+                # DXGI reports pointer movement separately and does not composite
+                # it into the texture. Only the first acquisition needs this image.
+                self.updated = False
+                self.accumulated_frames = 0
+                return self._release_frame()
             try:
                 resource = cast(Any, res)
                 self._drop_texture_reference()
@@ -177,14 +188,17 @@ class DXGIDuplicator:
                 self.texture = ctypes.POINTER(ID3D11Texture2D)()
                 self.updated = False
                 return True
-            present_ticks = int(info.LastPresentTime)
             self.accumulated_frames = int(info.AccumulatedFrames)
             if present_ticks > 0:
                 self.latest_frame_ticks = present_ticks
             else:
                 mouse_ticks = int(info.LastMouseUpdateTime)
-                if mouse_ticks > 0:
-                    self.latest_frame_ticks = mouse_ticks
+                self.latest_frame_ticks = (
+                    mouse_ticks
+                    if mouse_ticks > 0
+                    else int(time.perf_counter() * self.performance_frequency)
+                )
+            self._has_frame = True
             self.updated = True
             return True
         finally:
@@ -192,15 +206,17 @@ class DXGIDuplicator:
 
     @contextmanager
     def acquire_frame(
-        self, wait_for_frame: bool = False
+        self, wait_for_frame: bool = False, *, timeout_ms: int | None = None
     ) -> Iterator[tuple[bool, bool, int]]:
-        ok = self._update_frame(wait_for_frame=wait_for_frame)
-        updated = ok and self.updated
-        frame_ticks = self.latest_frame_ticks
         try:
+            ok = self._update_frame(
+                wait_for_frame=wait_for_frame, timeout_ms=timeout_ms
+            )
+            updated = ok and self.updated
+            frame_ticks = self.latest_frame_ticks
             yield ok, updated, frame_ticks
         finally:
-            if ok and updated:
+            if self._frame_held:
                 self._finish_frame()
 
     @property
@@ -211,6 +227,10 @@ class DXGIDuplicator:
         if self.performance_frequency <= 0:
             return 0.0
         return ticks / self.performance_frequency
+
+    def reset_frame_tracking(self) -> None:
+        """Allow the first acquisition to seed a newly allocated capture buffer."""
+        self._has_frame = False
 
     def _release_frame(self) -> bool:
         """Per Microsoft Doc
