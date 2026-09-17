@@ -1,4 +1,6 @@
 ### Unreleased
+- Wait for reader-held staging slots to become reusable during unpaced capture instead of spinning; stop interrupts the wait and paced video repeats keep their existing behavior.
+- Avoid the intermediate array copy when `grab_into(dst, new_frame_only=False)` reuses a cached frame, while keeping cached `grab()` results independently owned.
 - Keep the selected fallback output alive during display recovery; release unused candidates on both successful selection and exceptions.
 - Add per-reader `after_timestamp` filtering and optional waiting deadlines to `get_latest_frame()` and `get_latest_frame_into()`; retain immediate latest-frame reads by default.
 - Wake all waiting readers on publication, stop, or worker failure; preserve destination arrays when no eligible frame is available.

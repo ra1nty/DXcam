@@ -324,7 +324,9 @@ class DXCamera:
         finally:
             if lease is not None:
                 with self.__lock:
-                    self.__frame_buffer.release_lease(lease)
+                    capacity_available = self.__frame_buffer.release_lease(lease)
+                    if capacity_available and self.__worker is not None:
+                        self.__worker.capacity_condition.notify()
 
     def _process_stage(
         self,
@@ -364,6 +366,22 @@ class DXCamera:
         if cached_region != region:
             return None
         return np.array(cached, copy=True)
+
+    def _copy_cached_grab_frame_into(self, region: Region, *, dst: Frame) -> bool:
+        entry = self.__last_grab_entry
+        if entry is None:
+            return False
+        cached_region, cached = entry
+        if cached_region != region:
+            return False
+        validate_destination_frame(
+            dst,
+            frame_width=cached.shape[1],
+            frame_height=cached.shape[0],
+            channel_size=self.channel_size,
+        )
+        dst[...] = cached
+        return True
 
     def _grab(
         self,
@@ -410,17 +428,7 @@ class DXCamera:
         if not captured:
             if new_frame_only:
                 return False
-            cached = self._get_cached_grab_frame(region=region)
-            if cached is None:
-                return False
-            validate_destination_frame(
-                dst,
-                frame_width=cached.shape[1],
-                frame_height=cached.shape[0],
-                channel_size=self.channel_size,
-            )
-            dst[...] = cached
-            return True
+            return self._copy_cached_grab_frame_into(region=region, dst=dst)
 
         validate_destination_frame(
             dst,
@@ -593,6 +601,8 @@ class DXCamera:
             frame_height=frame_height,
             rotation_angle=self.rotation_angle,
         )
+        if self.__worker is not None:
+            self.__worker.capacity_condition.notify()
 
     def _get_capture_region(self) -> Region:
         return self.region

@@ -159,9 +159,17 @@ class FrameBuffer:
             frame_ticks=slot.frame_ticks,
         )
 
-    def release_lease(self, lease: LeasedFrameSlot) -> None:
+    def release_lease(self, lease: LeasedFrameSlot) -> bool:
+        """Release a reader; return whether a current write slot became free."""
         if lease._released:
-            return
+            return False
         object.__setattr__(lease, "_released", True)
-        lease.slot.readers -= 1
-        self._release_retired_slot(lease.slot)
+        slot = lease.slot
+        slot.readers -= 1
+        self._release_retired_slot(slot)
+        return (
+            not slot.retired
+            and slot is not self.latest_slot
+            and not slot.writing
+            and slot.readers == 0
+        )

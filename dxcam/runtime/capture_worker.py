@@ -32,6 +32,7 @@ class CaptureWorker:
     video_mode: bool = False
     thread_name: str = "DXCamera"
     frame_condition: Condition = field(init=False, repr=False)
+    capacity_condition: Condition = field(init=False, repr=False)
     _stop_event: Event = field(default_factory=Event, init=False, repr=False)
     _thread: Thread | None = field(default=None, init=False, repr=False)
     _error: Exception | None = field(default=None, init=False, repr=False)
@@ -39,6 +40,7 @@ class CaptureWorker:
 
     def __post_init__(self) -> None:
         self.frame_condition = Condition(self.lock)
+        self.capacity_condition = Condition(self.lock)
 
     @property
     def stopped(self) -> bool:
@@ -73,6 +75,7 @@ class CaptureWorker:
         self._stop_event.set()
         with self.frame_condition:
             self.frame_condition.notify_all()
+            self.capacity_condition.notify_all()
 
     def join(self, timeout: float | None = None) -> bool:
         thread = self._thread
@@ -90,12 +93,23 @@ class CaptureWorker:
         return error
 
     def _run_capture_cycle(self) -> None:
-        with self.lock:
+        with self.capacity_condition:
+            if self.stopped:
+                return
             write_slot = self.frame_buffer.reserve_write_slot()
             if write_slot is None:
                 if self.video_mode and self.frame_buffer.commit_repeat():
                     self.frame_condition.notify_all()
-                return
+                # Paced capture retries on the next timer tick, preserving
+                # video-mode repeats. Unpaced capture waits for an actual
+                # reusable slot instead of spinning while readers retain them.
+                if self.target_fps != 0:
+                    return
+                while write_slot is None:
+                    self.capacity_condition.wait()
+                    if self.stopped:
+                        return
+                    write_slot = self.frame_buffer.reserve_write_slot()
 
         try:
             captured, frame_ticks, frame_width, frame_height, rotation_angle = (
