@@ -71,6 +71,9 @@ frame = camera.grab()
 `grab()` returns a `numpy.ndarray`. In one-shot mode it returns `None` if no new frame is available; `camera.grab(new_frame_only=False)` can reuse the last cached frame. During threaded capture, it reads the latest published frame and ignores `new_frame_only`.
 
 Use `camera.grab_into(dst)` to reuse caller-managed memory.
+Both `grab_into(dst)` and `get_latest_frame_into(dst)` require a writable NumPy
+`uint8` array with the frame's `(height, width, channels)` shape. The unreleased
+development branch raises `ValueError` for a read-only destination before writing.
 
 To capture a region:
 ```python
@@ -124,6 +127,11 @@ for _ in range(1000):
 `release()` stops capture, frees buffers, and releases capture resources.
 After `release()`, the same instance cannot be reused.
 In-flight readers retain their staging surfaces until readout completes, including across stop or output recovery.
+
+In the unreleased development branch, `stop()` cancels display-recovery retries
+and interrupts their backoff wait. A subsequent `start()` retries unfinished
+recovery before acquiring another frame. A native call already in progress must
+still return before the worker can stop.
 
 ```python
 camera = dxcam.create(output_idx=0, output_color="BGR")
@@ -269,6 +277,16 @@ Guideline:
 - If you need cursor rendering, use `winrt`.
 - Start with `dxgi` for most workloads, especially one-shot grab.
 - Try `winrt` if it performs better on your machine or fits your app constraints.
+
+In the unreleased development branch, WinRT frame-size changes trigger coordinated
+recovery of the camera geometry, region, staging buffers and capture session
+before another image is copied. The default full-output region follows the new
+size; a custom region is clamped when necessary.
+
+`DXCAM_WINRT_DIRTY_REGION_MODE=report_and_render` is rejected with `ValueError`
+before WinRT capture-session setup in the unreleased branch: that mode supplies
+partial frames, which DXcam does not reconstruct. Leave the variable unset or use
+`default` or `report_only` for complete frames.
 
 ### Processor Backend
 DXcam capture backends (`dxgi`/`winrt`) acquire raw BGRA frame. The processor backend then handles post-processing:

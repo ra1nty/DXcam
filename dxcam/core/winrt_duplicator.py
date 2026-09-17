@@ -28,7 +28,6 @@ _DIRTY_REGION_REPORT_AND_RENDER = "report_and_render"
 DirtyRegionSetting = Literal[
     "default",
     "report_only",
-    "report_and_render",
 ]
 
 
@@ -203,7 +202,10 @@ class WinRTDuplicator:
         if normalized == _DIRTY_REGION_REPORT_ONLY:
             return _DIRTY_REGION_REPORT_ONLY
         if normalized == _DIRTY_REGION_REPORT_AND_RENDER:
-            return _DIRTY_REGION_REPORT_AND_RENDER
+            raise ValueError(
+                "DXCAM_WINRT_DIRTY_REGION_MODE=report_and_render is unsupported: "
+                "DXcam requires complete frames. Use default or report_only."
+            )
         logger.warning(
             "Invalid DXCAM_WINRT_DIRTY_REGION_MODE=%r; using %s.",
             raw,
@@ -236,14 +238,12 @@ class WinRTDuplicator:
                     "Failed to set session min_update_interval.", exc_info=True
                 )
         if self._dirty_region_mode_enum is not None and (
-            self._dirty_region_setting != _DIRTY_REGION_DEFAULT
+            self._dirty_region_setting == _DIRTY_REGION_REPORT_ONLY
         ):
             try:
-                if self._dirty_region_setting == _DIRTY_REGION_REPORT_ONLY:
-                    mode = self._dirty_region_mode_enum.REPORT_ONLY
-                else:
-                    mode = self._dirty_region_mode_enum.REPORT_AND_RENDER
-                self._session.dirty_region_mode = mode
+                self._session.dirty_region_mode = (
+                    self._dirty_region_mode_enum.REPORT_ONLY
+                )
             except Exception:
                 logger.warning(
                     "Failed to set session dirty_region_mode.", exc_info=True
@@ -419,40 +419,14 @@ class WinRTDuplicator:
             self._frame_arrived_event.clear()
         return signaled
 
-    def _recreate_frame_pool(self, size: Any) -> bool:
-        if (
-            self._frame_pool is None
-            or self._winrt_device is None
-            or self._pixel_format is None
-        ):
-            return False
-        try:
-            self._frame_pool.recreate(
-                self._winrt_device,
-                self._pixel_format,
-                self._frame_pool_size,
-                size,
-            )
-        except Exception:
-            logger.warning("WinRT frame pool recreate failed.", exc_info=True)
-            return False
-        return True
-
     def _handle_frame_size_change(self, frame: Any) -> bool:
-        logger.info("WinRT frame size changed; recreating frame pool.")
-        content_size = frame.content_size
+        logger.info("WinRT frame size changed; requesting output-change recovery.")
         self._close_winrt_object(frame, "frame")
-        if self._output is not None:
-            try:
-                self._output.update_desc()
-            except Exception:
-                logger.debug("Failed to refresh output description.", exc_info=True)
-        if not self._recreate_frame_pool(content_size):
-            self.updated = False
-            return False
         self.updated = False
         self.accumulated_frames = 0
-        return True
+        # The camera must update its region, geometry, and staging buffers along
+        # with the pool. A local pool recreation would leave stale copy bounds.
+        return False
 
     def _update_frame(
         self, wait_for_frame: bool = False, *, timeout_ms: int | None = None

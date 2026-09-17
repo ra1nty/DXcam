@@ -5,6 +5,10 @@
 - Add `start(frame_timeout_ms=0)` with polling as the default; explicit positive values bound native acquisition waits independently of consumer deadlines and are capped at one frame period when producer pacing is enabled.
 - Document DXGI acquisition-wait recommendations by use case, based on [CPU and frame-age measurements](benchmarks/acquisition_wait_comparison.md); positive waits remain an explicit latency/CPU tradeoff.
 - Ignore DXGI pointer-only updates after the initial image in each capture session; video-mode repeats retain their original timestamp and do not satisfy fresh-frame reads.
+- Route WinRT size changes through coordinated camera recovery so geometry, regions and staging buffers update before the next image copy.
+- Reject `DXCAM_WINRT_DIRTY_REGION_MODE=report_and_render` before WinRT session setup; use the default mode or `report_only` until partial-frame reconstruction is supported.
+- Require writable destination arrays for `grab_into()` and `get_latest_frame_into()`, and reject read-only destinations in the compiled NumPy kernels before writing.
+- Let `stop()` cancel display-recovery retries and wake recovery backoff; a subsequent `start()` retries unfinished recovery before acquisition. Native calls already in progress are not interrupted.
 
 ### 0.4.0.dev2
 - Keep reader and writer ownership attached to individual staging surfaces, including across stop and display recovery.

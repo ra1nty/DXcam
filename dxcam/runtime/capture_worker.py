@@ -45,6 +45,11 @@ class CaptureWorker:
         return self._stop_event.is_set()
 
     @property
+    def stop_event(self) -> Event:
+        """Cancellation signal shared with blocking display recovery."""
+        return self._stop_event
+
+    @property
     def thread(self) -> Thread | None:
         return self._thread
 

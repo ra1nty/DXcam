@@ -38,7 +38,7 @@ from dxcam.runtime.display_recovery import DisplayRecoveryHandler
 from dxcam.runtime.frame_buffer import FrameBuffer
 
 from dxcam.core.duplicator_protocol import FrameDuplicator
-from dxcam.runtime.output_recovery import OutputRecoveryHandler
+from dxcam.runtime.output_recovery import OutputRecoveryHandler, OutputState
 from dxcam.processor import Processor
 from dxcam.types import CaptureBackend, ColorMode, Frame, ProcessorBackend, Region
 from dxcam.util.frame import (
@@ -87,6 +87,7 @@ class DXCamera:
                 ``"cython"``, or ``"numpy"``.
         """
         self._is_released = False
+        self._recovery_pending = False
         self._output: Output = output
         self._device: Device = device
         self.backend: CaptureBackend = backend
@@ -148,6 +149,7 @@ class DXCamera:
             rebuild_stage_surface=self._rebuild_recovery_stage_surface,
             create_duplicator=self._create_duplicator,
             rebuild_frame_buffer=self._rebuild_frame_buffer,
+            apply_output_state=self._apply_recovered_output_state,
             logger=logger,
         )
 
@@ -445,6 +447,11 @@ class DXCamera:
         wait_for_frame: bool = True,
         timeout_ms: int | None = None,
     ) -> tuple[bool, int, int, int, int]:
+        if getattr(self, "_recovery_pending", False):
+            # A cancelled recovery may have released the backend. A later
+            # session must rebuild it before attempting another acquisition.
+            self._recover_output()
+            return False, 0, 0, 0, self.rotation_angle
         # WinRT frame-pool calls can take their own locks. Never hold the device
         # lock while acquiring/releasing frames or recovering a capture session.
         with self._duplicator.acquire_frame(
@@ -499,18 +506,22 @@ class DXCamera:
 
     def _recover_output(self) -> None:
         self.__last_grab_entry = None
+        self._recovery_pending = True
         old_width, old_height = self.width, self.height
         old_rotation = self.rotation_angle
-        duplicator, output_state = self._display_recovery.handle(
+        worker = self.__worker if self.is_capturing else None
+        recovered = self._display_recovery.handle(
             region=self.region,
             region_set_by_user=self._region_set_by_user,
             is_capturing=self.is_capturing,
+            stop_event=worker.stop_event if worker is not None else None,
         )
-        self.width = output_state.width
-        self.height = output_state.height
-        self.rotation_angle = output_state.rotation_angle
-        self.region = output_state.region
+        if recovered is None:
+            return
+        duplicator, output_state = recovered
+        self._apply_recovered_output_state(output_state)
         self._duplicator = duplicator
+        self._recovery_pending = False
         logger.info(
             "Output recovery: %dx%d@%d -> %dx%d@%d, region=%s.",
             old_width,
@@ -521,6 +532,12 @@ class DXCamera:
             self.rotation_angle,
             self.region,
         )
+
+    def _apply_recovered_output_state(self, output_state: OutputState) -> None:
+        self.width = output_state.width
+        self.height = output_state.height
+        self.rotation_angle = output_state.rotation_angle
+        self.region = output_state.region
 
     def _release_recovery_resources(self) -> None:
         self._duplicator.release()

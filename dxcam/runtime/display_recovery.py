@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from threading import Event
 from typing import Callable
 
 import comtypes
@@ -38,6 +39,7 @@ class DisplayRecoveryHandler:
         rebuild_stage_surface: Callable[[], None],
         create_duplicator: Callable[[], FrameDuplicator],
         rebuild_frame_buffer: Callable[[Region], None],
+        apply_output_state: Callable[[OutputState], None] | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         self._backend = backend
@@ -46,6 +48,7 @@ class DisplayRecoveryHandler:
         self._rebuild_stage_surface = rebuild_stage_surface
         self._create_duplicator = create_duplicator
         self._rebuild_frame_buffer = rebuild_frame_buffer
+        self._apply_output_state = apply_output_state
         self._wait = ProgressiveWait()
         self._logger = logger or logging.getLogger(__name__)
 
@@ -79,11 +82,14 @@ class DisplayRecoveryHandler:
         region: Region,
         region_set_by_user: bool,
         is_capturing: bool,
-    ) -> tuple[FrameDuplicator, OutputState]:
+        stop_event: Event | None = None,
+    ) -> tuple[FrameDuplicator, OutputState] | None:
         is_dxgi_backend = self._backend == "dxgi"
         attempt = 0
 
         while True:
+            if stop_event is not None and stop_event.is_set():
+                return None
             attempt += 1
             try:
                 # Keep each attempt isolated in case a previous attempt partially
@@ -93,6 +99,8 @@ class DisplayRecoveryHandler:
                     requested_region=region,
                     region_set_by_user=region_set_by_user,
                 )
+                if stop_event is not None and stop_event.is_set():
+                    return None
                 if output_state.region_was_clamped:
                     self._logger.warning(
                         "Requested region %s is out of bounds for new output size "
@@ -102,9 +110,15 @@ class DisplayRecoveryHandler:
                         output_state.height,
                         output_state.region,
                     )
+                # Frame-buffer allocation uses camera geometry/rotation. Apply
+                # the new state before building any replacement surfaces.
+                if self._apply_output_state is not None:
+                    self._apply_output_state(output_state)
                 if is_capturing:
                     self._rebuild_frame_buffer(output_state.region)
                 self._rebuild_stage_surface()
+                if stop_event is not None and stop_event.is_set():
+                    return None
                 duplicator = self._create_duplicator()
                 self._wait.reset()
 
@@ -141,4 +155,7 @@ class DisplayRecoveryHandler:
                         "are active (exclusive/fullscreen switch, mode switch, "
                         "session disconnect/reconnect)."
                     )
-                time.sleep(delay_seconds)
+                if stop_event is None:
+                    time.sleep(delay_seconds)
+                elif stop_event.wait(delay_seconds):
+                    return None
