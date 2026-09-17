@@ -278,6 +278,13 @@ Guideline:
 - Start with `dxgi` for most workloads, especially one-shot grab.
 - Try `winrt` if it performs better on your machine or fits your app constraints.
 
+Both backends return pixels in desktop orientation, with regions expressed in
+output-local desktop coordinates. In the unreleased development branch, WinRT
+frames use their existing orientation; DXGI surfaces receive the required monitor
+rotation. `camera.rotation_angle` still reports the monitor's rotation. See the
+[geometry validation notes](docs/capture-geometry-validation.md) for coverage and
+hardware-validation limits.
+
 In the unreleased development branch, WinRT frame-size changes trigger coordinated
 recovery of the camera geometry, region, staging buffers and capture session
 before another image is copied. The default full-output region follows the new

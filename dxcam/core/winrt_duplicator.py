@@ -113,6 +113,9 @@ class WinRTDuplicator:
     _frame_arrived_handler: Any | None = field(default=None, init=False, repr=False)
     _frame_wait_seconds: float = field(default=0.0, init=False, repr=False)
     _frame_pool_size: int = field(default=2, init=False, repr=False)
+    _frame_pool_dimensions: tuple[int, int] | None = field(
+        default=None, init=False, repr=False
+    )
     _min_update_interval_seconds: float | None = field(
         default=None, init=False, repr=False
     )
@@ -286,13 +289,15 @@ class WinRTDuplicator:
 
         monitor = self._monitor_handle_to_int(output.hmonitor)
         self._capture_item = bindings.create_for_monitor(monitor)
+        item_size = self._capture_item.size
 
         self._frame_pool = bindings.frame_pool_cls.create_free_threaded(
             self._winrt_device,
             self._pixel_format,
             self._frame_pool_size,
-            self._capture_item.size,
+            item_size,
         )
+        self._frame_pool_dimensions = (int(item_size.width), int(item_size.height))
         self._session = self._frame_pool.create_capture_session(self._capture_item)
         self._apply_session_options()
         self._register_frame_arrived_event()
@@ -370,10 +375,18 @@ class WinRTDuplicator:
     def _frame_size_mismatch(self, frame: Any) -> bool:
         if self._output is None:
             return False
-        expected_width, expected_height = self._output.surface_size
+        # WGC frames use desktop orientation, unlike DXGI's unrotated surfaces.
+        expected_size = self._output.resolution
         actual_width = int(frame.content_size.width)
         actual_height = int(frame.content_size.height)
-        return (actual_width, actual_height) != (expected_width, expected_height)
+        actual_size = (actual_width, actual_height)
+        # Another camera may refresh the shared Output before this pool is
+        # rebuilt. ContentSize alone does not guarantee the old pool contains
+        # the complete image after a resize.
+        return actual_size != expected_size or (
+            self._frame_pool_dimensions is not None
+            and actual_size != self._frame_pool_dimensions
+        )
 
     def _try_get_next_frame(self) -> tuple[Any | None, bool]:
         if self._frame_pool is None:
@@ -534,6 +547,7 @@ class WinRTDuplicator:
         self._close_winrt_object(self._winrt_device, "winrt device")
         self._session = None
         self._frame_pool = None
+        self._frame_pool_dimensions = None
         self._capture_item = None
         self._winrt_device = None
 

@@ -34,6 +34,7 @@ def make_duplicator(monkeypatch):
         mutations = []
         output = SimpleNamespace(
             surface_size=old_size,
+            resolution=old_size,
             update_desc=lambda: mutations.append("output"),
         )
         duplicator = WinRTDuplicator(output=output, device=object())
@@ -80,6 +81,7 @@ def test_size_change_closes_frames_and_routes_to_camera_recovery(
         width=old_size[0],
         height=old_size[1],
         rotation_angle=0,
+        _capture_rotation_angle=0,
     )
     result = DXCamera._capture_to_stage(
         camera, (0, 0, *old_size), object(), timeout_ms=0
@@ -113,6 +115,7 @@ def test_changed_frame_is_closed_even_when_camera_recovery_fails(make_duplicator
         width=1920,
         height=1080,
         rotation_angle=0,
+        _capture_rotation_angle=0,
     )
     with pytest.raises(RuntimeError, match="recovery failed"):
         DXCamera._capture_to_stage(camera, (0, 0, 1920, 1080), object(), timeout_ms=0)

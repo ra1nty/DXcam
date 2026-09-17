@@ -1,4 +1,7 @@
 ### Unreleased
+- Separate WinRT's desktop-oriented frame geometry from DXGI's unrotated surfaces so rotated-monitor capture uses the correct staging dimensions, regions and pixel orientation.
+- Validate WinRT content against both output resolution and the frame pool's creation size, including when another camera has already refreshed the shared output.
+- Add independent pixel references and backend geometry/recovery regressions; record [geometry evidence and validation limits](docs/capture-geometry-validation.md).
 - Wait for reader-held staging slots to become reusable during unpaced capture instead of spinning; stop interrupts the wait and paced video repeats keep their existing behavior.
 - Avoid the intermediate array copy when `grab_into(dst, new_frame_only=False)` reuses a cached frame, while keeping cached `grab()` results independently owned.
 - Record [capacity-wait and cached-copy measurements](benchmarks/capacity_and_cache_comparison.md), with separate DXGI/WinRT lifecycle smoke checks.

@@ -113,7 +113,9 @@ class DXCamera:
         output_color: ColorMode,
         processor_backend: ProcessorBackend,
     ) -> None:
-        self._stagesurf = StageSurface(output=self._output, device=self._device)
+        self._stagesurf = StageSurface(
+            output=self._output, device=self._device, dim=self._capture_surface_size
+        )
         try:
             self._duplicator = self._create_duplicator()
         except Exception:
@@ -136,6 +138,18 @@ class DXCamera:
         self._region_set_by_user = region is not None
         self.region = region if region is not None else (0, 0, self.width, self.height)
         validate_region(self.region, self.width, self.height)
+
+    @property
+    def _capture_rotation_angle(self) -> int:
+        # WGC provides desktop-oriented pixels. Only DXGI duplication needs
+        # the monitor rotation applied to its unrotated surface.
+        return 0 if self.backend == "winrt" else self.rotation_angle
+
+    @property
+    def _capture_surface_size(self) -> tuple[int, int]:
+        if self.backend == "winrt":
+            return self._output.resolution
+        return self._output.surface_size
 
     def _initialize_recovery_handler(self) -> None:
         self._output_recovery = OutputRecoveryHandler(
@@ -388,7 +402,7 @@ class DXCamera:
         region: Region,
         new_frame_only: bool = True,
     ) -> Frame | None:
-        captured, _frame_ticks, frame_width, frame_height, _rotation_angle = (
+        captured, _frame_ticks, frame_width, frame_height, rotation_angle = (
             self._capture_to_stage(
                 region,
                 self._stagesurf,
@@ -404,7 +418,7 @@ class DXCamera:
             stage=self._stagesurf,
             frame_width=frame_width,
             frame_height=frame_height,
-            rotation_angle=self.rotation_angle,
+            rotation_angle=rotation_angle,
         )
         result = frame
         if not new_frame_only:
@@ -418,7 +432,7 @@ class DXCamera:
         dst: Frame,
         new_frame_only: bool = True,
     ) -> bool:
-        captured, _frame_ticks, frame_width, frame_height, _rotation_angle = (
+        captured, _frame_ticks, frame_width, frame_height, rotation_angle = (
             self._capture_to_stage(
                 region,
                 self._stagesurf,
@@ -440,7 +454,7 @@ class DXCamera:
             stage=self._stagesurf,
             frame_width=frame_width,
             frame_height=frame_height,
-            rotation_angle=self.rotation_angle,
+            rotation_angle=rotation_angle,
             dst=dst,
         )
         if not new_frame_only:
@@ -459,7 +473,7 @@ class DXCamera:
             # A cancelled recovery may have released the backend. A later
             # session must rebuild it before attempting another acquisition.
             self._recover_output()
-            return False, 0, 0, 0, self.rotation_angle
+            return False, 0, 0, 0, self._capture_rotation_angle
         # WinRT frame-pool calls can take their own locks. Never hold the device
         # lock while acquiring/releasing frames or recovering a capture session.
         with self._duplicator.acquire_frame(
@@ -477,9 +491,9 @@ class DXCamera:
                     self.height,
                 )
                 self._recover_output()
-                return False, 0, 0, 0, self.rotation_angle
+                return False, 0, 0, 0, self._capture_rotation_angle
             if not updated:
-                return False, 0, 0, 0, self.rotation_angle
+                return False, 0, 0, 0, self._capture_rotation_angle
             with self._device.context_guard():
                 frame_width, frame_height = self._copy_region_to_surface(region, stage)
         return (
@@ -487,7 +501,7 @@ class DXCamera:
             frame_ticks,
             frame_width,
             frame_height,
-            self.rotation_angle,
+            self._capture_rotation_angle,
         )
 
     def _copy_region_to_surface(
@@ -498,8 +512,8 @@ class DXCamera:
         memory_region, frame_width, frame_height, memory_width, memory_height = (
             resolve_capture_copy_spec(
                 region,
-                self.rotation_angle,
-                self._output.surface_size,
+                self._capture_rotation_angle,
+                self._capture_surface_size,
             )
         )
         stage.ensure_size(
@@ -555,7 +569,7 @@ class DXCamera:
 
     def _rebuild_recovery_stage_surface(self) -> None:
         self._stagesurf.rebind(output=self._output, device=self._device)
-        self._stagesurf.rebuild()
+        self._stagesurf.rebuild(dim=self._capture_surface_size)
 
     def _allocate_capture_slots_for_region(
         self,
@@ -567,8 +581,8 @@ class DXCamera:
         _memory_region, frame_width, frame_height, memory_width, memory_height = (
             resolve_capture_copy_spec(
                 region,
-                self.rotation_angle,
-                self._output.surface_size,
+                self._capture_rotation_angle,
+                self._capture_surface_size,
             )
         )
         logger.info(
@@ -599,7 +613,7 @@ class DXCamera:
             stages,
             frame_width=frame_width,
             frame_height=frame_height,
-            rotation_angle=self.rotation_angle,
+            rotation_angle=self._capture_rotation_angle,
         )
         if self.__worker is not None:
             self.__worker.capacity_condition.notify()
