@@ -32,7 +32,7 @@ The original findings and evidence remain below for context. The later
 desktop-oriented pixels from DXGI rotation, checks the actual frame-pool creation
 size, and adds independent pixel references. Synthetic regressions cover every
 quarter-turn; physical rotated-display validation remains open. Cross-adapter
-migration, timer cancellation, and HDR remain separate work. These correctness
+migration and HDR remain separate work. These correctness
 changes do not establish a performance improvement.
 
 A subsequent [controlled readout scheduling comparison](../benchmarks/readout_scheduling_comparison.md)
@@ -50,6 +50,24 @@ the contiguous BGRA input temporary for positive padded/cropped rows. Packed
 inputs, BGRA output, and rotation preparation retain their existing paths;
 rotation/color fusion remains separate work. Its processor measurements do not
 establish capture FPS or end-to-end frame-age improvements.
+
+The [timer pacing follow-up](../benchmarks/timer_pacing_comparison.md) replaces the
+Python-version-specific pacing paths with a native timer and a separate stop
+event on all supported Python versions. It preserves missed-tick dropping and
+unpaced `target_fps=0`, and rejects booleans, floats and negative FPS before
+startup changes state. `stop()` signals the event; timer handles are detached
+and closed only after the worker leaves its wait. An active native capture call
+must still return before shutdown can complete.
+
+The high-resolution timer flag is available from Windows 10 version 1803;
+creation falls back to a regular waitable timer when an older system rejects
+that flag. The stop event is first in the native wait set, so cancellation wins
+if both signals are ready. These choices follow the documented
+[timer creation contract](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createwaitabletimerexw)
+and [multiple-object wait contract](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitformultipleobjects).
+Deterministic tests cover cancellation races, handle failures, restart and early
+FPS validation. Timing results belong to the linked follow-up report, rather
+than the original investigation below.
 
 Detached-output fallback selection now retains its selected replacement and
 releases unused candidates, including on exceptions.
@@ -125,6 +143,10 @@ Negative `target_fps` is also accepted and produces a negative period. Validate
 FPS before starting and test interruptible pacing at low rates without assuming
 an event wait preserves high-resolution timing. These are code-path findings;
 no new timer-latency benchmark was run. [Timer implementation](../dxcam/util/timer.py).
+
+This paragraph records the investigated commit's behavior. The unreleased timer
+and FPS-validation changes are described in the implementation status above and
+the [timer pacing follow-up](../benchmarks/timer_pacing_comparison.md).
 
 Related output-selection gaps: a successful `GetDesc` for a detached output can
 prevent fallback enumeration, and the first fallback need not be attached.
@@ -266,6 +288,7 @@ eliminate the readback cost for callers who need NumPy arrays. Do not use OBS,
 sample-preview, or library README FPS numbers as an apples-to-apples comparison.
 
 Local ignored research notes and bounded probes are under `.test/research_*`.
-The four correctness fixes are recorded in the implementation status above.
+The initial correctness fixes and subsequent timer changes are recorded in the
+implementation status above.
 The readout scheduling experiment is linked above. A bounded D3D handoff and
 copy-elimination experiments remain follow-up work.

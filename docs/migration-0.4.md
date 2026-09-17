@@ -91,6 +91,26 @@ They do not satisfy `after_timestamp` when the threshold equals that timestamp;
 use ordinary paced reads when recording those repeats is intentional.
 See [capture_to_video.py](../examples/capture_to_video.py) for paced recording.
 
+### Producer pacing and stop (unreleased)
+
+The unreleased branch requires `target_fps` to be a nonnegative Python `int`.
+Booleans, floats such as `60.0`, and negative values raise `ValueError` before
+startup changes the region, waits for `delay`, or allocates capture buffers.
+`target_fps=0` still disables timer pacing; a positive value sets the producer's
+target rate. Consumer reads keep their existing independent pacing.
+
+All supported Python versions now use a native high-resolution timer with a
+separate stop event. On older Windows builds that reject the high-resolution
+flag, DXcam falls back to a regular waitable timer. Missed ticks are still
+dropped instead of replayed in a burst.
+
+`stop()` interrupts the pacing wait without waiting for the next scheduled tick.
+It also wakes display-recovery backoff. A native capture call already in progress
+must still return before the worker can stop; this change does not cancel that
+call. Timer handles are closed after the worker leaves its wait. See the
+[timer pacing comparison](../benchmarks/timer_pacing_comparison.md) for validation
+and measurements.
+
 ### Native acquisition timeout (unreleased)
 
 `start(frame_timeout_ms=0)` defaults to polling the backend. This option sets
