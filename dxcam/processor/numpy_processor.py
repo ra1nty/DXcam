@@ -47,12 +47,6 @@ class NumpyProcessor(Cv2Processor):
             exc_info=_NUMPY_IMPORT_ERROR is not None,
         )
 
-    @staticmethod
-    def _ensure_contiguous_uint8(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
-        if image.dtype != np.uint8 or not image.flags.c_contiguous:
-            return np.ascontiguousarray(image, dtype=np.uint8)
-        return image
-
     def _ensure_numpy_dst(self, height: int, width: int) -> NDArray[np.uint8]:
         if self._is_gray:
             dst_shape: tuple[int, ...] = (height, width, 1)
@@ -92,9 +86,8 @@ class NumpyProcessor(Cv2Processor):
 
         image = self._prepare_image(rect, width, height, region, rotation_angle)
         assert _numpy_kernels is not None
-        src = self._ensure_contiguous_uint8(image)
-        dst = self._ensure_numpy_dst(height=src.shape[0], width=src.shape[1])
-        _numpy_kernels.convert_bgra_into(src, dst, self.color_mode)
+        dst = self._ensure_numpy_dst(height=image.shape[0], width=image.shape[1])
+        _numpy_kernels.convert_bgra_into(image, dst, self.color_mode)
         return dst
 
     def process_into(
@@ -117,12 +110,11 @@ class NumpyProcessor(Cv2Processor):
 
         image = self._prepare_image(rect, width, height, region, rotation_angle)
         assert _numpy_kernels is not None
-        src = self._ensure_contiguous_uint8(image)
         if not dst.flags.c_contiguous:
             # Preserve behavior for non-contiguous destinations by converting
             # into a reusable contiguous temp and copying back.
             contiguous_dst = self._ensure_numpy_contiguous_dst(dst_shape=dst.shape)
-            _numpy_kernels.convert_bgra_into(src, contiguous_dst, self.color_mode)
+            _numpy_kernels.convert_bgra_into(image, contiguous_dst, self.color_mode)
             np.copyto(dst, contiguous_dst, casting="no")
             return
-        _numpy_kernels.convert_bgra_into(src, dst, self.color_mode)
+        _numpy_kernels.convert_bgra_into(image, dst, self.color_mode)
