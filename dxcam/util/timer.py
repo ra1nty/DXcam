@@ -1,119 +1,180 @@
-import sys
-import time
+"""High-resolution Windows pacing with a separate cancellation signal."""
+
+from __future__ import annotations
+
 import ctypes
-from typing import Optional
+from ctypes import wintypes
+import math
+from threading import Lock
+import time
+
+_CREATE_WAITABLE_TIMER_HIGH_RESOLUTION = 0x00000002
+_TIMER_ALL_ACCESS = 0x1F0003
+_ERROR_INVALID_PARAMETER = 87
+_INFINITE = 0xFFFFFFFF
+_WAIT_OBJECT_0 = 0
+_WAIT_FAILED = 0xFFFFFFFF
+
+_kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+_kernel32.CreateWaitableTimerExW.argtypes = [
+    wintypes.LPVOID,
+    wintypes.LPCWSTR,
+    wintypes.DWORD,
+    wintypes.DWORD,
+]
+_kernel32.CreateWaitableTimerExW.restype = wintypes.HANDLE
+_kernel32.CreateEventW.argtypes = [
+    wintypes.LPVOID,
+    wintypes.BOOL,
+    wintypes.BOOL,
+    wintypes.LPCWSTR,
+]
+_kernel32.CreateEventW.restype = wintypes.HANDLE
+_kernel32.SetWaitableTimer.argtypes = [
+    wintypes.HANDLE,
+    ctypes.POINTER(ctypes.c_longlong),
+    wintypes.LONG,
+    wintypes.LPVOID,
+    wintypes.LPVOID,
+    wintypes.BOOL,
+]
+_kernel32.SetWaitableTimer.restype = wintypes.BOOL
+_kernel32.WaitForMultipleObjects.argtypes = [
+    wintypes.DWORD,
+    ctypes.POINTER(wintypes.HANDLE),
+    wintypes.BOOL,
+    wintypes.DWORD,
+]
+_kernel32.WaitForMultipleObjects.restype = wintypes.DWORD
+for _name in ("SetEvent", "ResetEvent", "CloseHandle"):
+    _function = getattr(_kernel32, _name)
+    _function.argtypes = [wintypes.HANDLE]
+    _function.restype = wintypes.BOOL
+
+
+def validate_target_fps(fps: int) -> None:
+    """Require integer FPS, with zero reserved for unpaced capture."""
+    if isinstance(fps, bool) or not isinstance(fps, int) or fps < 0:
+        raise ValueError(
+            "target_fps must be a nonnegative integer (0 disables pacing)."
+        )
+    if fps:
+        try:
+            1.0 / fps
+        except OverflowError:
+            raise ValueError("target_fps is too large.") from None
 
 
 class _Timer:
-    def __init__(self):
-        self.period_s: float = 0.0
-        self._next_tick: Optional[float] = None
-        # Declared on the base type so static checkers can validate both
-        # modern and legacy timer paths through a shared interface.
-        self.cancelled: bool = False
-        self._handle: Optional[int] = None
-
-
-if sys.version_info >= (3, 11):
-    # time.sleep() uses CreateWaitableTimerExW with CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
-    # internally on Windows since Python 3.11, so no manual WinAPI calls needed.
-
-    def create_high_resolution_timer() -> _Timer:
-        return _Timer()
-
-    def set_periodic_timer(timer: _Timer, fps: int):
-        timer.period_s = 1.0 / fps
-        timer._next_tick = time.perf_counter() + timer.period_s
-
-    def wait_for_timer(timer: _Timer):
-        if timer._next_tick is None:
-            return
-        now = time.perf_counter()
-        sleep_s = timer._next_tick - now
-        if sleep_s > 0:
-            time.sleep(sleep_s)
-            timer._next_tick += timer.period_s
-            return
-        # If we are late by more than one period, drop missed ticks
-        # instead of bursting catch-up iterations.
-        if -sleep_s > timer.period_s:
-            timer._next_tick = time.perf_counter() + timer.period_s
-            return
-        timer._next_tick += timer.period_s
-
-    def cancel_timer(_timer: _Timer):
-        pass
-
-else:
-    # On Python < 3.11, time.sleep() on Windows has ~15ms resolution.
-    # Use CreateWaitableTimerExW with CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
-    # (available on Windows 10 1803+) for sub-millisecond precision.
-    # Each wait uses a fresh negative LARGE_INTEGER due time (relative, in 100ns
-    # intervals) computed from perf_counter(), so drift never accumulates.
-
-    _kernel32 = ctypes.windll.kernel32
-
-    _CREATE_WAITABLE_TIMER_HIGH_RESOLUTION = 0x00000002
-    _TIMER_ALL_ACCESS = 0x1F0003
-    _INFINITE = 0xFFFFFFFF
-
-    _kernel32.CreateWaitableTimerExW.restype = ctypes.c_void_p
-    _kernel32.SetWaitableTimer.restype = ctypes.c_long
-    _kernel32.WaitForSingleObject.restype = ctypes.c_ulong
-    _kernel32.CancelWaitableTimer.restype = ctypes.c_long
-    _kernel32.CloseHandle.restype = ctypes.c_long
-
-    class _TimerLegacy(_Timer):
-        def __init__(self):
-            super().__init__()
-            self.cancelled = False
+    def __init__(self) -> None:
+        self.period_s = 0.0
+        self._next_tick: float | None = None
+        self.cancelled = False
+        self._lock = Lock()
+        self._handle: int | None = None
+        self._cancel_handle: int | None = None
+        self._handle = _kernel32.CreateWaitableTimerExW(
+            None, None, _CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, _TIMER_ALL_ACCESS
+        )
+        if not self._handle and ctypes.get_last_error() == _ERROR_INVALID_PARAMETER:
+            # High-resolution timers require Windows 10 1803 or later.
             self._handle = _kernel32.CreateWaitableTimerExW(
-                None,
-                None,
-                _CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
-                _TIMER_ALL_ACCESS,
+                None, None, 0, _TIMER_ALL_ACCESS
             )
-            if not self._handle:
-                raise ctypes.WinError(ctypes.get_last_error())
+        if not self._handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        self._cancel_handle = _kernel32.CreateEventW(None, True, False, None)
+        if not self._cancel_handle:
+            error = ctypes.WinError(ctypes.get_last_error())
+            try:
+                close_timer(self)
+            finally:
+                raise error
 
-        def __del__(self):
-            if self._handle:
-                _kernel32.CloseHandle(self._handle)
-                self._handle = None
+    def __del__(self) -> None:
+        # Normal callers close explicitly after the waiting thread returns.
+        # An active wait retains this object, so it cannot be finalized early.
+        try:
+            close_timer(self)
+        except Exception:
+            pass
 
-    def create_high_resolution_timer() -> _Timer:
-        return _TimerLegacy()
 
-    def set_periodic_timer(timer: _Timer, fps: int):
-        timer.period_s = 1.0 / fps
+def create_high_resolution_timer() -> _Timer:
+    return _Timer()
+
+
+def set_periodic_timer(timer: _Timer, fps: int) -> None:
+    validate_target_fps(fps)
+    if fps == 0:
+        raise ValueError("Timer FPS must be positive.")
+    with timer._lock:
+        if timer._handle is None or timer._cancel_handle is None:
+            raise RuntimeError("Timer is closed.")
+        if not _kernel32.ResetEvent(timer._cancel_handle):
+            raise ctypes.WinError(ctypes.get_last_error())
         timer.cancelled = False
+        timer.period_s = 1.0 / fps
         timer._next_tick = time.perf_counter() + timer.period_s
 
-    def wait_for_timer(timer: _Timer):
+
+def wait_for_timer(timer: _Timer) -> None:
+    with timer._lock:
         if timer.cancelled or timer._next_tick is None:
             return
-        now = time.perf_counter()
-        sleep_s = timer._next_tick - now
-        if sleep_s > 0:
-            # Negative value = relative time in 100-nanosecond intervals.
-            due_time = ctypes.c_longlong(-int(sleep_s * 10_000_000))
-            _kernel32.SetWaitableTimer(
-                timer._handle, ctypes.byref(due_time), 0, None, None, 0
-            )
-            _kernel32.WaitForSingleObject(timer._handle, _INFINITE)
-            if not timer.cancelled:
-                timer._next_tick += timer.period_s
-            return
-        if not timer.cancelled:
+        if timer._handle is None or timer._cancel_handle is None:
+            raise RuntimeError("Timer is closed.")
+        sleep_s = timer._next_tick - time.perf_counter()
+        if sleep_s <= 0:
+            # Preserve the existing cadence: skip missed ticks rather than
+            # issuing a burst of capture cycles after a long delay.
             if -sleep_s > timer.period_s:
                 timer._next_tick = time.perf_counter() + timer.period_s
-                return
+            else:
+                timer._next_tick += timer.period_s
+            return
+        # Negative relative due time, rounded upward to 100-nanosecond units.
+        due_time = ctypes.c_longlong(-max(1, math.ceil(sleep_s * 10_000_000)))
+        if not _kernel32.SetWaitableTimer(
+            timer._handle, ctypes.byref(due_time), 0, None, None, False
+        ):
+            raise ctypes.WinError(ctypes.get_last_error())
+        # A latched cancellation survives the arm-to-wait race. If both are
+        # signaled, WaitForMultipleObjects chooses the first handle.
+        handles = (wintypes.HANDLE * 2)(timer._cancel_handle, timer._handle)
+
+    # The owner must not close either handle until this wait has returned.
+    result = _kernel32.WaitForMultipleObjects(2, handles, False, _INFINITE)
+    if result == _WAIT_FAILED:
+        raise ctypes.WinError(ctypes.get_last_error())
+    if result == _WAIT_OBJECT_0:
+        return
+    if result != _WAIT_OBJECT_0 + 1:
+        raise RuntimeError(f"Unexpected timer wait result: {result:#x}")
+    with timer._lock:
+        if not timer.cancelled and timer._next_tick is not None:
             timer._next_tick += timer.period_s
 
-    def cancel_timer(timer: _Timer):
+
+def cancel_timer(timer: _Timer) -> None:
+    """Wake a waiter; the owning thread closes the timer after its wait ends."""
+    with timer._lock:
         timer.cancelled = True
-        # Signal the timer immediately so WaitForSingleObject returns.
-        due_time = ctypes.c_longlong(0)
-        _kernel32.SetWaitableTimer(
-            timer._handle, ctypes.byref(due_time), 0, None, None, 0
-        )
+        if timer._cancel_handle is not None:
+            if not _kernel32.SetEvent(timer._cancel_handle):
+                raise ctypes.WinError(ctypes.get_last_error())
+
+
+def close_timer(timer: _Timer) -> None:
+    """Release both handles after the owner has finished waiting."""
+    with timer._lock:
+        handles = (timer._handle, timer._cancel_handle)
+        timer._handle = timer._cancel_handle = None
+        timer._next_tick = None
+        timer.cancelled = True
+        error = None
+        for handle in handles:
+            if handle and not _kernel32.CloseHandle(handle) and error is None:
+                error = ctypes.WinError(ctypes.get_last_error())
+        if error is not None:
+            raise error
