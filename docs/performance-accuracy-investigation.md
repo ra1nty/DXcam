@@ -29,8 +29,12 @@ The subsequent implementation addresses these four confirmed gaps:
 
 The original findings and evidence remain below for context. Portrait WGC
 geometry, detached-output selection, cross-adapter migration, timer cancellation,
-HDR, and the performance experiments remain separate work. These correctness
+and HDR remain separate work. These correctness
 changes do not establish a performance improvement.
+
+A subsequent [controlled readout scheduling comparison](../benchmarks/readout_scheduling_comparison.md)
+tests holding the native device guard through CPU conversion. It remains an
+isolated experiment; production scheduling and the zero-timeout default are unchanged.
 
 **Original recommendation:** fix the confirmed output/lifecycle contract gaps first, then
 experiment with D3D work scheduling. Preserve the zero acquisition timeout,
@@ -245,4 +249,5 @@ sample-preview, or library README FPS numbers as an apples-to-apples comparison.
 
 Local ignored research notes and bounded probes are under `.test/research_*`.
 The four correctness fixes are recorded in the implementation status above.
-Controlled scheduling and copy-elimination experiments remain follow-up work.
+The readout scheduling experiment is linked above. A bounded D3D handoff and
+copy-elimination experiments remain follow-up work.

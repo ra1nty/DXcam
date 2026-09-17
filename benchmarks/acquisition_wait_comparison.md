@@ -21,6 +21,11 @@ and fingerprint recorded here. See the
 Addressing the contention remains separate work; native multithread protection
 remains enabled.
 
+A subsequent [readout scheduling experiment](readout_scheduling_comparison.md)
+tests holding the guard through CPU conversion with a fresh baseline. It reduces
+positive-wait frame age on this machine, but remains experimental; production
+scheduling and the zero-timeout default are unchanged.
+
 **What the parameter means.** `TimeoutInMilliseconds` bounds how long
 `AcquireNextFrame` waits for a new frame; zero polls immediately. A positive value
 does not add a fixed sleep to every frame or impose `1000 / timeout` as an FPS
