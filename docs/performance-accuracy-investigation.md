@@ -36,6 +36,12 @@ A subsequent [controlled readout scheduling comparison](../benchmarks/readout_sc
 tests holding the native device guard through CPU conversion. It remains an
 isolated experiment; production scheduling and the zero-timeout default are unchanged.
 
+A later [capacity and cached-copy follow-up](../benchmarks/capacity_and_cache_comparison.md)
+implements a stop-aware capacity wait for unpaced capture and removes the
+temporary copy from cached one-shot `grab_into()`. It includes isolated CPU and
+allocation measurements plus real DXGI/WinRT lifecycle checks. The broader D3D
+handoff, fused NumPy conversion, and processed-frame-cache proposals remain open.
+
 **Original recommendation:** fix the confirmed output/lifecycle contract gaps first, then
 experiment with D3D work scheduling. Preserve the zero acquisition timeout,
 native multithread protection, GPU-side ROI cropping, and reader/writer leases.
