@@ -47,6 +47,7 @@ from dxcam.util.frame import (
     validate_destination_frame,
     validate_region,
 )
+from dxcam.util.timer import validate_target_fps
 
 logger = logging.getLogger(__name__)
 
@@ -634,7 +635,8 @@ class DXCamera:
 
         Args:
             region: Optional region. Defaults to camera region.
-            target_fps: Target capture FPS. ``0`` disables timer pacing.
+            target_fps: Nonnegative integer capture FPS. ``0`` disables pacing.
+                Booleans, floats and negative values are rejected before startup.
             video_mode: Reuse previous frame when no new frame arrives.
             delay: Optional startup delay in seconds.
             frame_timeout_ms: Backend acquisition wait in milliseconds (0-1000).
@@ -651,6 +653,7 @@ class DXCamera:
             >>> cam.stop()
         """
         self._ensure_not_released()
+        validate_target_fps(target_fps)
         if (
             isinstance(frame_timeout_ms, bool)
             or not isinstance(frame_timeout_ms, int)
@@ -712,13 +715,19 @@ class DXCamera:
         elapsed_s = 0.0
         if self.is_capturing:
             if worker is not None:
-                worker.stop()
+                stop_error: Exception | None = None
+                try:
+                    worker.stop()
+                except Exception as exc:
+                    # A native cancellation signal can fail after the Python
+                    # stop flag is set. Still join before retiring resources.
+                    stop_error = exc
                 if not worker.join(timeout=10):
                     raise RuntimeError(
                         "Capture thread did not stop within timeout; refusing "
                         "to clear frame buffer before join."
-                    )
-                capture_error = worker.consume_error()
+                    ) from stop_error
+                capture_error = worker.consume_error() or stop_error
                 elapsed_s = worker.elapsed_seconds
                 if elapsed_s > 0:
                     with self.__lock:

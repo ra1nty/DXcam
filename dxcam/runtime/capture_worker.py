@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from _thread import LockType
 from dataclasses import dataclass, field
-from threading import Condition, Event, Thread, current_thread
+from threading import Condition, Event, Lock, Thread, current_thread
 from typing import Any, Callable
 
 from dxcam.core.stagesurf import StageSurface
@@ -11,8 +11,10 @@ from dxcam.runtime.frame_buffer import FrameBuffer
 from dxcam.types import Region
 from dxcam.util.timer import (
     cancel_timer,
+    close_timer,
     create_high_resolution_timer,
     set_periodic_timer,
+    validate_target_fps,
     wait_for_timer,
 )
 
@@ -37,6 +39,8 @@ class CaptureWorker:
     _thread: Thread | None = field(default=None, init=False, repr=False)
     _error: Exception | None = field(default=None, init=False, repr=False)
     _elapsed_seconds: float = field(default=0.0, init=False, repr=False)
+    _timer_lock: LockType = field(default_factory=Lock, init=False, repr=False)
+    _timer_handle: Any | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.frame_condition = Condition(self.lock)
@@ -65,6 +69,7 @@ class CaptureWorker:
     def start(self) -> None:
         if self.is_running():
             raise RuntimeError("Capture worker is already running.")
+        validate_target_fps(self.target_fps)
         self._stop_event.clear()
         self._error = None
         self._elapsed_seconds = 0.0
@@ -73,9 +78,14 @@ class CaptureWorker:
 
     def stop(self) -> None:
         self._stop_event.set()
-        with self.frame_condition:
-            self.frame_condition.notify_all()
-            self.capacity_condition.notify_all()
+        try:
+            with self._timer_lock:
+                if self._timer_handle is not None:
+                    cancel_timer(self._timer_handle)
+        finally:
+            with self.frame_condition:
+                self.frame_condition.notify_all()
+                self.capacity_condition.notify_all()
 
     def join(self, timeout: float | None = None) -> bool:
         thread = self._thread
@@ -136,9 +146,14 @@ class CaptureWorker:
         timer_handle: Any | None = None
         start_time = time.perf_counter()
         try:
+            validate_target_fps(self.target_fps)
             if self.target_fps != 0:
                 timer_handle = create_high_resolution_timer()
                 set_periodic_timer(timer_handle, self.target_fps)
+                with self._timer_lock:
+                    self._timer_handle = timer_handle
+                    if self.stopped:
+                        cancel_timer(timer_handle)
             while not self._stop_event.is_set():
                 if timer_handle is not None:
                     wait_for_timer(timer_handle)
@@ -148,7 +163,19 @@ class CaptureWorker:
         except Exception as exc:  # pragma: no cover - passthrough path
             self._error = exc
         finally:
-            self.stop()
+            try:
+                self.stop()
+            except Exception as exc:
+                if self._error is None:
+                    self._error = exc
+            # Stop cannot signal a detached handle. This thread has returned
+            # from its wait and is the sole owner allowed to close the timer.
+            with self._timer_lock:
+                self._timer_handle = None
             if timer_handle is not None:
-                cancel_timer(timer_handle)
+                try:
+                    close_timer(timer_handle)
+                except Exception as exc:
+                    if self._error is None:
+                        self._error = exc
             self._elapsed_seconds = time.perf_counter() - start_time
