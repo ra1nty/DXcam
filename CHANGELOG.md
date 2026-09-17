@@ -1,4 +1,6 @@
 ### Unreleased
+- Convert positive row-padded BGRA inputs directly in the NumPy processor, avoiding a frame-sized input temporary while preserving unusual-stride and overlap fallbacks; see the [processor comparison](benchmarks/numpy_pitch_comparison.md).
+- Expand exact conversion coverage for pitched and overlapping arrays, and correct the independent grayscale reference's coefficient normalization without changing production color arithmetic.
 - Separate WinRT's desktop-oriented frame geometry from DXGI's unrotated surfaces so rotated-monitor capture uses the correct staging dimensions, regions and pixel orientation.
 - Validate WinRT content against both output resolution and the frame pool's creation size, including when another camera has already refreshed the shared output.
 - Add independent pixel references and backend geometry/recovery regressions; record [geometry evidence and validation limits](docs/capture-geometry-validation.md).

@@ -80,13 +80,16 @@ def expected_pixels(logical, region, color):
 
     # OpenCV documents Y = .299 R + .587 G + .114 B. Its uint8 reference uses
     # 15-bit coefficients and nearest rounding (ties upward), not truncation
-    # or np.rint's ties-to-even. Derive the coefficients from those decimal
-    # weights instead of importing any DXcam/OpenCV conversion implementation.
+    # or np.rint's ties-to-even. Quantize R/G from those decimal weights, then
+    # derive B as the residual so the integer coefficients sum to one. Rounding
+    # all three independently would inflate B by one and bias boundary pixels.
     # https://docs.opencv.org/4.13.0/de/d25/imgproc_color_conversions.html
     # https://github.com/opencv/opencv/blob/4.13.0/modules/imgproc/src/color.simd_helpers.hpp
     # https://github.com/opencv/opencv/blob/4.13.0/modules/imgproc/src/color_rgb.simd.hpp
     scale = 1 << 15
-    weights = (np.array([114, 587, 299], dtype=np.int64) * scale + 500) // 1000
+    red = (299 * scale + 500) // 1000
+    green = (587 * scale + 500) // 1000
+    weights = np.array([scale - red - green, green, red], dtype=np.int64)
     weighted = np.sum(cropped[..., :3].astype(np.int64) * weights, axis=-1)
     return ((weighted + scale // 2) // scale).astype(np.uint8)[..., None]
 
@@ -170,8 +173,9 @@ def test_processor_pixels_match_independent_logical_reference(backend, color, ro
 @pytest.mark.parametrize("backend", BACKENDS)
 def test_gray_rounding_and_alpha_independence_match_explicit_reference(backend):
     # Primaries/black/white, values around a rounding boundary, a 15-bit exact
-    # tie, and decimal-vs-fixed-point boundary cases. Expected bytes are literal;
-    # a blanket +/-1 allowance would hide failures these samples distinguish.
+    # tie, decimal-vs-fixed-point boundaries, and blue-coefficient normalization
+    # boundaries. Expected bytes are literal; a blanket +/-1 allowance would
+    # hide failures these samples distinguish.
     bgr = np.array(
         [
             [0, 0, 0],
@@ -186,10 +190,12 @@ def test_gray_rounding_and_alpha_independence_match_explicit_reference(backend):
             [17, 9, 21],
             [0, 2, 175],
             [0, 5, 236],
+            [254, 218, 19],
+            [64, 184, 208],
         ],
         dtype=np.uint8,
     )
-    expected_row = [0, 255, 29, 150, 76, 0, 1, 1, 2, 14, 54, 74]
+    expected_row = [0, 255, 29, 150, 76, 0, 1, 1, 2, 14, 54, 74, 163, 177]
     logical = np.empty((2, len(bgr), 4), dtype=np.uint8)
     logical[..., :3] = bgr
     logical[0, :, 3] = 0

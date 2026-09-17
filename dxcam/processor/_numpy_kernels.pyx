@@ -123,6 +123,25 @@ cdef inline cnp.ndarray[uint8_t, ndim=3, mode="c"] _ensure_src_bgra_contiguous(
     return np.ascontiguousarray(src, dtype=np.uint8)
 
 
+cdef inline cnp.ndarray[uint8_t, ndim=3] _ensure_src_bgra_rows(
+    cnp.ndarray[uint8_t, ndim=3] src
+):
+    if src.shape[2] != 4:
+        raise ValueError(f"Expected BGRA input with 4 channels, got {src.shape[2]}.")
+    if src.flags.c_contiguous:
+        return src
+    # Conversion can read padded or sliced rows directly, provided each pixel
+    # remains packed BGRA. Keep the rotation-preparation helper unchanged.
+    if (
+        src.strides[2] == 1
+        and src.strides[1] == 4
+        and src.strides[0] > 0
+        and src.strides[0] >= src.shape[1] * 4
+    ):
+        return src
+    return np.ascontiguousarray(src, dtype=np.uint8)
+
+
 cdef inline cnp.ndarray[uint8_t, ndim=3, mode="c"] _ensure_dst_contiguous(
     cnp.ndarray[uint8_t, ndim=3] dst
 ):
@@ -454,10 +473,10 @@ cdef inline void _bgra_to_rgb_ptr_parallel(
     uint8_t* dst,
     Py_ssize_t h,
     Py_ssize_t w,
+    Py_ssize_t src_row_stride,
 ) noexcept nogil:
     cdef Py_ssize_t y
     cdef Py_ssize_t x
-    cdef Py_ssize_t src_row_stride = w * 4
     cdef Py_ssize_t dst_row_stride = w * 3
     cdef Py_ssize_t src_base
     cdef Py_ssize_t dst_base
@@ -493,10 +512,10 @@ cdef inline void _bgra_to_bgr_ptr_parallel(
     uint8_t* dst,
     Py_ssize_t h,
     Py_ssize_t w,
+    Py_ssize_t src_row_stride,
 ) noexcept nogil:
     cdef Py_ssize_t y
     cdef Py_ssize_t x
-    cdef Py_ssize_t src_row_stride = w * 4
     cdef Py_ssize_t dst_row_stride = w * 3
     cdef Py_ssize_t src_base
     cdef Py_ssize_t dst_base
@@ -533,10 +552,10 @@ cdef inline void _bgra_to_rgba_ptr_parallel(
     uint8_t* dst,
     Py_ssize_t h,
     Py_ssize_t w,
+    Py_ssize_t src_row_stride,
 ) noexcept nogil:
     cdef Py_ssize_t y
     cdef Py_ssize_t x
-    cdef Py_ssize_t src_row_stride = w * 4
     cdef Py_ssize_t dst_row_stride = w * 4
     cdef Py_ssize_t src_base
     cdef Py_ssize_t dst_base
@@ -578,10 +597,10 @@ cdef inline void _bgra_to_gray_ptr_parallel(
     uint8_t* dst,
     Py_ssize_t h,
     Py_ssize_t w,
+    Py_ssize_t src_row_stride,
 ) noexcept nogil:
     cdef Py_ssize_t y
     cdef Py_ssize_t x
-    cdef Py_ssize_t src_row_stride = w * 4
     cdef Py_ssize_t dst_row_stride = w
     cdef Py_ssize_t src_base
     cdef Py_ssize_t dst_base
@@ -603,18 +622,43 @@ cdef inline void _bgra_to_gray_ptr_parallel(
             dst[di] = <uint8_t>gray
 
 
+cdef inline void _bgra_to_pitched_rows_ptr(
+    const uint8_t* src,
+    uint8_t* dst,
+    Py_ssize_t h,
+    Py_ssize_t w,
+    Py_ssize_t src_row_stride,
+    int mode_code,
+) noexcept nogil:
+    cdef Py_ssize_t y
+    if mode_code == MODE_RGB:
+        for y in range(h):
+            _bgra_to_rgb_ptr(src + y * src_row_stride, dst + y * w * 3, w)
+    elif mode_code == MODE_BGR:
+        for y in range(h):
+            _bgra_to_bgr_ptr(src + y * src_row_stride, dst + y * w * 3, w)
+    elif mode_code == MODE_RGBA:
+        for y in range(h):
+            _bgra_to_rgba_ptr(src + y * src_row_stride, dst + y * w * 4, w)
+    else:
+        for y in range(h):
+            _bgra_to_gray_ptr(src + y * src_row_stride, dst + y * w, w)
+
+
 def convert_bgra(
     cnp.ndarray[uint8_t, ndim=3] src,
     mode: str,
 ) -> cnp.ndarray:
-    """Convert BGRA ``src`` to a target color mode."""
-    cdef cnp.ndarray[uint8_t, ndim=3, mode="c"] src_c = _ensure_src_bgra_contiguous(src)
-    cdef Py_ssize_t h = src_c.shape[0]
-    cdef Py_ssize_t w = src_c.shape[1]
+    """Convert packed BGRA pixels, including positive padded source rows."""
+    cdef cnp.ndarray[uint8_t, ndim=3] src_bgra = _ensure_src_bgra_rows(src)
+    cdef Py_ssize_t h = src_bgra.shape[0]
+    cdef Py_ssize_t w = src_bgra.shape[1]
+    cdef Py_ssize_t src_row_stride = src_bgra.strides[0]
+    cdef bint contiguous_src = src_bgra.flags.c_contiguous
     cdef Py_ssize_t n_pixels = h * w
     cdef int mode_code = _mode_to_code(mode)
     cdef cnp.ndarray[uint8_t, ndim=3, mode="c"] out
-    cdef const uint8_t* src_ptr = <const uint8_t*>src_c.data
+    cdef const uint8_t* src_ptr = <const uint8_t*>src_bgra.data
     cdef uint8_t* dst_ptr
     cdef bint use_parallel = n_pixels >= _PARALLEL_PIXELS_THRESHOLD
 
@@ -623,36 +667,44 @@ def convert_bgra(
         dst_ptr = <uint8_t*>out.data
         with nogil:
             if use_parallel:
-                _bgra_to_rgb_ptr_parallel(src_ptr, dst_ptr, h, w)
-            else:
+                _bgra_to_rgb_ptr_parallel(src_ptr, dst_ptr, h, w, src_row_stride)
+            elif contiguous_src:
                 _bgra_to_rgb_ptr(src_ptr, dst_ptr, n_pixels)
+            else:
+                _bgra_to_pitched_rows_ptr(src_ptr, dst_ptr, h, w, src_row_stride, mode_code)
         return out
     if mode_code == MODE_BGR:
         out = np.empty((h, w, 3), dtype=np.uint8)
         dst_ptr = <uint8_t*>out.data
         with nogil:
             if use_parallel:
-                _bgra_to_bgr_ptr_parallel(src_ptr, dst_ptr, h, w)
-            else:
+                _bgra_to_bgr_ptr_parallel(src_ptr, dst_ptr, h, w, src_row_stride)
+            elif contiguous_src:
                 _bgra_to_bgr_ptr(src_ptr, dst_ptr, n_pixels)
+            else:
+                _bgra_to_pitched_rows_ptr(src_ptr, dst_ptr, h, w, src_row_stride, mode_code)
         return out
     if mode_code == MODE_RGBA:
         out = np.empty((h, w, 4), dtype=np.uint8)
         dst_ptr = <uint8_t*>out.data
         with nogil:
             if use_parallel:
-                _bgra_to_rgba_ptr_parallel(src_ptr, dst_ptr, h, w)
-            else:
+                _bgra_to_rgba_ptr_parallel(src_ptr, dst_ptr, h, w, src_row_stride)
+            elif contiguous_src:
                 _bgra_to_rgba_ptr(src_ptr, dst_ptr, n_pixels)
+            else:
+                _bgra_to_pitched_rows_ptr(src_ptr, dst_ptr, h, w, src_row_stride, mode_code)
         return out
 
     out = np.empty((h, w, 1), dtype=np.uint8)
     dst_ptr = <uint8_t*>out.data
     with nogil:
         if use_parallel:
-            _bgra_to_gray_ptr_parallel(src_ptr, dst_ptr, h, w)
-        else:
+            _bgra_to_gray_ptr_parallel(src_ptr, dst_ptr, h, w, src_row_stride)
+        elif contiguous_src:
             _bgra_to_gray_ptr(src_ptr, dst_ptr, n_pixels)
+        else:
+            _bgra_to_pitched_rows_ptr(src_ptr, dst_ptr, h, w, src_row_stride, mode_code)
     return out
 
 
@@ -661,11 +713,11 @@ def convert_bgra_into(
     cnp.ndarray[uint8_t, ndim=3] dst,
     mode: str,
 ) -> None:
-    """Convert BGRA ``src`` into caller-provided ``dst`` array."""
-    cdef cnp.ndarray[uint8_t, ndim=3, mode="c"] src_c = _ensure_src_bgra_contiguous(src)
+    """Convert packed BGRA pixels into a writable C-contiguous destination."""
+    cdef cnp.ndarray[uint8_t, ndim=3] src_bgra = _ensure_src_bgra_rows(src)
     cdef cnp.ndarray[uint8_t, ndim=3, mode="c"] dst_c = _ensure_dst_contiguous(dst)
-    cdef Py_ssize_t src_h = src_c.shape[0]
-    cdef Py_ssize_t src_w = src_c.shape[1]
+    cdef Py_ssize_t src_h = src_bgra.shape[0]
+    cdef Py_ssize_t src_w = src_bgra.shape[1]
     cdef Py_ssize_t dst_h = dst_c.shape[0]
     cdef Py_ssize_t dst_w = dst_c.shape[1]
     cdef int mode_code = _mode_to_code(mode)
@@ -673,15 +725,23 @@ def convert_bgra_into(
     cdef const uint8_t* src_ptr
     cdef uint8_t* dst_ptr
     cdef bint use_parallel = n_pixels >= _PARALLEL_PIXELS_THRESHOLD
+    cdef Py_ssize_t src_row_stride
+    cdef bint contiguous_src
 
     if dst_h != src_h or dst_w != src_w:
         raise ValueError(
             "Destination shape does not match source dimensions: "
-            f"src=({src_h}, {src_w}, {src_c.shape[2]}) "
+            f"src=({src_h}, {src_w}, {src_bgra.shape[2]}) "
             f"dst=({dst_h}, {dst_w}, {dst_c.shape[2]})."
         )
 
-    src_ptr = <const uint8_t*>src_c.data
+    # Noncontiguous inputs were previously copied before any destination write.
+    # Retain that snapshot when a pitched source may overlap the destination.
+    if not src_bgra.flags.c_contiguous and np.may_share_memory(src_bgra, dst_c):
+        src_bgra = np.ascontiguousarray(src_bgra, dtype=np.uint8)
+    src_row_stride = src_bgra.strides[0]
+    contiguous_src = src_bgra.flags.c_contiguous
+    src_ptr = <const uint8_t*>src_bgra.data
     dst_ptr = <uint8_t*>dst_c.data
 
     if mode_code == MODE_RGB:
@@ -691,9 +751,11 @@ def convert_bgra_into(
             )
         with nogil:
             if use_parallel:
-                _bgra_to_rgb_ptr_parallel(src_ptr, dst_ptr, src_h, src_w)
-            else:
+                _bgra_to_rgb_ptr_parallel(src_ptr, dst_ptr, src_h, src_w, src_row_stride)
+            elif contiguous_src:
                 _bgra_to_rgb_ptr(src_ptr, dst_ptr, n_pixels)
+            else:
+                _bgra_to_pitched_rows_ptr(src_ptr, dst_ptr, src_h, src_w, src_row_stride, mode_code)
         return
     if mode_code == MODE_BGR:
         if dst_c.shape[2] != 3:
@@ -702,9 +764,11 @@ def convert_bgra_into(
             )
         with nogil:
             if use_parallel:
-                _bgra_to_bgr_ptr_parallel(src_ptr, dst_ptr, src_h, src_w)
-            else:
+                _bgra_to_bgr_ptr_parallel(src_ptr, dst_ptr, src_h, src_w, src_row_stride)
+            elif contiguous_src:
                 _bgra_to_bgr_ptr(src_ptr, dst_ptr, n_pixels)
+            else:
+                _bgra_to_pitched_rows_ptr(src_ptr, dst_ptr, src_h, src_w, src_row_stride, mode_code)
         return
     if mode_code == MODE_RGBA:
         if dst_c.shape[2] != 4:
@@ -713,15 +777,19 @@ def convert_bgra_into(
             )
         with nogil:
             if use_parallel:
-                _bgra_to_rgba_ptr_parallel(src_ptr, dst_ptr, src_h, src_w)
-            else:
+                _bgra_to_rgba_ptr_parallel(src_ptr, dst_ptr, src_h, src_w, src_row_stride)
+            elif contiguous_src:
                 _bgra_to_rgba_ptr(src_ptr, dst_ptr, n_pixels)
+            else:
+                _bgra_to_pitched_rows_ptr(src_ptr, dst_ptr, src_h, src_w, src_row_stride, mode_code)
         return
 
     if dst_c.shape[2] != 1:
         raise ValueError(f"GRAY destination must have 1 channel, got {dst_c.shape[2]}.")
     with nogil:
         if use_parallel:
-            _bgra_to_gray_ptr_parallel(src_ptr, dst_ptr, src_h, src_w)
-        else:
+            _bgra_to_gray_ptr_parallel(src_ptr, dst_ptr, src_h, src_w, src_row_stride)
+        elif contiguous_src:
             _bgra_to_gray_ptr(src_ptr, dst_ptr, n_pixels)
+        else:
+            _bgra_to_pitched_rows_ptr(src_ptr, dst_ptr, src_h, src_w, src_row_stride, mode_code)
