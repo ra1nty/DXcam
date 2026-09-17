@@ -35,9 +35,9 @@ class FakeStage:
     def rebind(self, *, output, device):
         self.output = output
 
-    def rebuild(self):
+    def rebuild(self, dim=None):
         self.released = False
-        self.dim = self.output.surface_size
+        self.dim = dim or self.output.surface_size
 
     def ensure_size(self, *, dim):
         self.dim = dim

@@ -74,6 +74,7 @@ def publish(buffer, rotation_angle=0):
 def make_camera():
     camera = DXCamera.__new__(DXCamera)
     camera._is_released = False
+    camera.backend = "dxgi"
     camera.is_capturing = True
     camera._DXCamera__lock = Lock()
     camera._DXCamera__processor_lock = Lock()

@@ -51,6 +51,7 @@ class CapacityHarness:
         self.captured = Event()
         camera = self.camera = DXCamera.__new__(DXCamera)
         camera._is_released = False
+        camera.backend = "dxgi"
         camera.is_capturing = True
         camera._DXCamera__lock = self.lock
         camera._DXCamera__frame_buffer = self.buffer

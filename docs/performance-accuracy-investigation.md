@@ -27,9 +27,12 @@ The subsequent implementation addresses these four confirmed gaps:
   Native calls already in progress must still return; cancellation does not
   forcibly interrupt them.
 
-The original findings and evidence remain below for context. Portrait WGC
-geometry, detached-output selection, cross-adapter migration, timer cancellation,
-and HDR remain separate work. These correctness
+The original findings and evidence remain below for context. The later
+[geometry validation pass](capture-geometry-validation.md) separates WinRT's
+desktop-oriented pixels from DXGI rotation, checks the actual frame-pool creation
+size, and adds independent pixel references. Synthetic regressions cover every
+quarter-turn; physical rotated-display validation remains open. Cross-adapter
+migration, timer cancellation, and HDR remain separate work. These correctness
 changes do not establish a performance improvement.
 
 A subsequent [controlled readout scheduling comparison](../benchmarks/readout_scheduling_comparison.md)
@@ -41,6 +44,9 @@ implements a stop-aware capacity wait for unpaced capture and removes the
 temporary copy from cached one-shot `grab_into()`. It includes isolated CPU and
 allocation measurements plus real DXGI/WinRT lifecycle checks. The broader D3D
 handoff, fused NumPy conversion, and processed-frame-cache proposals remain open.
+
+Detached-output fallback selection now retains its selected replacement and
+releases unused candidates, including on exceptions.
 
 **Original recommendation:** fix the confirmed output/lifecycle contract gaps first, then
 experiment with D3D work scheduling. Preserve the zero acquisition timeout,
