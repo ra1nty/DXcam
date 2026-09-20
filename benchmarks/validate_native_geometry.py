@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+from contextlib import nullcontext
 from datetime import datetime, timezone
 import faulthandler
 import hashlib
@@ -23,7 +24,6 @@ import threading
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
 
 
 def expected_pixel(spec, x, y):
@@ -82,7 +82,12 @@ def roi_cases(width, height):
     return [
         (0, 0, min(137, width), min(131, height)),
         (max(0, width - 119), max(0, height - 103), width, height),
-        (width // 2 - 63, height // 2 - 47, width // 2 + 74, height // 2 + 56),
+        (
+            max(0, width // 2 - 63),
+            max(0, height // 2 - 47),
+            min(width, width // 2 + 74),
+            min(height, height // 2 + 56),
+        ),
         (width - 1, height - 1, width, height),
     ]
 
@@ -173,7 +178,9 @@ class Observations:
                 "texture_format": int(desc.Format),
                 "stage_size": [stage.width, stage.height],
                 "public_size": [camera.width, camera.height],
-                "public_rotation": camera.rotation_angle,
+                "cached_camera_rotation": camera.__dict__.get(
+                    "_rotation_angle", camera.__dict__.get("rotation_angle")
+                ),
                 "effective_rotation": camera._capture_rotation_angle,
                 "capture_surface_size": list(camera._capture_surface_size),
                 "output_name": camera._output.devicename,
@@ -277,7 +284,8 @@ def verify_geometry(camera, spec, observations):
     # A separate descriptor observes the native state without refreshing the
     # shared Output object and thereby influencing recovery.
     native = DXGI_OUTPUT_DESC()
-    camera._output.output.GetDesc(ctypes.byref(native))
+    with getattr(camera._output, "_metadata_lock", nullcontext()):
+        camera._output.output.GetDesc(ctypes.byref(native))
     rect = native.DesktopCoordinates
     native_size = [rect.right - rect.left, rect.bottom - rect.top]
     native_rotation = (0, 0, 90, 180, 270)[int(native.Rotation)]
@@ -764,6 +772,9 @@ def main(args):
 
 
 if __name__ == "__main__":
+    # Only the standalone diagnostic selects the source checkout. Loading its
+    # pure verifier from installed-wheel tests must not redirect dxcam imports.
+    sys.path.insert(0, str(ROOT))
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device-index", type=int, default=0)
     parser.add_argument("--output-index", type=int, default=0)

@@ -29,6 +29,7 @@ from functools import partial
 from threading import Lock, current_thread
 from typing import Any, Literal, overload
 
+import comtypes
 import numpy as np
 
 from dxcam.core import Device, Output, StageSurface
@@ -141,10 +142,30 @@ class DXCamera:
         validate_region(self.region, self.width, self.height)
 
     @property
+    def rotation_angle(self) -> int:
+        """Monitor rotation in degrees.
+
+        WinRT refreshes this metadata on explicit reads because an orientation
+        change can leave its desktop-oriented pixels and frame size unchanged.
+        Native query failures and released cameras return the last known value.
+        DXGI returns the rotation cached by capture initialization or recovery.
+        """
+        if self.backend == "winrt" and not self._is_released:
+            try:
+                self._rotation_angle = self._output.read_current_rotation()
+            except (comtypes.COMError, OSError):
+                pass
+        return self._rotation_angle
+
+    @rotation_angle.setter
+    def rotation_angle(self, angle: int) -> None:
+        self._rotation_angle = angle
+
+    @property
     def _capture_rotation_angle(self) -> int:
         # WGC provides desktop-oriented pixels. Only DXGI duplication needs
         # the monitor rotation applied to its unrotated surface.
-        return 0 if self.backend == "winrt" else self.rotation_angle
+        return 0 if self.backend == "winrt" else self._rotation_angle
 
     @property
     def _capture_surface_size(self) -> tuple[int, int]:
@@ -531,7 +552,7 @@ class DXCamera:
         self.__last_grab_entry = None
         self._recovery_pending = True
         old_width, old_height = self.width, self.height
-        old_rotation = self.rotation_angle
+        old_rotation = self._rotation_angle
         worker = self.__worker if self.is_capturing else None
         recovered = self._display_recovery.handle(
             region=self.region,
@@ -552,7 +573,7 @@ class DXCamera:
             old_rotation,
             self.width,
             self.height,
-            self.rotation_angle,
+            self._rotation_angle,
             self.region,
         )
 

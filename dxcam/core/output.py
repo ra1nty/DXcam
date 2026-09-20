@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes as wintypes
-from dataclasses import dataclass
+from _thread import RLock
+from dataclasses import dataclass, field
 from typing import Any
 
 from dxcam._libs.dxgi import DXGI_OUTPUT_DESC
@@ -15,6 +16,9 @@ class Output:
     output: Any
     rotation_mapping: tuple[int, int, int, int, int] = (0, 0, 90, 180, 270)
     desc: DXGI_OUTPUT_DESC | None = None
+    _metadata_lock: RLock = field(
+        default_factory=RLock, init=False, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         ctypes.windll.shcore.SetProcessDpiAwareness(2)
@@ -22,9 +26,17 @@ class Output:
         self.update_desc()
 
     def update_desc(self) -> None:
-        if self.desc is None:
-            self.desc = DXGI_OUTPUT_DESC()
-        self.output.GetDesc(ctypes.byref(self.desc))
+        with self._metadata_lock:
+            if self.desc is None:
+                self.desc = DXGI_OUTPUT_DESC()
+            self.output.GetDesc(ctypes.byref(self.desc))
+
+    def read_current_rotation(self) -> int:
+        """Query rotation without changing geometry shared by capture sessions."""
+        with self._metadata_lock:
+            desc = DXGI_OUTPUT_DESC()
+            self.output.GetDesc(ctypes.byref(desc))
+            return self.rotation_mapping[desc.Rotation]
 
     @property
     def hmonitor(self) -> wintypes.HMONITOR:

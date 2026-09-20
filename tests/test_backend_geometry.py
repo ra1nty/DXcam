@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import importlib
 from contextlib import contextmanager, nullcontext
+from threading import RLock
 from types import SimpleNamespace
 
 import numpy as np
@@ -32,6 +33,7 @@ class FakeOutput:
     hmonitor = 1
 
     def __init__(self, rotation):
+        self._metadata_lock = RLock()
         self.logical = logical_pixels()
         self.rotation_angle = rotation
         self.pending = None
@@ -50,6 +52,9 @@ class FakeOutput:
         if self.pending is not None:
             self.logical, self.rotation_angle = self.pending
             self.pending = None
+
+    def read_current_rotation(self):
+        return self.rotation_angle
 
 
 class MemoryStage:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+from threading import RLock
 from types import SimpleNamespace
 
 import comtypes
@@ -49,6 +50,7 @@ def make_handler(monkeypatch, candidates, *, original_error=None):
     )
     # Construct the real Output wrapper without its native DPI-awareness call.
     output = Output.__new__(Output)
+    output._metadata_lock = RLock()
     output.output = previous
     output.desc = DXGI_OUTPUT_DESC.from_buffer_copy(previous.desc)
     device = SimpleNamespace(enum_outputs=lambda: candidates)
