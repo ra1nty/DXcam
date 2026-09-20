@@ -128,10 +128,11 @@ for _ in range(1000):
 After `release()`, the same instance cannot be reused.
 In-flight readers retain their staging surfaces until readout completes, including across stop or output recovery.
 
-In the unreleased development branch, `stop()` cancels display-recovery retries
-and interrupts their backoff wait. A subsequent `start()` retries unfinished
-recovery before acquiring another frame. A native call already in progress must
-still return before the worker can stop.
+In the unreleased development branch, `stop()` interrupts the producer's pacing
+wait and cancels display-recovery retries, including their backoff wait. A
+subsequent `start()` retries unfinished recovery before acquiring another frame.
+A native capture call already in progress must still return before the worker
+can stop.
 
 ```python
 camera = dxcam.create(output_idx=0, output_color="BGR")
@@ -192,11 +193,21 @@ camera = dxcam.create()
 DXcam uses high-resolution pacing with drift correction to run near `target_fps`.
 
 ```python
-camera.start(target_fps=120)  # default to 60, greater than 120 is resource heavy
+camera.start(target_fps=120)  # default: 60
 ```
 
-On Python 3.11+, DXcam relies on Windows high-resolution timer behavior used by `time.sleep()`.
-On older versions, DXcam uses WinAPI waitable timers directly.
+In the unreleased development branch, `target_fps` must be a nonnegative Python
+`int`. `0` keeps capture unpaced. Booleans, floats (including `60.0`) and negative
+values raise `ValueError` before startup changes capture state. A positive FPS is
+a target; actual delivery also depends on the desktop, capture backend and workload.
+
+In that branch, all supported Python versions use a native high-resolution timer
+and a separate stop event. Older Windows builds that reject the high-resolution
+timer flag fall back to a regular waitable timer. `stop()` wakes the pacing wait,
+including at low capture rates; it does not interrupt a native capture call
+already in progress. Missed ticks are dropped rather than replayed in a burst.
+See the [timer pacing comparison](benchmarks/timer_pacing_comparison.md) for
+validation and measurements.
 
 #### Native Acquisition Wait (Unreleased)
 

@@ -204,7 +204,7 @@ def test_timer_setup_error_wakes_waiters_and_is_reported(monkeypatch):
         raise OSError("timer failed")
 
     monkeypatch.setattr("dxcam.runtime.capture_worker.set_periodic_timer", fail)
-    monkeypatch.setattr("dxcam.runtime.capture_worker.cancel_timer", closed.append)
+    monkeypatch.setattr("dxcam.runtime.capture_worker.close_timer", closed.append)
     worker = CaptureWorker(buffer, Lock(), lambda *args: None, lambda: (0, 0, 2, 2))
     worker.run_loop()
     assert str(worker.consume_error()) == "timer failed"

@@ -1,4 +1,7 @@
 ### Unreleased
+- Use a native high-resolution timer plus a separate stop event on every supported Python version, with a regular waitable-timer fallback on older Windows; `stop()` interrupts pacing waits. See the [timer pacing comparison](benchmarks/timer_pacing_comparison.md).
+- Validate `target_fps` before capture startup changes state: require a nonnegative Python integer, reject booleans, floats and negative values, and retain `0` for unpaced capture.
+- Close timer handles after the worker's timer wait returns, preserve primary capture errors during cleanup, and still attempt a bounded join if signaling cancellation fails. Native capture calls already in progress must still return before the worker can stop.
 - Convert positive row-padded BGRA inputs directly in the NumPy processor, avoiding a frame-sized input temporary while preserving unusual-stride and overlap fallbacks; see the [processor comparison](benchmarks/numpy_pitch_comparison.md).
 - Expand exact conversion coverage for pitched and overlapping arrays, and correct the independent grayscale reference's coefficient normalization without changing production color arithmetic.
 - Separate WinRT's desktop-oriented frame geometry from DXGI's unrotated surfaces so rotated-monitor capture uses the correct staging dimensions, regions and pixel orientation.
