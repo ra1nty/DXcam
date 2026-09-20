@@ -31,8 +31,10 @@ The original findings and evidence remain below for context. The later
 [geometry validation pass](capture-geometry-validation.md) separates WinRT's
 desktop-oriented pixels from DXGI rotation, checks the actual frame-pool creation
 size, and adds independent pixel references. Synthetic regressions cover every
-quarter-turn; physical rotated-display validation remains open. Cross-adapter
-migration and HDR remain separate work. These correctness
+quarter-turn. A later [native geometry/recovery pass](native-geometry-validation.md)
+validates physical 90/180/270-degree capture and a live resize on one NVIDIA
+setup, and fixes stale public WinRT rotation metadata after a same-size change.
+Other DPI configurations, cross-adapter migration and HDR remain separate work. These correctness
 changes do not establish a performance improvement.
 
 A subsequent [controlled readout scheduling comparison](../benchmarks/readout_scheduling_comparison.md)
