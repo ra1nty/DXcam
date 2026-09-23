@@ -118,3 +118,8 @@ rotation/resizing, cross-adapter migration, DPI variations, and HDR were not
 validated in this pass. Before calling rotated-display support hardware-verified,
 repeat native item/content/texture measurements and asymmetric corner/ROI pixel
 checks at each rotation, including capture recovery during a display change.
+
+A subsequent [native geometry and recovery pass](native-geometry-validation.md)
+adds that reusable hardware harness and records physical display-change results,
+including a same-size WinRT rotation metadata discrepancy found by the checks.
+The results and limitations above describe this original validation pass.

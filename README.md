@@ -170,6 +170,11 @@ Inspect available devices/outputs:
 ```
 
 ### Output Format
+`camera.rotation_angle` describes monitor rotation, not an instruction to rotate
+returned frames. WinRT already returns desktop-oriented pixels. In the unreleased
+branch, reading this value on a live WinRT camera queries current monitor
+metadata; after release or a native query failure it returns the last known value.
+
 Set output color mode when creating the camera:
 ```python
 dxcam.create(output_color="BGRA")

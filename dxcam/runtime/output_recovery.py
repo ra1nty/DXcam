@@ -54,68 +54,72 @@ class OutputRecoveryHandler:
         self._device = device
 
     def _refresh_output_desc(self) -> None:
-        try:
-            self._output.update_desc()
-            return
-        except comtypes.COMError as exc:
-            if not is_transient_com_error(
-                exc,
-                DXGITransientContext.SYSTEM_TRANSITION,
-                DXGITransientContext.ENUM_OUTPUTS,
-            ):
-                raise
-
-        previous_monitor = _monitor_handle_to_int(self._output.hmonitor)
-        previous_name = self._output.devicename
-
-        fallback_output = None
-        selected_output = None
-
-        output_ptrs = self._device.enum_outputs()
-        retained_output = None
-        try:
-            for output_ptr in output_ptrs:
-                desc = DXGI_OUTPUT_DESC()
-                try:
-                    output_ptr.GetDesc(ctypes.byref(desc))
-                except comtypes.COMError as exc:
-                    if is_transient_com_error(
-                        exc,
-                        DXGITransientContext.SYSTEM_TRANSITION,
-                        DXGITransientContext.ENUM_OUTPUTS,
-                    ):
-                        continue
+        # A metadata reader can query the current COM pointer on another
+        # thread. Keep it alive until that query finishes, including fallback
+        # replacement and release. update_desc() reenters this same lock.
+        with self._output._metadata_lock:
+            try:
+                self._output.update_desc()
+                return
+            except comtypes.COMError as exc:
+                if not is_transient_com_error(
+                    exc,
+                    DXGITransientContext.SYSTEM_TRANSITION,
+                    DXGITransientContext.ENUM_OUTPUTS,
+                ):
                     raise
 
-                if fallback_output is None:
-                    fallback_output = output_ptr
+            previous_monitor = _monitor_handle_to_int(self._output.hmonitor)
+            previous_name = self._output.devicename
 
-                monitor = _monitor_handle_to_int(desc.Monitor)
-                device_name = str(desc.DeviceName)
-                if previous_monitor != 0 and monitor == previous_monitor:
-                    selected_output = output_ptr
-                    break
-                if previous_name and device_name == previous_name:
-                    selected_output = output_ptr
+            fallback_output = None
+            selected_output = None
 
-            if selected_output is None:
-                selected_output = fallback_output
-            if selected_output is None:
-                raise RuntimeError("No DXGI outputs available during recovery.")
+            output_ptrs = self._device.enum_outputs()
+            retained_output = None
+            try:
+                for output_ptr in output_ptrs:
+                    desc = DXGI_OUTPUT_DESC()
+                    try:
+                        output_ptr.GetDesc(ctypes.byref(desc))
+                    except comtypes.COMError as exc:
+                        if is_transient_com_error(
+                            exc,
+                            DXGITransientContext.SYSTEM_TRANSITION,
+                            DXGITransientContext.ENUM_OUTPUTS,
+                        ):
+                            continue
+                        raise
 
-            previous_output = self._output.output
-            self._output.output = selected_output
-            # Selection alone does not transfer ownership: later candidates can
-            # still fail GetDesc. Retain only the pointer installed on Output.
-            retained_output = selected_output
-            if previous_output is not selected_output:
-                release_com_pointer(previous_output)
-            self._output.update_desc()
-        finally:
-            for output_ptr in output_ptrs:
-                if output_ptr is retained_output:
-                    continue
-                release_com_pointer(output_ptr)
+                    if fallback_output is None:
+                        fallback_output = output_ptr
+
+                    monitor = _monitor_handle_to_int(desc.Monitor)
+                    device_name = str(desc.DeviceName)
+                    if previous_monitor != 0 and monitor == previous_monitor:
+                        selected_output = output_ptr
+                        break
+                    if previous_name and device_name == previous_name:
+                        selected_output = output_ptr
+
+                if selected_output is None:
+                    selected_output = fallback_output
+                if selected_output is None:
+                    raise RuntimeError("No DXGI outputs available during recovery.")
+
+                previous_output = self._output.output
+                self._output.output = selected_output
+                # Selection alone does not transfer ownership: later candidates
+                # can still fail GetDesc. Retain only the installed pointer.
+                retained_output = selected_output
+                if previous_output is not selected_output:
+                    release_com_pointer(previous_output)
+                self._output.update_desc()
+            finally:
+                for output_ptr in output_ptrs:
+                    if output_ptr is retained_output:
+                        continue
+                    release_com_pointer(output_ptr)
 
     def handle(
         self,

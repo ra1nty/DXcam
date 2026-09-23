@@ -1,4 +1,6 @@
 ### Unreleased
+- Refresh WinRT's public monitor rotation on metadata reads, including 180-degree changes that leave frame dimensions unchanged; keep native queries out of capture's per-frame path and protect output pointers during concurrent reads/recovery.
+- Add a repeatable native DXGI/WinRT pixel and geometry harness with temporary display changes, independent restoration, retained-frame checks, and recorded [hardware findings](docs/native-geometry-validation.md).
 - Use a native high-resolution timer plus a separate stop event on every supported Python version, with a regular waitable-timer fallback on older Windows; `stop()` interrupts pacing waits. See the [timer pacing comparison](benchmarks/timer_pacing_comparison.md).
 - Validate `target_fps` before capture startup changes state: require a nonnegative Python integer, reject booleans, floats and negative values, and retain `0` for unpaced capture.
 - Close timer handles after the worker's timer wait returns, preserve primary capture errors during cleanup, and still attempt a bounded join if signaling cancellation fails. Native capture calls already in progress must still return before the worker can stop.

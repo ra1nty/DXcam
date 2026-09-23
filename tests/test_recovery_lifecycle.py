@@ -16,6 +16,9 @@ class FakeOutput:
     resolution = (1920, 1080)
     rotation_angle = 0
 
+    def read_current_rotation(self):
+        return self.rotation_angle
+
     @property
     def surface_size(self):
         if self.rotation_angle in (90, 270):
